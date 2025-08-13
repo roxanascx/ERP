@@ -56,7 +56,19 @@ export const useEmpresaValidation = () => {
       }
 
       try {
-        const empresaActual = await EmpresaApiService.getEmpresaActual();
+        const empresaInfo = await EmpresaApiService.getEmpresaActual();
+        
+        let empresaActual: Empresa | null = null;
+        
+        // Si hay empresa seleccionada, obtener detalles completos
+        if (empresaInfo?.ruc) {
+          try {
+            empresaActual = await EmpresaApiService.getEmpresaByRuc(empresaInfo.ruc);
+          } catch (error) {
+            // Si no se pueden obtener los detalles, usar la info básica
+            empresaActual = empresaInfo;
+          }
+        }
         
         const hasEmpresa = empresaActual !== null;
         

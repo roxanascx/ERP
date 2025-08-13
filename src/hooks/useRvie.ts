@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { sireService } from '../services/sire';
+import { sireService, sireGeneralService } from '../services/sire';
 import type {
   RvieDescargarPropuestaRequest,
   RvieAceptarPropuestaRequest,
@@ -32,6 +32,7 @@ export function useRvie(options: UseRvieOptions) {
   const [tickets, setTickets] = useState<RvieTicketResponse[]>([]);
   const [resumen, setResumen] = useState<RvieResumenResponse | null>(null);
   const [inconsistencias, setInconsistencias] = useState<RvieInconsistencia[]>([]);
+  const [endpointsDisponibles, setEndpointsDisponibles] = useState<any>(null);
   
   // Estados de UI
   const [loading, setLoading] = useState(false);
@@ -98,6 +99,19 @@ export function useRvie(options: UseRvieOptions) {
       setOperacionActiva(null);
     }
   }, [ruc, handleError, clearError]);
+
+  // ========================================
+  // CARGAR ENDPOINTS DISPONIBLES
+  // ========================================
+
+  const cargarEndpoints = useCallback(async () => {
+    try {
+      const endpoints = await sireGeneralService.getRvieEndpoints();
+      setEndpointsDisponibles(endpoints);
+    } catch (error) {
+      console.error('Error cargando endpoints RVIE:', error);
+    }
+  }, []);
 
   // ========================================
   // OPERACIONES RVIE
@@ -303,10 +317,30 @@ export function useRvie(options: UseRvieOptions) {
   // EFECTOS Y LIMPIEZA
   // ========================================
 
-  // Verificar autenticación al montar
+  // Verificar autenticación al montar y auto-autenticarse
   useEffect(() => {
-    checkAuth();
-  }, [checkAuth]);
+    const initializeAuth = async () => {
+      try {
+        const status = await checkAuth();
+        
+        // Si no está autenticado, intentar autenticación automática
+        if (!status.authenticated) {
+          console.log('🔄 [RVIE] No hay sesión activa, intentando autenticación automática...');
+          try {
+            await authenticate();
+            console.log('✅ [RVIE] Autenticación automática exitosa');
+          } catch (error) {
+            console.warn('⚠️ [RVIE] Autenticación automática falló:', error);
+          }
+        }
+      } catch (error) {
+        console.error('❌ [RVIE] Error en inicialización:', error);
+      }
+    };
+
+    initializeAuth();
+    cargarEndpoints(); // Cargar endpoints disponibles
+  }, [ruc]); // Solo depende del RUC para evitar loops
 
   // Auto-refresh si está habilitado
   useEffect(() => {
@@ -350,6 +384,7 @@ export function useRvie(options: UseRvieOptions) {
     tickets,
     resumen,
     inconsistencias,
+    endpointsDisponibles,
     loading,
     error,
     operacionActiva,
@@ -373,6 +408,7 @@ export function useRvie(options: UseRvieOptions) {
     // Datos complementarios
     cargarResumen,
     cargarInconsistencias,
+    cargarEndpoints,
     
     // Utilidades
     clearError

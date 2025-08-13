@@ -10,6 +10,7 @@ import {
   type SireConfigType
 } from '../components/empresa';
 import { useEmpresa } from '../hooks/useEmpresa';
+import EmpresaApiService from '../services/empresaApi';
 
 const EmpresaPage: React.FC = () => {
   const navigate = useNavigate();
@@ -52,10 +53,20 @@ const EmpresaPage: React.FC = () => {
     limpiarError();
   };
 
-  const handleConfigSire = (empresa: Empresa) => {
-    setEmpresaConfigSire(empresa);
-    setShowSireModal(true);
-    limpiarError();
+  const handleConfigSire = async (empresa: Empresa) => {
+    try {
+      // Obtener los datos completos de la empresa para el modal SIRE
+      console.log('🔍 Obteniendo detalles completos para:', empresa.ruc);
+      const empresaCompleta = await EmpresaApiService.getEmpresaByRuc(empresa.ruc);
+      console.log('📋 Empresa completa obtenida:', empresaCompleta);
+      
+      setEmpresaConfigSire(empresaCompleta);
+      setShowSireModal(true);
+      limpiarError();
+    } catch (error) {
+      console.error('❌ Error obteniendo detalles de empresa:', error);
+      // El error será mostrado mediante el hook useEmpresa si es necesario
+    }
   };
 
   const handleSelectEmpresa = async (empresa: Empresa) => {

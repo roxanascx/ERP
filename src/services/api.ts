@@ -13,10 +13,19 @@ const apiClient = axios.create({
 // Interceptor para agregar token de autenticación (si es necesario en el futuro)
 apiClient.interceptors.request.use(
   (config) => {
+    // Debug: Log de todas las requests
+    console.log('🌐 [API] Request:', {
+      method: config.method?.toUpperCase(),
+      url: config.url,
+      baseURL: config.baseURL,
+      fullURL: `${config.baseURL}${config.url}`
+    });
+    
     // Aquí podríamos agregar tokens de autenticación si fuera necesario
     return config;
   },
   (error) => {
+    console.error('🌐 [API] Request Error:', error);
     return Promise.reject(error);
   }
 );
@@ -24,10 +33,21 @@ apiClient.interceptors.request.use(
 // Interceptor para manejo de respuestas
 apiClient.interceptors.response.use(
   (response) => {
+    console.log('✅ [API] Response:', {
+      status: response.status,
+      url: response.config.url,
+      data: response.data
+    });
     return response;
   },
   (error) => {
-    console.error('API Error:', error);
+    console.error('❌ [API] Error:', {
+      message: error.message,
+      status: error.response?.status,
+      url: error.config?.url,
+      fullURL: `${error.config?.baseURL}${error.config?.url}`,
+      data: error.response?.data
+    });
     return Promise.reject(error);
   }
 );

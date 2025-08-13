@@ -19,15 +19,27 @@ const SireConfigForm: React.FC<SireConfigProps> = ({
 
   // Cargar datos existentes si los hay
   useEffect(() => {
-    if (empresa.sire_client_id) {
-      setFormData({
-        client_id: empresa.sire_client_id,
+    console.log('🔄 SireConfig: useEffect ejecutado');
+    console.log('🏢 Empresa actual:', empresa);
+    console.log('🔑 SIRE client_id:', empresa.sire_client_id);
+    console.log('👤 SUNAT usuario:', empresa.sunat_usuario);
+    console.log('🎯 SIRE activo:', empresa.sire_activo);
+    
+    // Cargar datos si existen (cualquier campo SIRE presente)
+    if (empresa.sire_client_id || empresa.sunat_usuario) {
+      const newFormData = {
+        client_id: empresa.sire_client_id || '',
         client_secret: empresa.sire_client_secret || '',
         sunat_usuario: empresa.sunat_usuario || '',
         sunat_clave: empresa.sunat_clave || ''
-      });
+      };
+      
+      console.log('📝 Cargando datos del formulario:', newFormData);
+      setFormData(newFormData);
+    } else {
+      console.log('❌ No hay datos SIRE para cargar');
     }
-  }, [empresa]);
+  }, [empresa, empresa.sire_client_id, empresa.sunat_usuario, empresa.sire_activo]);
 
   // Validar formulario
   const validateForm = (): boolean => {

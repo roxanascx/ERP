@@ -142,6 +142,21 @@ export interface SireAuthStatus {
   session_id?: string;
 }
 
+export interface SireStatusResponse {
+  ruc: string;
+  sire_activo: boolean;
+  credenciales_validas: boolean;
+  sesion_activa: boolean;
+  token_expira_en?: number;
+  ultima_autenticacion?: string;
+  ultima_actividad?: string;
+  servicios_disponibles: string[];
+  servicios_activos: string[];
+  version_api?: string;
+  servidor_region?: string;
+  consulta_timestamp: string;
+}
+
 export interface SireApiError {
   code: string;
   message: string;

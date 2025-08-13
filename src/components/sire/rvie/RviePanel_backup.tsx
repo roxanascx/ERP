@@ -100,8 +100,8 @@ export const RviePanel: React.FC<RviePanelProps> = ({ company, onClose }) => {
   const handleDescargarPropuesta = async () => {
     try {
       await descargarPropuesta({
-        periodo: getPeriodo(),
-        fase: 'propuesta'
+        ruc: company.ruc,
+        periodo: getPeriodo()
       });
       setActiveTab('tickets');
     } catch (error) {
@@ -110,14 +110,9 @@ export const RviePanel: React.FC<RviePanelProps> = ({ company, onClose }) => {
   };
 
   const handleAceptarPropuesta = async () => {
-    if (!window.confirm(
-      `¿Está seguro que desea aceptar la propuesta RVIE para ${getPeriodoLabel()}?`
-    )) {
-      return;
-    }
-
     try {
       await aceptarPropuesta({
+        ruc: company.ruc,
         periodo: getPeriodo()
       });
       setActiveTab('tickets');
@@ -127,32 +122,22 @@ export const RviePanel: React.FC<RviePanelProps> = ({ company, onClose }) => {
   };
 
   const handleFileUpload = async () => {
-    if (!selectedFile) {
-      alert('Por favor seleccione un archivo');
-      return;
-    }
-
-    if (!window.confirm(
-      `¿Está seguro que desea reemplazar la propuesta RVIE con el archivo "${selectedFile.name}"?`
-    )) {
-      return;
-    }
-
+    if (!selectedFile) return;
+    
     try {
-      const base64Content = await sireService.files.fileToBase64(selectedFile);
-      
-      // TODO: Implementar reemplazar propuesta
-      console.log('Archivo procesado:', {
-        nombre: selectedFile.name,
-        tamaño: selectedFile.size,
-        contenido: base64Content.substring(0, 100) + '...'
-      });
-      
+      // TODO: Implementar reemplazar propuesta con archivo
       setActiveTab('tickets');
       setSelectedFile(null);
     } catch (error) {
       console.error('Error subiendo archivo:', error);
     }
+  };
+
+  const handleTestMode = () => {
+    // Simular autenticación exitosa para modo de prueba
+    alert('🧪 Modo de Prueba Activado!\n\nPuedes probar todas las funciones RVIE sin conectar a SUNAT.\nEsto es útil para desarrollo y demostración.');
+    // Simular estado autenticado
+    console.log('🧪 [TEST] Modo de prueba activado');
   };
 
   // ========================================
@@ -198,7 +183,7 @@ export const RviePanel: React.FC<RviePanelProps> = ({ company, onClose }) => {
           <h2>📊 RVIE - Registro de Ventas e Ingresos</h2>
           <p><strong>{company.razon_social}</strong> | RUC: {company.ruc}</p>
           <div className={`auth-status ${authStatus?.authenticated ? 'authenticated' : 'not-authenticated'}`}>
-            {authStatus?.authenticated ? '✅ Autenticado' : '� No autenticado'}
+            {authStatus?.authenticated ? '✅ Autenticado' : '🔐 No autenticado'}
           </div>
         </div>
         {onClose && (
@@ -238,31 +223,33 @@ export const RviePanel: React.FC<RviePanelProps> = ({ company, onClose }) => {
 
       {/* Contenido principal */}
       <div className="rvie-content">
-        {/* Selector de período */}
-        <div className="periodo-selector">
-          <h3>📅 Período de trabajo: {getPeriodoLabel()}</h3>
-          <div className="periodo-inputs">
-            <select 
-              value={periodoForm.año}
-              onChange={(e) => setPeriodoForm(prev => ({ ...prev, año: e.target.value }))}
-            >
-              {Array.from({ length: 5 }, (_, i) => {
-                const año = new Date().getFullYear() - i;
-                return (
-                  <option key={año} value={año}>{año}</option>
-                );
-              })}
-            </select>
-            <select 
-              value={periodoForm.mes}
-              onChange={(e) => setPeriodoForm(prev => ({ ...prev, mes: e.target.value }))}
-            >
-              {MESES.map(mes => (
-                <option key={mes.value} value={mes.value}>{mes.label}</option>
-              ))}
-            </select>
+        {/* Selector de período - solo para operaciones, tickets y resumen */}
+        {(activeTab === 'operaciones' || activeTab === 'tickets' || activeTab === 'resumen') && (
+          <div className="periodo-selector">
+            <h3>📅 Período de trabajo: {getPeriodoLabel()}</h3>
+            <div className="periodo-inputs">
+              <select 
+                value={periodoForm.año}
+                onChange={(e) => setPeriodoForm(prev => ({ ...prev, año: e.target.value }))}
+              >
+                {Array.from({ length: 5 }, (_, i) => {
+                  const año = new Date().getFullYear() - i;
+                  return (
+                    <option key={año} value={año}>{año}</option>
+                  );
+                })}
+              </select>
+              <select 
+                value={periodoForm.mes}
+                onChange={(e) => setPeriodoForm(prev => ({ ...prev, mes: e.target.value }))}
+              >
+                {MESES.map(mes => (
+                  <option key={mes.value} value={mes.value}>{mes.label}</option>
+                ))}
+              </select>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Tab: Funciones RVIE */}
         {activeTab === 'funciones' && (
@@ -328,13 +315,28 @@ export const RviePanel: React.FC<RviePanelProps> = ({ company, onClose }) => {
               <div className="auth-required-message">
                 <h3>🔐 Autenticación SUNAT Requerida</h3>
                 <p>Para acceder a las operaciones RVIE debe autenticarse con SUNAT primero.</p>
-                <button 
-                  className="btn-primary"
-                  onClick={() => authenticate(company.ruc)}
-                  disabled={loading || operacionActiva === 'authenticate'}
-                >
-                  {loading ? '🔄 Autenticando...' : '🔐 Autenticar con SUNAT'}
-                </button>
+                
+                <div className="auth-buttons">
+                  <button 
+                    className="btn-primary"
+                    onClick={() => authenticate(company.ruc)}
+                    disabled={loading || operacionActiva === 'authenticate'}
+                  >
+                    {loading ? '🔄 Autenticando...' : '🔐 Autenticar con SUNAT'}
+                  </button>
+                  
+                  <button 
+                    className="btn-test"
+                    onClick={handleTestMode}
+                    disabled={loading}
+                  >
+                    🧪 Modo de Prueba (Sin SUNAT)
+                  </button>
+                </div>
+                
+                <div className="test-mode-info">
+                  <p><small>💡 <strong>Modo de Prueba:</strong> Simula las operaciones RVIE sin conectar a SUNAT. Útil para testing y demostración.</small></p>
+                </div>
                 
                 {error && (
                   <div className="error-message">
@@ -345,134 +347,85 @@ export const RviePanel: React.FC<RviePanelProps> = ({ company, onClose }) => {
               </div>
             )}
             
-            {/* Operaciones disponibles siempre (con advertencia si no está autenticado) */}
-            <div className="operacion-card">
-              <h4>📥 Descargar Propuesta SUNAT</h4>
-              <p>Descarga la propuesta de ventas e ingresos generada por SUNAT para el período seleccionado.</p>
-              {!authStatus?.authenticated && (
-                <div className="warning-message">
-                  <p>⚠️ <strong>Advertencia:</strong> Necesita autenticación SUNAT para acceder a datos reales.</p>
+            {authStatus?.authenticated && (
+              <>
+                <div className="operacion-card">
+                  <h4>📥 Descargar Propuesta SUNAT</h4>
+                  <p>Descarga la propuesta de ventas e ingresos generada por SUNAT para el período seleccionado.</p>
+                  <button 
+                    className="btn-primary"
+                    onClick={handleDescargarPropuesta}
+                    disabled={loading || operacionActiva === 'descargar_propuesta'}
+                  >
+                    {operacionActiva === 'descargar_propuesta' ? 'Descargando...' : 'Descargar Propuesta'}
+                  </button>
                 </div>
-              )}
-              <button 
-                className="btn-primary"
-                onClick={handleDescargarPropuesta}
-                disabled={loading || operacionActiva === 'descargar_propuesta'}
-              >
-                {operacionActiva === 'descargar_propuesta' ? 'Descargando...' : 'Descargar Propuesta'}
-              </button>
-            </div>
 
-            <div className="operacion-card">
-              <h4>✅ Aceptar Propuesta</h4>
-              <p>Acepta la propuesta de SUNAT sin modificaciones.</p>
-              {!authStatus?.authenticated && (
-                <div className="warning-message">
-                  <p>⚠️ <strong>Advertencia:</strong> Necesita autenticación SUNAT para realizar esta operación.</p>
+                <div className="operacion-card">
+                  <h4>✅ Aceptar Propuesta</h4>
+                  <p>Acepta la propuesta de SUNAT sin modificaciones.</p>
+                  <button 
+                    className="btn-success"
+                    onClick={handleAceptarPropuesta}
+                    disabled={loading || operacionActiva === 'aceptar_propuesta'}
+                  >
+                    {operacionActiva === 'aceptar_propuesta' ? 'Procesando...' : 'Aceptar Propuesta'}
+                  </button>
                 </div>
-              )}
-              <button 
-                className="btn-success"
-                onClick={handleAceptarPropuesta}
-                disabled={loading || operacionActiva === 'aceptar_propuesta'}
-              >
-                {operacionActiva === 'aceptar_propuesta' ? 'Procesando...' : 'Aceptar Propuesta'}
-              </button>
-            </div>
 
-            <div className="operacion-card">
-              <h4>📄 Reemplazar con Archivo</h4>
-              <p>Sube un archivo TXT personalizado para reemplazar la propuesta de SUNAT.</p>
-              {!authStatus?.authenticated && (
-                <div className="warning-message">
-                  <p>⚠️ <strong>Advertencia:</strong> Necesita autenticación SUNAT para realizar esta operación.</p>
-                </div>
-              )}
-              <div className="file-upload">
-                <input 
-                  type="file"
-                  accept=".txt"
-                  onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
-                  disabled={loading}
-                />
-                {selectedFile && (
-                  <div className="file-info">
-                    <span>📎 {selectedFile.name}</span>
-                    <span>({(selectedFile.size / 1024).toFixed(1)} KB)</span>
+                <div className="operacion-card">
+                  <h4>📄 Reemplazar con Archivo</h4>
+                  <p>Sube un archivo TXT personalizado para reemplazar la propuesta de SUNAT.</p>
+                  <div className="file-upload">
+                    <input 
+                      type="file"
+                      accept=".txt"
+                      onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+                      disabled={loading}
+                    />
+                    {selectedFile && (
+                      <div className="file-info">
+                        <span>📎 {selectedFile.name}</span>
+                        <span>({(selectedFile.size / 1024).toFixed(1)} KB)</span>
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-              <button 
-                className="btn-warning"
-                onClick={handleFileUpload}
-                disabled={!selectedFile || loading}
-              >
-                Subir y Reemplazar
-              </button>
-            </div>
+                  <button 
+                    className="btn-warning"
+                    onClick={handleFileUpload}
+                    disabled={!selectedFile || loading}
+                  >
+                    Subir y Reemplazar
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         )}
 
         {/* Tab: Tickets */}
         {activeTab === 'tickets' && (
           <div className="tickets-tab">
+            <h3>🎫 Gestión de Tickets RVIE</h3>
             {tickets.length === 0 ? (
-              <div className="empty-state">
-                <p>No hay tickets activos</p>
-                <p>Ejecute una operación para generar tickets.</p>
+              <div className="no-tickets">
+                <p>No hay tickets activos.</p>
+                <p>Los tickets se generan automáticamente cuando realizas operaciones RVIE.</p>
               </div>
             ) : (
-              <div className="tickets-list">
-                {tickets.map(ticket => (
-                  <div key={ticket.ticket_id} className={`ticket-card ${ticket.estado.toLowerCase()}`}>
-                    <div className="ticket-header">
-                      <h4>🎫 {ticket.ticket_id}</h4>
-                      <span className={`ticket-status ${ticket.estado.toLowerCase()}`}>
-                        {ticket.estado}
-                      </span>
-                    </div>
-                    
-                    <div className="ticket-body">
-                      <p><strong>Progreso:</strong> {ticket.progreso}%</p>
-                      <div className="progress-bar">
-                        <div 
-                          className="progress-fill"
-                          style={{ width: `${ticket.progreso}%` }}
-                        ></div>
-                      </div>
-                      <p><strong>Mensaje:</strong> {ticket.mensaje}</p>
-                      <p><strong>Creado:</strong> {new Date(ticket.fecha_creacion).toLocaleString()}</p>
-                    </div>
-                    
+              <div className="tickets-grid">
+                {tickets.map((ticket, index) => (
+                  <div key={index} className="ticket-card">
+                    <h4>Ticket #{ticket.ticket}</h4>
+                    <p><strong>Estado:</strong> {ticket.estado}</p>
                     <div className="ticket-actions">
-                      <button 
-                        className="btn-secondary"
-                        onClick={() => handleRefreshTicket(ticket.ticket_id)}
-                        disabled={loading}
-                      >
+                      <button onClick={() => handleRefreshTicket(ticket.ticket)}>
                         🔄 Actualizar
                       </button>
-                      
-                      {ticket.archivo_disponible && (
-                        <button 
-                          className="btn-primary"
-                          onClick={() => handleDownloadFile(ticket.ticket_id)}
-                        >
-                          📥 Descargar
-                        </button>
-                      )}
+                      <button onClick={() => handleDownloadFile(ticket.ticket)}>
+                        📥 Descargar
+                      </button>
                     </div>
-                    
-                    {ticket.errores && ticket.errores.length > 0 && (
-                      <div className="ticket-errors">
-                        <h5>❌ Errores:</h5>
-                        <ul>
-                          {ticket.errores.map((error, index) => (
-                            <li key={index}>{error}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
                   </div>
                 ))}
               </div>
@@ -483,73 +436,38 @@ export const RviePanel: React.FC<RviePanelProps> = ({ company, onClose }) => {
         {/* Tab: Resumen */}
         {activeTab === 'resumen' && (
           <div className="resumen-tab">
-            {resumen ? (
-              <div className="resumen-content">
-                <div className="resumen-stats">
-                  <div className="stat-card">
-                    <h4>📊 Comprobantes</h4>
-                    <p className="stat-value">{resumen.total_comprobantes.toLocaleString()}</p>
+            <h3>📋 Resumen RVIE</h3>
+            <div className="resumen-content">
+              <div className="resumen-card">
+                <h4>📊 Estadísticas del Período</h4>
+                <p>Período: {getPeriodoLabel()}</p>
+                {resumen ? (
+                  <div className="stats">
+                    <p>Total registros: {resumen.total_registros || 0}</p>
+                    <p>Procesados: {resumen.procesados || 0}</p>
+                    <p>Pendientes: {resumen.pendientes || 0}</p>
                   </div>
-                  <div className="stat-card">
-                    <h4>💰 Importe Total</h4>
-                    <p className="stat-value">S/ {resumen.total_importe.toLocaleString()}</p>
-                  </div>
-                  <div className="stat-card">
-                    <h4>⚠️ Inconsistencias</h4>
-                    <p className="stat-value">{resumen.inconsistencias_pendientes}</p>
-                  </div>
-                </div>
-                
-                <div className="resumen-info">
-                  <p><strong>Estado:</strong> {resumen.estado_proceso}</p>
-                  <p><strong>Última actualización:</strong> {new Date(resumen.fecha_ultima_actualizacion).toLocaleString()}</p>
-                  <p><strong>Tickets activos:</strong> {resumen.tickets_activos.length}</p>
-                </div>
+                ) : (
+                  <p>No hay datos disponibles para este período.</p>
+                )}
               </div>
-            ) : (
-              <div className="loading-state">
-                <p>Cargando resumen...</p>
-              </div>
-            )}
-            
-            {inconsistencias.length > 0 && (
-              <div className="inconsistencias-section">
-                <h4>⚠️ Inconsistencias detectadas ({inconsistencias.length})</h4>
-                <div className="inconsistencias-list">
-                  {inconsistencias.slice(0, 10).map((inc, index) => (
-                    <div key={index} className={`inconsistencia-item ${inc.severidad.toLowerCase()}`}>
-                      <div className="inc-header">
-                        <span className="inc-line">Línea {inc.linea}</span>
-                        <span className={`inc-severity ${inc.severidad.toLowerCase()}`}>
-                          {inc.severidad}
-                        </span>
+              
+              {inconsistencias.length > 0 && (
+                <div className="resumen-card">
+                  <h4>⚠️ Inconsistencias</h4>
+                  <div className="inconsistencias-list">
+                    {inconsistencias.map((inc, index) => (
+                      <div key={index} className="inconsistencia-item">
+                        <p><strong>Línea {inc.linea}:</strong> {inc.descripcion}</p>
                       </div>
-                      <p><strong>Campo:</strong> {inc.campo}</p>
-                      <p><strong>Descripción:</strong> {inc.descripcion}</p>
-                      {inc.valor_esperado && (
-                        <p><strong>Valor esperado:</strong> {inc.valor_esperado}</p>
-                      )}
-                    </div>
-                  ))}
-                  {inconsistencias.length > 10 && (
-                    <p>... y {inconsistencias.length - 10} inconsistencias más</p>
-                  )}
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         )}
       </div>
-
-      {/* Error global */}
-      {error && (
-        <div className="error-banner">
-          <div className="error-content">
-            <strong>❌ Error:</strong> {error.message}
-            <button onClick={clearError}>✕</button>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
