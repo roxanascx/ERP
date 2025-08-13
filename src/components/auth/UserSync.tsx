@@ -18,7 +18,6 @@ interface User {
 
 const UserSync: React.FC = () => {
   const { user, isLoaded } = useUser();
-  const [backendUser, setBackendUser] = useState<User | null>(null);
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -43,7 +42,6 @@ const UserSync: React.FC = () => {
       
       if (response.data) {
         // Usuario ya existe
-        setBackendUser(response.data);
         setSyncStatus('synced');
         console.log('✅ Usuario ya existe en BD');
       } else {
@@ -86,7 +84,6 @@ const UserSync: React.FC = () => {
       console.log('Sincronizando usuario:', userData);
 
       const response = await apiService.users.sync(userData);
-      setBackendUser(response.data);
       setSyncStatus('synced');
       
       if (isManual) {
@@ -125,8 +122,7 @@ const UserSync: React.FC = () => {
       if (!user?.id) return;
 
       try {
-        const response = await apiService.users.getByClerkId(user.id);
-        setBackendUser(response.data);
+        await apiService.users.getByClerkId(user.id);
         setSyncStatus('synced');
       } catch (err) {
         // Usuario no encontrado, necesita sincronización

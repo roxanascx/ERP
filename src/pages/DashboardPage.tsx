@@ -2,15 +2,18 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { UserProfile, UserSync } from '../components/auth';
 import BackendStatus from '../components/BackendStatus';
+import { useEmpresaValidation } from '../hooks/useEmpresaValidation';
 
 const DashboardPage: React.FC = () => {
+  const { empresaActual } = useEmpresaValidation();
+
   return (
     <div style={{
       minHeight: '100vh',
       background: '#f8fafc',
       padding: '20px'
     }}>
-      {/* Header */}
+      {/* Header con información de empresa */}
       <header style={{
         background: 'white',
         borderRadius: '12px',
@@ -33,13 +36,55 @@ const DashboardPage: React.FC = () => {
           }}>
             📊 ERP Dashboard
           </h1>
-          <p style={{
+          <div style={{
             color: '#6b7280',
-            margin: '5px 0 0 0',
-            fontSize: '16px'
+            margin: '8px 0 0 0',
+            fontSize: '16px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            flexWrap: 'wrap'
           }}>
-            Bienvenido a tu sistema de gestión empresarial
-          </p>
+            {empresaActual ? (
+              <>
+                <span>Empresa activa:</span>
+                <span style={{
+                  fontWeight: '600',
+                  color: '#3b82f6',
+                  backgroundColor: '#dbeafe',
+                  padding: '4px 12px',
+                  borderRadius: '6px',
+                  border: '1px solid #93c5fd'
+                }}>
+                  🏢 {empresaActual.ruc} - {empresaActual.razon_social}
+                </span>
+                <Link
+                  to="/empresas"
+                  style={{
+                    padding: '4px 12px',
+                    fontSize: '14px',
+                    color: '#6b7280',
+                    textDecoration: 'none',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '6px',
+                    transition: 'all 0.2s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#f3f4f6';
+                    e.currentTarget.style.borderColor = '#9ca3af';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                    e.currentTarget.style.borderColor = '#d1d5db';
+                  }}
+                >
+                  🔄 Cambiar empresa
+                </Link>
+              </>
+            ) : (
+              <span>Bienvenido a tu sistema de gestión empresarial</span>
+            )}
+          </div>
         </div>
         
         <UserProfile />
@@ -112,6 +157,8 @@ const DashboardPage: React.FC = () => {
           }}>
             
             {[
+              { icon: '🏢', title: 'Empresas', desc: 'Gestión de empresas y SIRE', color: '#3b82f6', link: '/empresas' },
+              { icon: '🔗', title: 'SIRE', desc: 'Sistema de Información de Reportes Electrónicos', color: '#dc2626', link: '/sire' },
               { icon: '💰', title: 'Contabilidad', desc: 'Gestión financiera', color: '#10b981' },
               { icon: '📦', title: 'Inventario', desc: 'Control de productos', color: '#f59e0b' },
               { icon: '👥', title: 'Empleados', desc: 'Recursos humanos', color: '#ef4444' },

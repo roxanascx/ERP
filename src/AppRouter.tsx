@@ -1,8 +1,9 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useUser } from '@clerk/clerk-react';
-import { HomePage, DashboardPage } from './pages';
+import { HomePage, DashboardPage, EmpresaPage, SirePage } from './pages';
 import TestLogoutPage from './pages/TestLogoutPage';
+import EmpresaProtectedRoute from './components/EmpresaProtectedRoute';
 
 const AppRouter: React.FC = () => {
   const { isLoaded, isSignedIn } = useUser();
@@ -56,19 +57,47 @@ const AppRouter: React.FC = () => {
   return (
     <Router>
       <Routes>
-        {/* Ruta principal - decide entre HomePage o Dashboard */}
+        {/* Ruta principal - decide entre HomePage o Empresas */}
         <Route 
           path="/" 
           element={
-            isSignedIn ? <Navigate to="/dashboard" replace /> : <HomePage />
+            isSignedIn ? <Navigate to="/empresas" replace /> : <HomePage />
           } 
         />
         
-        {/* Dashboard - solo accesible si está autenticado */}
+        {/* Dashboard - requiere empresa seleccionada */}
         <Route 
           path="/dashboard" 
           element={
-            isSignedIn ? <DashboardPage /> : <Navigate to="/" replace />
+            isSignedIn ? (
+              <EmpresaProtectedRoute>
+                <DashboardPage />
+              </EmpresaProtectedRoute>
+            ) : (
+              <Navigate to="/" replace />
+            )
+          } 
+        />
+        
+        {/* Empresas - solo accesible si está autenticado */}
+        <Route 
+          path="/empresas" 
+          element={
+            isSignedIn ? <EmpresaPage /> : <Navigate to="/" replace />
+          } 
+        />
+        
+        {/* SIRE - requiere empresa seleccionada */}
+        <Route 
+          path="/sire" 
+          element={
+            isSignedIn ? (
+              <EmpresaProtectedRoute>
+                <SirePage />
+              </EmpresaProtectedRoute>
+            ) : (
+              <Navigate to="/" replace />
+            )
           } 
         />
         
