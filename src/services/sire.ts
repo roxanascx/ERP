@@ -148,8 +148,8 @@ export const rvieService = {
     request: RvieDescargarPropuestaRequest
   ): Promise<RvieProcesoResponse> {
     const response = await api.post(
-      `${RVIE_BASE_URL}/${ruc}/descargar-propuesta`,
-      request
+      `${RVIE_BASE_URL}/descargar-propuesta`,
+      { ...request, ruc }
     );
     return response.data;
   },
@@ -162,8 +162,8 @@ export const rvieService = {
     request: RvieAceptarPropuestaRequest
   ): Promise<RvieProcesoResponse> {
     const response = await api.post(
-      `${RVIE_BASE_URL}/${ruc}/aceptar-propuesta`,
-      request
+      `${RVIE_BASE_URL}/aceptar-propuesta`,
+      { ...request, ruc }
     );
     return response.data;
   },
@@ -327,12 +327,192 @@ export const sireFileUtils = {
 };
 
 // ========================================
-// SERVICIO PRINCIPAL SIRE
+// SERVICIOS DE TICKETS RVIE
+// ========================================
+
+// Función auxiliar para convertir respuesta del backend a formato frontend
+function mapTicketResponse(backendResponse: any): RvieTicketResponse {
+  return {
+    ticket_id: backendResponse.ticket_id,
+    status: backendResponse.estado || backendResponse.status, // Mapear estado -> status
+    progreso_porcentaje: backendResponse.progreso_porcentaje,
+    descripcion: backendResponse.descripcion,
+    fecha_creacion: backendResponse.fecha_creacion,
+    fecha_actualizacion: backendResponse.fecha_actualizacion,
+    operacion: backendResponse.operacion,
+    ruc: backendResponse.ruc,
+    periodo: backendResponse.periodo,
+    resultado: backendResponse.resultado,
+    error_mensaje: backendResponse.error_mensaje,
+    archivo_nombre: backendResponse.archivo_nombre,
+    archivo_size: backendResponse.archivo_size
+  };
+}
+
+export const rvieTicketService = {
+  /**
+   * Generar ticket para operación RVIE asíncrona
+   */
+  async generarTicket(request: {
+    ruc: string;
+    periodo: string;
+    operacion: 'descargar-propuesta' | 'aceptar-propuesta' | 'reemplazar-propuesta';
+  }): Promise<RvieTicketResponse> {
+    try {
+      console.log('🎫 [RVIE-TICKET] Generando ticket:', request);
+      
+      const response = await api.post(`${RVIE_BASE_URL}/generar-ticket`, request);
+      
+      const ticket = mapTicketResponse(response.data);
+      console.log('✅ [RVIE-TICKET] Ticket generado:', ticket.ticket_id);
+      return ticket;
+    } catch (error) {
+      console.error('❌ [RVIE-TICKET] Error generando ticket:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Consultar estado de un ticket
+   */
+  async consultarTicket(ruc: string, ticketId: string): Promise<RvieTicketResponse> {
+    try {
+      console.log(`🔍 [RVIE-TICKET] Consultando ticket ${ticketId}`);
+      
+      const response = await api.get(`${RVIE_BASE_URL}/ticket/${ruc}/${ticketId}`);
+      
+      const ticket = mapTicketResponse(response.data);
+      console.log(`📊 [RVIE-TICKET] Estado del ticket: ${ticket.status}`);
+      return ticket;
+    } catch (error) {
+      console.error('❌ [RVIE-TICKET] Error consultando ticket:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Descargar archivo de un ticket completado
+   */
+  async descargarArchivo(ruc: string, ticketId: string): Promise<RvieArchivoResponse> {
+    try {
+      console.log(`📥 [RVIE-TICKET] Descargando archivo del ticket ${ticketId}`);
+      
+      const response = await api.get(`${RVIE_BASE_URL}/archivo/${ruc}/${ticketId}`);
+      
+      console.log(`✅ [RVIE-TICKET] Archivo descargado: ${response.data.filename}`);
+      return response.data;
+    } catch (error) {
+      console.error('❌ [RVIE-TICKET] Error descargando archivo:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Descargar archivo y convertir a blob para descarga en navegador
+   */
+  async descargarArchivoBlob(ruc: string, ticketId: string): Promise<{ filename: string; blob: Blob }> {
+    try {
+      const archivoData = await this.descargarArchivo(ruc, ticketId);
+      
+      // Si el contenido viene en base64, convertir a blob
+      if (archivoData.content) {
+        const binaryString = atob(archivoData.content);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+        
+        const blob = new Blob([bytes], { 
+          type: archivoData.content_type || 'text/plain' 
+        });
+        
+        return {
+          filename: archivoData.filename,
+          blob
+        };
+      }
+      
+      // Si no hay contenido, crear blob vacío
+      const blob = new Blob([], { type: 'text/plain' });
+      return {
+        filename: archivoData.filename || 'archivo.txt',
+        blob
+      };
+    } catch (error) {
+      console.error('❌ [RVIE-TICKET] Error descargando archivo como blob:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Hacer polling de un ticket hasta que complete
+   */
+  async monitorearTicket(
+    ruc: string, 
+    ticketId: string, 
+    options: {
+      intervalo?: number;
+      maxIntentos?: number;
+      onProgress?: (ticket: RvieTicketResponse) => void;
+    } = {}
+  ): Promise<RvieTicketResponse> {
+    const { intervalo = 3000, maxIntentos = 20, onProgress } = options;
+    
+    console.log(`👀 [RVIE-TICKET] Iniciando monitoreo del ticket ${ticketId}`);
+    
+    for (let intento = 1; intento <= maxIntentos; intento++) {
+      try {
+        const ticket = await this.consultarTicket(ruc, ticketId);
+        
+        // Llamar callback de progreso si existe
+        if (onProgress) {
+          onProgress(ticket);
+        }
+        
+        // Verificar si está completado
+        if (ticket.status === 'TERMINADO') {
+          console.log(`✅ [RVIE-TICKET] Ticket ${ticketId} completado exitosamente`);
+          return ticket;
+        }
+        
+        if (ticket.status === 'ERROR') {
+          console.log(`❌ [RVIE-TICKET] Ticket ${ticketId} falló: ${ticket.error_mensaje}`);
+          return ticket;
+        }
+        
+        // Si aún está procesando, esperar
+        if (ticket.status === 'PENDIENTE' || ticket.status === 'PROCESANDO') {
+          console.log(`⏳ [RVIE-TICKET] Ticket ${ticketId} procesando... (${ticket.progreso_porcentaje}%)`);
+          
+          if (intento < maxIntentos) {
+            await new Promise(resolve => setTimeout(resolve, intervalo));
+          }
+        }
+        
+      } catch (error) {
+        console.error(`❌ [RVIE-TICKET] Error en intento ${intento}:`, error);
+        
+        if (intento === maxIntentos) {
+          throw new Error(`Timeout monitoreando ticket después de ${maxIntentos} intentos`);
+        }
+        
+        // Esperar antes del siguiente intento
+        await new Promise(resolve => setTimeout(resolve, intervalo));
+      }
+    }
+    
+    throw new Error(`Timeout monitoreando ticket ${ticketId} después de ${maxIntentos} intentos`);
+  }
+};
+
+// ========================================
+// SERVICIO PRINCIPAL SIRE (ACTUALIZADO)
 // ========================================
 
 export const sireService = {
   auth: sireAuthService,
   rvie: rvieService,
+  tickets: rvieTicketService,
   files: sireFileUtils
 };
 

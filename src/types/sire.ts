@@ -66,6 +66,43 @@ export interface RvieRegistrarPreliminarRequest {
 // RESPONSES RVIE
 // ========================================
 
+// ========================================
+// TICKETS RVIE (ALINEADO CON BACKEND)
+// ========================================
+
+export interface RvieGenerarTicketRequest {
+  ruc: string;
+  periodo: string; // YYYYMM
+  operacion: 'descargar-propuesta' | 'aceptar-propuesta' | 'reemplazar-propuesta';
+}
+
+export interface RvieTicketResponse {
+  ticket_id: string;
+  status: 'PENDIENTE' | 'PROCESANDO' | 'TERMINADO' | 'ERROR';
+  progreso_porcentaje: number; // 0-100
+  descripcion: string;
+  fecha_creacion: string;
+  fecha_actualizacion: string;
+  operacion: string;
+  ruc: string;
+  periodo: string;
+  resultado?: any;
+  error_mensaje?: string;
+  archivo_nombre?: string;
+  archivo_size?: number;
+}
+
+export interface RvieArchivoResponse {
+  filename: string;
+  content?: string;
+  file_size: number;
+  content_type?: string;
+}
+
+// ========================================
+// RESPONSES RVIE EXISTENTES (MANTENIDAS)
+// ========================================
+
 export interface RvieProcesoResponse {
   ticket_id: string;
   estado: 'INICIADO' | 'EN_PROCESO' | 'COMPLETADO' | 'ERROR';
@@ -75,7 +112,8 @@ export interface RvieProcesoResponse {
   detalles?: any;
 }
 
-export interface RvieTicketResponse {
+// DEPRECATED - usar RvieTicketResponse
+export interface RvieTicketResponse_OLD {
   ticket_id: string;
   estado: 'PENDIENTE' | 'PROCESANDO' | 'COMPLETADO' | 'ERROR';
   progreso: number; // 0-100
@@ -86,7 +124,8 @@ export interface RvieTicketResponse {
   errores?: string[];
 }
 
-export interface RvieArchivoResponse {
+// DEPRECATED - usar RvieArchivoResponse
+export interface RvieArchivoResponse_OLD {
   ticket_id: string;
   nombre_archivo: string;
   contenido: string; // Base64 encoded

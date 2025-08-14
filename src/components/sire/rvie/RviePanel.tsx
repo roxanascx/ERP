@@ -78,7 +78,6 @@ export const RviePanel: React.FC<RviePanelProps> = ({ company, onClose }) => {
     mes: String(new Date().getMonth() + 1).padStart(2, '0')
   });
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [showAuthRequired, setShowAuthRequired] = useState(false);
 
   // ========================================
   // UTILIDADES
@@ -330,7 +329,7 @@ export const RviePanel: React.FC<RviePanelProps> = ({ company, onClose }) => {
                 <p>Para acceder a las operaciones RVIE debe autenticarse con SUNAT primero.</p>
                 <button 
                   className="btn-primary"
-                  onClick={() => authenticate(company.ruc)}
+                  onClick={() => authenticate()}
                   disabled={loading || operacionActiva === 'authenticate'}
                 >
                   {loading ? '🔄 Autenticando...' : '🔐 Autenticar con SUNAT'}
@@ -424,24 +423,27 @@ export const RviePanel: React.FC<RviePanelProps> = ({ company, onClose }) => {
             ) : (
               <div className="tickets-list">
                 {tickets.map(ticket => (
-                  <div key={ticket.ticket_id} className={`ticket-card ${ticket.estado.toLowerCase()}`}>
+                  <div key={ticket.ticket_id} className={`ticket-card ${(ticket.status || 'unknown').toLowerCase()}`}>
                     <div className="ticket-header">
                       <h4>🎫 {ticket.ticket_id}</h4>
-                      <span className={`ticket-status ${ticket.estado.toLowerCase()}`}>
-                        {ticket.estado}
+                      <span className={`ticket-status ${(ticket.status || 'unknown').toLowerCase()}`}>
+                        {ticket.status || 'UNKNOWN'}
                       </span>
                     </div>
                     
                     <div className="ticket-body">
-                      <p><strong>Progreso:</strong> {ticket.progreso}%</p>
+                      <p><strong>Progreso:</strong> {ticket.progreso_porcentaje}%</p>
                       <div className="progress-bar">
                         <div 
                           className="progress-fill"
-                          style={{ width: `${ticket.progreso}%` }}
+                          style={{ width: `${ticket.progreso_porcentaje}%` }}
                         ></div>
                       </div>
-                      <p><strong>Mensaje:</strong> {ticket.mensaje}</p>
+                      <p><strong>Descripción:</strong> {ticket.descripcion}</p>
                       <p><strong>Creado:</strong> {new Date(ticket.fecha_creacion).toLocaleString()}</p>
+                      {ticket.operacion && (
+                        <p><strong>Operación:</strong> {ticket.operacion}</p>
+                      )}
                     </div>
                     
                     <div className="ticket-actions">
@@ -453,7 +455,7 @@ export const RviePanel: React.FC<RviePanelProps> = ({ company, onClose }) => {
                         🔄 Actualizar
                       </button>
                       
-                      {ticket.archivo_disponible && (
+                      {(ticket.status === 'TERMINADO' && ticket.archivo_nombre) && (
                         <button 
                           className="btn-primary"
                           onClick={() => handleDownloadFile(ticket.ticket_id)}
@@ -463,14 +465,10 @@ export const RviePanel: React.FC<RviePanelProps> = ({ company, onClose }) => {
                       )}
                     </div>
                     
-                    {ticket.errores && ticket.errores.length > 0 && (
+                    {ticket.status === 'ERROR' && ticket.error_mensaje && (
                       <div className="ticket-errors">
-                        <h5>❌ Errores:</h5>
-                        <ul>
-                          {ticket.errores.map((error, index) => (
-                            <li key={index}>{error}</li>
-                          ))}
-                        </ul>
+                        <h5>❌ Error:</h5>
+                        <p>{ticket.error_mensaje}</p>
                       </div>
                     )}
                   </div>

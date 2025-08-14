@@ -117,20 +117,26 @@ export function useRvie(options: UseRvieOptions) {
   // OPERACIONES RVIE
   // ========================================
 
-  const descargarPropuesta = useCallback(async (request: RvieDescargarPropuestaRequest): Promise<RvieProcesoResponse> => {
+  const descargarPropuesta = useCallback(async (request: RvieDescargarPropuestaRequest): Promise<RvieTicketResponse> => {
     setLoading(true);
     setOperacionActiva('descargar_propuesta');
     
     try {
-      const response = await sireService.rvie.descargarPropuesta(ruc, request);
+      // Usar el nuevo sistema de tickets
+      const ticket = await sireService.tickets.generarTicket({
+        ruc,
+        periodo: request.periodo,
+        operacion: 'descargar-propuesta'
+      });
+      
+      // Agregar ticket al estado
+      setTickets(prev => [...prev, ticket]);
+      
+      // Iniciar monitoreo automático
+      startTicketPolling(ticket.ticket_id);
+      
       clearError();
-      
-      // Iniciar polling del ticket
-      if (response.ticket_id) {
-        startTicketPolling(response.ticket_id);
-      }
-      
-      return response;
+      return ticket;
     } catch (error) {
       handleError(error, 'descarga de propuesta');
       throw error;
@@ -140,19 +146,26 @@ export function useRvie(options: UseRvieOptions) {
     }
   }, [ruc, handleError, clearError]);
 
-  const aceptarPropuesta = useCallback(async (request: RvieAceptarPropuestaRequest): Promise<RvieProcesoResponse> => {
+  const aceptarPropuesta = useCallback(async (request: RvieAceptarPropuestaRequest): Promise<RvieTicketResponse> => {
     setLoading(true);
     setOperacionActiva('aceptar_propuesta');
     
     try {
-      const response = await sireService.rvie.aceptarPropuesta(ruc, request);
+      // Usar el nuevo sistema de tickets
+      const ticket = await sireService.tickets.generarTicket({
+        ruc,
+        periodo: request.periodo,
+        operacion: 'aceptar-propuesta'
+      });
+      
+      // Agregar ticket al estado
+      setTickets(prev => [...prev, ticket]);
+      
+      // Iniciar monitoreo automático
+      startTicketPolling(ticket.ticket_id);
+      
       clearError();
-      
-      if (response.ticket_id) {
-        startTicketPolling(response.ticket_id);
-      }
-      
-      return response;
+      return ticket;
     } catch (error) {
       handleError(error, 'aceptación de propuesta');
       throw error;
@@ -212,7 +225,7 @@ export function useRvie(options: UseRvieOptions) {
 
   const consultarTicket = useCallback(async (ticketId: string): Promise<RvieTicketResponse> => {
     try {
-      const ticket = await sireService.rvie.consultarTicket(ruc, ticketId);
+      const ticket = await sireService.tickets.consultarTicket(ruc, ticketId);
       
       // Actualizar ticket en la lista
       setTickets(prev => {
@@ -246,7 +259,7 @@ export function useRvie(options: UseRvieOptions) {
         const ticket = await consultarTicket(ticketId);
         
         // Detener polling si el ticket está completado o con error
-        if (ticket.estado === 'COMPLETADO' || ticket.estado === 'ERROR') {
+        if (ticket.status === 'TERMINADO' || ticket.status === 'ERROR') {
           stopTicketPolling(ticketId);
         }
       } catch (error) {
@@ -273,16 +286,25 @@ export function useRvie(options: UseRvieOptions) {
 
   const descargarArchivo = useCallback(async (ticketId: string): Promise<RvieArchivoResponse> => {
     try {
-      const archivo = await sireService.rvie.descargarArchivo(ruc, ticketId);
+      const { filename, blob } = await sireService.tickets.descargarArchivoBlob(ruc, ticketId);
       
-      // Descargar automáticamente
-      sireService.files.downloadFromBase64(
-        archivo.contenido,
-        archivo.nombre_archivo,
-        archivo.tipo_mime
-      );
+      // Crear URL temporal y descargar automáticamente
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
       
-      return archivo;
+      console.log(`✅ Archivo descargado: ${filename}`);
+      
+      return {
+        filename,
+        file_size: blob.size,
+        content_type: blob.type
+      };
     } catch (error) {
       handleError(error, 'descarga de archivo');
       throw error;
