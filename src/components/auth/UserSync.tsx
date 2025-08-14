@@ -22,6 +22,7 @@ const UserSync: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [syncStatus, setSyncStatus] = useState<'not-synced' | 'synced' | 'syncing'>('not-synced');
+  const [hasCheckedSync, setHasCheckedSync] = useState<boolean>(false);
 
   // Auto-sincronización cuando el usuario se carga
   useEffect(() => {
@@ -116,10 +117,12 @@ const UserSync: React.FC = () => {
     }
   };
 
-  // Verificar si el usuario ya está sincronizado
+  // Verificar si el usuario ya está sincronizado (solo una vez por usuario)
   useEffect(() => {
     const checkUserSync = async () => {
-      if (!user?.id) return;
+      if (!user?.id || hasCheckedSync) return;
+      
+      setHasCheckedSync(true);
 
       try {
         await apiService.users.getByClerkId(user.id);
@@ -130,11 +133,11 @@ const UserSync: React.FC = () => {
       }
     };
 
-    if (isLoaded && user) {
+    if (isLoaded && user?.id) {
       checkUserSync();
       loadAllUsers();
     }
-  }, [user, isLoaded]);
+  }, [user?.id, isLoaded, hasCheckedSync]);
 
   if (!isLoaded) {
     return <div style={{ padding: '20px', textAlign: 'center' }}>Cargando...</div>;

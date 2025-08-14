@@ -12,6 +12,12 @@ import BackendStatus from '../components/BackendStatus';
 const SirePage: React.FC = () => {
   const { empresaActual } = useEmpresaValidation();
   const [activeModule, setActiveModule] = useState<'home' | 'rvie' | 'rce'>('home');
+  
+  // SIEMPRE llamar useRvie (nunca condicionalmente)
+  // Si no hay empresa, usar RUC por defecto que será ignorado
+  // NOTA: Ya no necesitamos esto porque el RviePanel maneja su propio hook
+  // const rvieOptions = empresaActual ? { ruc: empresaActual.ruc } : { ruc: '00000000000' };
+  // const rvieHook = useRvie(rvieOptions);
 
   // Si no hay empresa seleccionada, mostrar mensaje
   if (!empresaActual) {
@@ -68,6 +74,11 @@ const SirePage: React.FC = () => {
 
   // Render del módulo específico
   if (activeModule === 'rvie') {
+    // Verificar que tenemos empresa válida antes de usar RVIE
+    if (!empresaActual) {
+      return <div>Error: No se pudo inicializar el módulo RVIE - empresa no encontrada</div>;
+    }
+
     return (
       <div style={{
         minHeight: '100vh',

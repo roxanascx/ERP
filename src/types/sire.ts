@@ -43,11 +43,16 @@ export interface RvieInconsistencia {
 
 export interface RvieDescargarPropuestaRequest {
   periodo: string; // YYYYMM
-  fase?: 'propuesta' | 'definitiva';
+  forzar_descarga?: boolean;
+  incluir_detalle?: boolean;
+  fase?: 'propuesta' | 'definitiva';  // Mantenemos por compatibilidad
 }
 
 export interface RvieAceptarPropuestaRequest {
   periodo: string;
+  acepta_completa?: boolean;
+  observaciones?: string;
+  confirmacion?: boolean;  // Mantenemos por compatibilidad
   ticket_id?: string;
 }
 

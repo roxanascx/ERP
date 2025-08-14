@@ -373,6 +373,24 @@ export const rvieTicketService = {
   },
 
   /**
+   * Listar todos los tickets de un RUC
+   */
+  async listarTickets(ruc: string): Promise<RvieTicketResponse[]> {
+    try {
+      console.log(`📋 [RVIE-TICKETS] Listando tickets para RUC: ${ruc}`);
+      
+      const response = await api.get(`${RVIE_BASE_URL}/tickets/${ruc}`);
+      
+      const tickets = response.data.map((ticketData: any) => mapTicketResponse(ticketData));
+      console.log(`✅ [RVIE-TICKETS] Encontrados ${tickets.length} tickets`);
+      return tickets;
+    } catch (error) {
+      console.error('❌ [RVIE-TICKETS] Error listando tickets:', error);
+      throw error;
+    }
+  },
+
+  /**
    * Consultar estado de un ticket
    */
   async consultarTicket(ruc: string, ticketId: string): Promise<RvieTicketResponse> {

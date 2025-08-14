@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { sireService, sireGeneralService } from '../services/sire';
+import { sireService, sireGeneralService, rvieService } from '../services/sire';
 import type {
   RvieDescargarPropuestaRequest,
   RvieAceptarPropuestaRequest,
@@ -50,9 +50,27 @@ export function useRvie(options: UseRvieOptions) {
   const handleError = useCallback((err: any, operacion: string) => {
     console.error(`Error en ${operacion}:`, err);
     
+    // Detectar errores específicos de SUNAT
+    let messageForUser = '';
+    let errorCode = 'UNKNOWN_ERROR';
+    
+    if (err.response?.status === 503) {
+      messageForUser = 'Servicio SUNAT temporalmente no disponible. Por favor, intenta más tarde.';
+      errorCode = 'SUNAT_UNAVAILABLE';
+    } else if (err.response?.status === 500 && err.response?.data?.detail?.includes('SUNAT')) {
+      messageForUser = 'Error en el servidor de SUNAT. Por favor, intenta más tarde.';
+      errorCode = 'SUNAT_SERVER_ERROR';
+    } else if (err.response?.status === 401) {
+      messageForUser = 'Credenciales SUNAT inválidas o expiradas.';
+      errorCode = 'SUNAT_UNAUTHORIZED';
+    } else {
+      messageForUser = err.response?.data?.message || err.message || 'Error desconocido';
+      errorCode = err.response?.data?.code || 'UNKNOWN_ERROR';
+    }
+    
     const sireError: SireApiError = {
-      code: err.response?.data?.code || 'UNKNOWN_ERROR',
-      message: err.response?.data?.message || err.message || 'Error desconocido',
+      code: errorCode,
+      message: messageForUser,
       details: err.response?.data?.details,
       timestamp: new Date().toISOString()
     };
@@ -114,6 +132,30 @@ export function useRvie(options: UseRvieOptions) {
   }, []);
 
   // ========================================
+  // CARGAR TICKETS EXISTENTES
+  // ========================================
+
+  const cargarTickets = useCallback(async () => {
+    try {
+      console.log(`🔄 [RVIE] Cargando tickets existentes para RUC: ${ruc}`);
+      const ticketsData = await sireService.tickets.listarTickets(ruc);
+      setTickets(ticketsData);
+      console.log(`✅ [RVIE] Cargados ${ticketsData.length} tickets existentes`);
+      
+      // Iniciar monitoreo automático para tickets en proceso
+      ticketsData.forEach((ticket: RvieTicketResponse) => {
+        if (ticket.status === 'PROCESANDO' || ticket.status === 'PENDIENTE') {
+          startTicketPolling(ticket.ticket_id);
+        }
+      });
+      
+    } catch (error) {
+      console.error('Error cargando tickets existentes:', error);
+      // No lanzar error para no bloquear la inicialización
+    }
+  }, [ruc]);
+
+  // ========================================
   // OPERACIONES RVIE
   // ========================================
 
@@ -122,18 +164,38 @@ export function useRvie(options: UseRvieOptions) {
     setOperacionActiva('descargar_propuesta');
     
     try {
-      // Usar el nuevo sistema de tickets
-      const ticket = await sireService.tickets.generarTicket({
+      console.log('🚀 [FRONTEND] Iniciando descarga propuesta RVIE:', {
         ruc,
         periodo: request.periodo,
-        operacion: 'descargar-propuesta'
+        forzar_descarga: request.forzar_descarga || false,
+        incluir_detalle: request.incluir_detalle !== false
       });
+
+      // Llamar directamente al servicio RVIE mejorado
+      const response = await rvieService.descargarPropuesta(ruc, {
+        periodo: request.periodo,
+        forzar_descarga: request.forzar_descarga || false,
+        incluir_detalle: request.incluir_detalle !== false
+      });
+
+      console.log('✅ [FRONTEND] Respuesta de descarga propuesta:', response);
+
+      // Si es una respuesta con ticket, crear ticket para el estado
+      const ticket: RvieTicketResponse = {
+        ticket_id: response.ticket_id || `manual_${Date.now()}`,
+        status: response.estado === 'COMPLETADO' ? 'TERMINADO' : response.estado === 'ERROR' ? 'ERROR' : 'TERMINADO',
+        descripcion: `Descarga propuesta ${request.periodo}`,
+        operacion: 'descargar-propuesta',
+        ruc,
+        periodo: request.periodo,
+        fecha_creacion: new Date().toISOString(),
+        fecha_actualizacion: new Date().toISOString(),
+        resultado: response,
+        progreso_porcentaje: 100
+      };
       
       // Agregar ticket al estado
       setTickets(prev => [...prev, ticket]);
-      
-      // Iniciar monitoreo automático
-      startTicketPolling(ticket.ticket_id);
       
       clearError();
       return ticket;
@@ -355,6 +417,10 @@ export function useRvie(options: UseRvieOptions) {
             console.warn('⚠️ [RVIE] Autenticación automática falló:', error);
           }
         }
+        
+        // Cargar tickets existentes independientemente del estado de autenticación
+        await cargarTickets();
+        
       } catch (error) {
         console.error('❌ [RVIE] Error en inicialización:', error);
       }
@@ -362,7 +428,7 @@ export function useRvie(options: UseRvieOptions) {
 
     initializeAuth();
     cargarEndpoints(); // Cargar endpoints disponibles
-  }, [ruc]); // Solo depende del RUC para evitar loops
+  }, [ruc, cargarTickets]); // Añadido cargarTickets a las dependencias
 
   // Auto-refresh si está habilitado
   useEffect(() => {
@@ -426,6 +492,7 @@ export function useRvie(options: UseRvieOptions) {
     startTicketPolling,
     stopTicketPolling,
     descargarArchivo,
+    cargarTickets,
     
     // Datos complementarios
     cargarResumen,

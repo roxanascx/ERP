@@ -1,0 +1,509 @@
+/* Estilos para componentes RVIE */
+
+/* ========================================
+   ESTILOS PARA RVIE OPERACIONES
+======================================== */
+
+.operaciones-rvie {
+  margin-bottom: 30px;
+}
+
+.operacion-card {
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  margin-bottom: 20px;
+}
+
+.operacion-card h4 {
+  margin: 0 0 10px 0;
+  color: #333;
+}
+
+.operacion-card p {
+  margin: 0 0 15px 0;
+  color: #666;
+  font-size: 14px;
+}
+
+.warning-message {
+  background: #fff3cd;
+  border: 1px solid #ffeaa7;
+  border-radius: 4px;
+  padding: 10px;
+  margin: 10px 0;
+}
+
+.warning-message p {
+  margin: 0;
+  color: #856404;
+  font-size: 13px;
+}
+
+.opciones-avanzadas {
+  margin: 15px 0;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.btn-toggle-opciones {
+  width: 100%;
+  padding: 10px 15px;
+  background: #f8f9fa;
+  border: none;
+  text-align: left;
+  font-size: 14px;
+  color: #495057;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.btn-toggle-opciones:hover {
+  background: #e9ecef;
+}
+
+.opciones-contenido {
+  padding: 15px;
+  background: #fdfdfd;
+  border-top: 1px solid #e0e0e0;
+}
+
+.opciones-aceptacion {
+  margin: 15px 0;
+  padding: 15px;
+  background: #f8f9fa;
+  border-radius: 4px;
+}
+
+.opcion-item {
+  margin-bottom: 15px;
+}
+
+.opcion-item:last-child {
+  margin-bottom: 0;
+}
+
+.opcion-item label {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 14px;
+  color: #333;
+  cursor: pointer;
+}
+
+.opcion-item input[type="checkbox"],
+.opcion-item input[type="radio"] {
+  margin-top: 2px;
+}
+
+.opcion-item small {
+  display: block;
+  margin-top: 5px;
+  margin-left: 22px;
+  color: #666;
+  font-size: 12px;
+  line-height: 1.3;
+}
+
+.opcion-item textarea {
+  width: 100%;
+  margin-top: 8px;
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  font-family: inherit;
+  resize: vertical;
+}
+
+/* ========================================
+   ESTILOS PARA RVIE TICKETS
+======================================== */
+
+.tickets-section {
+  margin-bottom: 30px;
+}
+
+.tickets-section h3 {
+  margin: 0 0 20px 0;
+  color: #333;
+  font-size: 18px;
+}
+
+.empty-tickets {
+  text-align: center;
+  padding: 40px 20px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 2px dashed #dee2e6;
+}
+
+.empty-tickets p {
+  margin: 0 0 10px 0;
+  font-size: 16px;
+  color: #6c757d;
+}
+
+.empty-tickets small {
+  color: #adb5bd;
+  font-size: 14px;
+}
+
+.tickets-grid {
+  display: grid;
+  gap: 20px;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+}
+
+.ticket-card {
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  transition: box-shadow 0.2s;
+}
+
+.ticket-card:hover {
+  box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.ticket-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 15px;
+}
+
+.ticket-info h4 {
+  margin: 0 0 5px 0;
+  font-size: 16px;
+  color: #333;
+}
+
+.ticket-id {
+  font-size: 12px;
+  color: #666;
+  font-family: 'Courier New', monospace;
+}
+
+.ticket-status {
+  padding: 4px 8px;
+  border-radius: 12px;
+  color: white;
+  font-size: 11px;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+.ticket-details {
+  margin-bottom: 20px;
+}
+
+.ticket-details p {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+  color: #555;
+}
+
+.ticket-details strong {
+  color: #333;
+}
+
+.progress-container {
+  margin: 10px 0;
+}
+
+.progress-label {
+  font-size: 12px;
+  color: #666;
+  margin-bottom: 5px;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 8px;
+  background: #e9ecef;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #007bff, #28a745);
+  transition: width 0.3s ease;
+}
+
+.error-message {
+  background: #f8d7da;
+  border: 1px solid #f5c6cb;
+  color: #721c24;
+  padding: 8px 12px;
+  border-radius: 4px;
+  margin: 10px 0;
+  font-size: 12px;
+}
+
+.archivo-info {
+  background: #e7f3ff;
+  border: 1px solid #b6d7ff;
+  padding: 8px 12px;
+  border-radius: 4px;
+  margin: 10px 0;
+}
+
+.archivo-info p {
+  margin: 0 0 4px 0;
+  font-size: 12px;
+  color: #0056b3;
+}
+
+.ticket-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.ticket-actions button {
+  flex: 1;
+  min-width: 120px;
+}
+
+/* ========================================
+   ESTILOS PARA RVIE VENTAS
+======================================== */
+
+.rvie-ventas {
+  margin-bottom: 30px;
+}
+
+.stats-section {
+  margin-bottom: 30px;
+  padding: 20px;
+  background: #f8f9fa;
+  border-radius: 8px;
+}
+
+.stats-section h4 {
+  margin: 0 0 20px 0;
+  color: #333;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.stat-card {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  text-align: center;
+  border: 1px solid #e0e0e0;
+}
+
+.stat-value {
+  font-size: 24px;
+  font-weight: bold;
+  color: #007bff;
+  margin-bottom: 5px;
+}
+
+.stat-label {
+  font-size: 12px;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.tipo-stats {
+  margin-top: 20px;
+}
+
+.tipo-stats h5 {
+  margin: 0 0 10px 0;
+  color: #333;
+}
+
+.tipo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 10px;
+}
+
+.tipo-item {
+  padding: 8px 12px;
+  background: white;
+  border-radius: 4px;
+  border: 1px solid #e0e0e0;
+  font-size: 14px;
+}
+
+.filtros-section {
+  margin-bottom: 30px;
+  padding: 20px;
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+}
+
+.filtros-section h4 {
+  margin: 0 0 15px 0;
+  color: #333;
+}
+
+.filtros-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px;
+}
+
+.filtro-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.filtro-group label {
+  margin-bottom: 5px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+}
+
+.filtro-group select,
+.filtro-group input {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.comprobantes-section {
+  margin-bottom: 30px;
+}
+
+.comprobantes-section h4 {
+  margin: 0 0 15px 0;
+  color: #333;
+}
+
+.empty-comprobantes {
+  text-align: center;
+  padding: 40px 20px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 2px dashed #dee2e6;
+}
+
+.comprobantes-table {
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.table-header {
+  display: grid;
+  grid-template-columns: 80px 150px 100px 120px 80px 120px 100px;
+  gap: 10px;
+  padding: 15px;
+  background: #f8f9fa;
+  border-bottom: 1px solid #e0e0e0;
+  font-weight: bold;
+  font-size: 14px;
+  color: #333;
+}
+
+.table-row {
+  display: grid;
+  grid-template-columns: 80px 150px 100px 120px 80px 120px 100px;
+  gap: 10px;
+  padding: 15px;
+  border-bottom: 1px solid #f0f0f0;
+  font-size: 14px;
+  align-items: center;
+}
+
+.table-row:hover {
+  background: #f8f9fa;
+}
+
+.table-row:last-child {
+  border-bottom: none;
+}
+
+.monto {
+  text-align: right;
+  font-weight: 500;
+}
+
+.estado {
+  padding: 4px 8px;
+  border-radius: 12px;
+  color: white;
+  font-size: 11px;
+  font-weight: bold;
+  text-transform: uppercase;
+  text-align: center;
+}
+
+.estado-valido {
+  background: #28a745;
+}
+
+.estado-rechazado {
+  background: #dc3545;
+}
+
+.estado-pendiente {
+  background: #ffc107;
+  color: #000;
+}
+
+.acciones-ventas {
+  display: flex;
+  gap: 15px;
+  flex-wrap: wrap;
+}
+
+/* ========================================
+   RESPONSIVE
+======================================== */
+
+@media (max-width: 768px) {
+  .tickets-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .filtros-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .table-header,
+  .table-row {
+    grid-template-columns: 1fr;
+    gap: 5px;
+  }
+  
+  .ticket-actions {
+    flex-direction: column;
+  }
+  
+  .ticket-actions button {
+    min-width: auto;
+  }
+  
+  .acciones-ventas {
+    flex-direction: column;
+  }
+}

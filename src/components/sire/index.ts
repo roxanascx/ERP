@@ -3,7 +3,10 @@
  */
 
 // Componentes RVIE
-export { RviePanel } from './rvie/RviePanel';
+export { default as RviePanel } from './rvie/RviePanel';
+
+// Componentes RVIE modulares
+export { RvieOperaciones, RvieTickets, RvieVentas } from './rvie/components';
 
 // Hooks
 export { default as useRvie } from '../../hooks/useRvie';

@@ -1,13 +1,13 @@
 /**
- * Componente principal RVIE
+ * Componente principal RVIE - Versión Refactorizada
  * Interfaz para gestionar el Registro de Ventas e Ingresos Electrónico
  */
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useRvie } from '../../../hooks/useRvie';
-import { sireService } from '../../../services/sire';
+import { RvieOperaciones, RvieTickets, RvieVentas } from './components';
 import type { Empresa } from '../../../types/empresa';
-import './RviePanel.css';
+import type { RvieDescargarPropuestaRequest, RvieAceptarPropuestaRequest } from '../../../types/sire';
 
 // ========================================
 // INTERFACES
@@ -42,514 +42,512 @@ const MESES = [
   { value: '12', label: 'Diciembre' }
 ];
 
+const AÑOS_DISPONIBLES = Array.from({ length: 5 }, (_, i) => {
+  const año = new Date().getFullYear() - i;
+  return { value: año.toString(), label: año.toString() };
+});
+
 // ========================================
 // COMPONENTE PRINCIPAL
 // ========================================
 
-export const RviePanel: React.FC<RviePanelProps> = ({ company, onClose }) => {
-  // Hooks
+export default function RviePanel({ company, onClose }: RviePanelProps) {
+  // Hook RVIE
   const {
     authStatus,
     tickets,
-    resumen,
-    inconsistencias,
-    endpointsDisponibles,
     loading,
-    error,
-    operacionActiva,
-    authenticate,
+    error: rvieError,
     descargarPropuesta,
     aceptarPropuesta,
+    checkAuth,
+    cargarTickets,
     consultarTicket,
-    descargarArchivo,
-    cargarResumen,
-    cargarInconsistencias,
-    clearError
-  } = useRvie({ 
-    ruc: company.ruc,
-    auto_refresh: true,
-    refresh_interval: 30000
-  });
+    descargarArchivo
+  } = useRvie({ ruc: company?.ruc || '' });
 
   // Estados locales
-  const [activeTab, setActiveTab] = useState<'funciones' | 'operaciones' | 'tickets' | 'resumen'>('funciones');
-  const [periodoForm, setPeriodoForm] = useState<PeriodoForm>({
+  const [periodo, setPeriodo] = useState<PeriodoForm>({
     año: new Date().getFullYear().toString(),
     mes: String(new Date().getMonth() + 1).padStart(2, '0')
   });
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
-  // ========================================
-  // UTILIDADES
-  // ========================================
-
-  const getPeriodo = (): string => {
-    return `${periodoForm.año}${periodoForm.mes}`;
-  };
-
-  const getPeriodoLabel = (): string => {
-    const mes = MESES.find(m => m.value === periodoForm.mes);
-    return `${mes?.label || periodoForm.mes} ${periodoForm.año}`;
-  };
-
-  // ========================================
-  // HANDLERS DE OPERACIONES
-  // ========================================
-
-  const handleDescargarPropuesta = async () => {
-    try {
-      await descargarPropuesta({
-        periodo: getPeriodo(),
-        fase: 'propuesta'
-      });
-      setActiveTab('tickets');
-    } catch (error) {
-      console.error('Error descargando propuesta:', error);
-    }
-  };
-
-  const handleAceptarPropuesta = async () => {
-    if (!window.confirm(
-      `¿Está seguro que desea aceptar la propuesta RVIE para ${getPeriodoLabel()}?`
-    )) {
-      return;
-    }
-
-    try {
-      await aceptarPropuesta({
-        periodo: getPeriodo()
-      });
-      setActiveTab('tickets');
-    } catch (error) {
-      console.error('Error aceptando propuesta:', error);
-    }
-  };
-
-  const handleFileUpload = async () => {
-    if (!selectedFile) {
-      alert('Por favor seleccione un archivo');
-      return;
-    }
-
-    if (!window.confirm(
-      `¿Está seguro que desea reemplazar la propuesta RVIE con el archivo "${selectedFile.name}"?`
-    )) {
-      return;
-    }
-
-    try {
-      const base64Content = await sireService.files.fileToBase64(selectedFile);
-      
-      // TODO: Implementar reemplazar propuesta
-      console.log('Archivo procesado:', {
-        nombre: selectedFile.name,
-        tamaño: selectedFile.size,
-        contenido: base64Content.substring(0, 100) + '...'
-      });
-      
-      setActiveTab('tickets');
-      setSelectedFile(null);
-    } catch (error) {
-      console.error('Error subiendo archivo:', error);
-    }
-  };
-
-  // ========================================
-  // HANDLERS DE TICKETS
-  // ========================================
-
-  const handleRefreshTicket = async (ticketId: string) => {
-    try {
-      await consultarTicket(ticketId);
-    } catch (error) {
-      console.error('Error refrescando ticket:', error);
-    }
-  };
-
-  const handleDownloadFile = async (ticketId: string) => {
-    try {
-      await descargarArchivo(ticketId);
-    } catch (error) {
-      console.error('Error descargando archivo:', error);
-    }
-  };
+  const [operacionActiva, setOperacionActiva] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [resultado, setResultado] = useState<any>(null);
+  const [vistaActiva, setVistaActiva] = useState<'operaciones' | 'tickets' | 'ventas'>('operaciones');
 
   // ========================================
   // EFECTOS
   // ========================================
 
   useEffect(() => {
-    if (activeTab === 'resumen') {
-      cargarResumen(getPeriodo());
-      cargarInconsistencias(getPeriodo());
+    if (company?.ruc) {
+      checkAuth();
+      cargarTickets(); // Cargar tickets existentes
     }
-  }, [activeTab, periodoForm]);
+  }, [company?.ruc]); // Solo depende del RUC, no de las funciones
+
+  // Debug: Para ver si los tickets están llegando
+  useEffect(() => {
+    console.log('🎫 RVIE Debug - Tickets actuales:', tickets);
+    console.log('🎫 RVIE Debug - Total tickets:', tickets?.length || 0);
+  }, [tickets]);
 
   // ========================================
-  // RENDER PRINCIPAL (siempre mostrar tabs)
+  // HANDLERS
+  // ========================================
+
+  const handleDescargarPropuesta = async (params: RvieDescargarPropuestaRequest) => {
+    setOperacionActiva('descargar_propuesta');
+    setError(null);
+
+    try {
+      const result = await descargarPropuesta(params);
+      setResultado(result);
+      // Recargar tickets después de la operación
+      await cargarTickets();
+    } catch (err) {
+      console.error('Error al descargar propuesta:', err);
+      setError(err instanceof Error ? err.message : 'Error desconocido al descargar propuesta');
+    } finally {
+      setOperacionActiva(null);
+    }
+  };
+
+  const handleAceptarPropuesta = async (params: RvieAceptarPropuestaRequest) => {
+    setOperacionActiva('aceptar_propuesta');
+    setError(null);
+
+    try {
+      const result = await aceptarPropuesta(params);
+      setResultado(result);
+      // Recargar tickets después de la operación
+      await cargarTickets();
+    } catch (err) {
+      console.error('Error al aceptar propuesta:', err);
+      setError(err instanceof Error ? err.message : 'Error desconocido al aceptar propuesta');
+    } finally {
+      setOperacionActiva(null);
+    }
+  };
+
+  const handleConsultarTicket = async (ticketId: string) => {
+    try {
+      await consultarTicket(ticketId);
+      // Recargar tickets para obtener el estado actualizado
+      await cargarTickets();
+    } catch (err) {
+      console.error('Error al consultar ticket:', err);
+      setError(err instanceof Error ? err.message : 'Error al consultar ticket');
+    }
+  };
+
+  const handleDescargarArchivo = async (ticketId: string) => {
+    try {
+      await descargarArchivo(ticketId);
+    } catch (err) {
+      console.error('Error al descargar archivo:', err);
+      setError(err instanceof Error ? err.message : 'Error al descargar archivo');
+    }
+  };
+
+  const handleVerificarAuth = async () => {
+    if (company?.ruc) {
+      await checkAuth();
+    }
+  };
+
+  // ========================================
+  // RENDER
   // ========================================
 
   return (
     <div className="rvie-panel">
+      <style>{`
+        .rvie-panel {
+          max-width: 1200px;
+          margin: 0 auto;
+          padding: 20px;
+        }
+
+        .panel-header {
+          text-align: center;
+          margin-bottom: 30px;
+        }
+
+        .empresa-info {
+          margin: 10px 0;
+        }
+
+        .close-btn {
+          position: absolute;
+          top: 10px;
+          right: 10px;
+          background: none;
+          border: none;
+          font-size: 16px;
+          cursor: pointer;
+          padding: 5px;
+        }
+
+        .auth-status {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 10px;
+          border-radius: 4px;
+          margin-bottom: 15px;
+        }
+
+        .auth-status.authenticated {
+          background: #d4edda;
+          border: 1px solid #c3e6cb;
+          color: #155724;
+        }
+
+        .auth-status.not-authenticated {
+          background: #f8d7da;
+          border: 1px solid #f5c6cb;
+          color: #721c24;
+        }
+
+        .periodo-selector {
+          background: #f8f9fa;
+          padding: 20px;
+          border-radius: 8px;
+          margin-bottom: 20px;
+        }
+
+        .periodo-row {
+          display: flex;
+          gap: 15px;
+          align-items: end;
+          margin-bottom: 15px;
+        }
+
+        .periodo-group {
+          flex: 1;
+        }
+
+        .periodo-group label {
+          display: block;
+          margin-bottom: 5px;
+          font-weight: 500;
+        }
+
+        .periodo-group select {
+          width: 100%;
+          padding: 8px 12px;
+          border: 1px solid #ddd;
+          border-radius: 4px;
+          font-size: 14px;
+        }
+
+        .empresa-resumen {
+          margin-top: 15px;
+          padding: 15px;
+          background: white;
+          border-radius: 4px;
+          border: 1px solid #e0e0e0;
+        }
+
+        .info-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+          gap: 10px;
+          margin-top: 10px;
+        }
+
+        .vista-tabs {
+          display: flex;
+          gap: 2px;
+          margin-bottom: 20px;
+          border-bottom: 2px solid #e0e0e0;
+        }
+
+        .vista-tab {
+          padding: 10px 20px;
+          border: none;
+          background: #f8f9fa;
+          cursor: pointer;
+          border-radius: 4px 4px 0 0;
+          font-weight: 500;
+          transition: all 0.2s;
+        }
+
+        .vista-tab.active {
+          background: #007bff;
+          color: white;
+        }
+
+        .vista-tab:hover:not(.active) {
+          background: #e9ecef;
+        }
+
+        .vista-content {
+          min-height: 400px;
+        }
+
+        .btn-primary, .btn-success, .btn-secondary {
+          padding: 10px 20px;
+          border: none;
+          border-radius: 4px;
+          font-size: 14px;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.2s;
+          min-width: 140px;
+        }
+
+        .btn-primary {
+          background: #007bff;
+          color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+          background: #0056b3;
+        }
+
+        .btn-success {
+          background: #28a745;
+          color: white;
+        }
+
+        .btn-success:hover:not(:disabled) {
+          background: #1e7e34;
+        }
+
+        .btn-secondary {
+          background: #6c757d;
+          color: white;
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+          background: #545b62;
+        }
+
+        .btn-primary:disabled,
+        .btn-success:disabled,
+        .btn-secondary:disabled {
+          background: #6c757d;
+          cursor: not-allowed;
+        }
+
+        .error-message {
+          background: #f8d7da;
+          border: 1px solid #f5c6cb;
+          color: #721c24;
+          padding: 10px;
+          border-radius: 4px;
+          margin: 10px 0;
+        }
+
+        .success-message {
+          background: #d4edda;
+          border: 1px solid #c3e6cb;
+          color: #155724;
+          padding: 10px;
+          border-radius: 4px;
+          margin: 10px 0;
+        }
+
+        .loading-spinner {
+          text-align: center;
+          color: #666;
+          font-style: italic;
+          padding: 20px;
+        }
+
+        .resultado-section {
+          margin-top: 20px;
+          padding: 20px;
+          background: #f8f9fa;
+          border-radius: 8px;
+        }
+
+        @media (max-width: 768px) {
+          .rvie-panel {
+            padding: 15px;
+          }
+
+          .periodo-row {
+            flex-direction: column;
+            gap: 10px;
+          }
+
+          .vista-tabs {
+            flex-direction: column;
+          }
+
+          .info-grid {
+            grid-template-columns: 1fr;
+          }
+        }
+      `}</style>
+
       {/* Header */}
-      <div className="rvie-header">
-        <div className="header-info">
-          <h2>📊 RVIE - Registro de Ventas e Ingresos</h2>
+      <div className="panel-header">
+        <h2>📊 RVIE - Registro de Ventas e Ingresos Electrónico</h2>
+        <div className="empresa-info">
           <p><strong>{company.razon_social}</strong> | RUC: {company.ruc}</p>
-          <div className={`auth-status ${authStatus?.authenticated ? 'authenticated' : 'not-authenticated'}`}>
-            {authStatus?.authenticated ? '✅ Autenticado' : '� No autenticado'}
-          </div>
         </div>
         {onClose && (
           <button className="close-btn" onClick={onClose}>
-            ✕
+            ✖️ Cerrar
           </button>
         )}
       </div>
 
-      {/* Navegación */}
-      <div className="rvie-nav">
+      {/* Estado de autenticación */}
+      <div className={`auth-status ${authStatus?.authenticated ? 'authenticated' : 'not-authenticated'}`}>
+        <span>
+          {authStatus?.authenticated ? '✅' : '❌'} 
+          Estado SUNAT: {authStatus?.authenticated ? 'Autenticado' : 'No autenticado'}
+        </span>
         <button 
-          className={`nav-btn ${activeTab === 'funciones' ? 'active' : ''}`}
-          onClick={() => setActiveTab('funciones')}
+          className="btn-secondary"
+          onClick={handleVerificarAuth}
+          disabled={loading}
         >
-          📋 Funciones RVIE
-        </button>
-        <button 
-          className={`nav-btn ${activeTab === 'operaciones' ? 'active' : ''}`}
-          onClick={() => setActiveTab('operaciones')}
-        >
-          🔧 Operaciones
-        </button>
-        <button 
-          className={`nav-btn ${activeTab === 'tickets' ? 'active' : ''}`}
-          onClick={() => setActiveTab('tickets')}
-        >
-          🎫 Tickets ({tickets.length})
-        </button>
-        <button 
-          className={`nav-btn ${activeTab === 'resumen' ? 'active' : ''}`}
-          onClick={() => setActiveTab('resumen')}
-        >
-          📋 Resumen
+          🔄 Verificar
         </button>
       </div>
 
-      {/* Contenido principal */}
-      <div className="rvie-content">
-        {/* Selector de período */}
-        <div className="periodo-selector">
-          <h3>📅 Período de trabajo: {getPeriodoLabel()}</h3>
-          <div className="periodo-inputs">
-            <select 
-              value={periodoForm.año}
-              onChange={(e) => setPeriodoForm(prev => ({ ...prev, año: e.target.value }))}
+      {/* Selector de período */}
+      <div className="periodo-selector">
+        <h3>📅 Seleccionar Período</h3>
+        <div className="periodo-row">
+          <div className="periodo-group">
+            <label htmlFor="año">Año:</label>
+            <select
+              id="año"
+              value={periodo.año}
+              onChange={(e) => setPeriodo(prev => ({ ...prev, año: e.target.value }))}
             >
-              {Array.from({ length: 5 }, (_, i) => {
-                const año = new Date().getFullYear() - i;
-                return (
-                  <option key={año} value={año}>{año}</option>
-                );
-              })}
+              {AÑOS_DISPONIBLES.map(año => (
+                <option key={año.value} value={año.value}>
+                  {año.label}
+                </option>
+              ))}
             </select>
-            <select 
-              value={periodoForm.mes}
-              onChange={(e) => setPeriodoForm(prev => ({ ...prev, mes: e.target.value }))}
+          </div>
+
+          <div className="periodo-group">
+            <label htmlFor="mes">Mes:</label>
+            <select
+              id="mes"
+              value={periodo.mes}
+              onChange={(e) => setPeriodo(prev => ({ ...prev, mes: e.target.value }))}
             >
               {MESES.map(mes => (
-                <option key={mes.value} value={mes.value}>{mes.label}</option>
+                <option key={mes.value} value={mes.value}>
+                  {mes.label}
+                </option>
               ))}
             </select>
           </div>
         </div>
 
-        {/* Tab: Funciones RVIE */}
-        {activeTab === 'funciones' && (
-          <div className="funciones-tab">
-            <div className="funciones-info">
-              <h3>🔗 Funciones RVIE Disponibles</h3>
-              <p className="funciones-description">
-                El módulo RVIE (Registro de Ventas e Ingresos Electrónico) permite gestionar
-                las siguientes operaciones con SUNAT:
-              </p>
-              
-              {endpointsDisponibles && (
-                <div className="endpoints-grid">
-                  {endpointsDisponibles.rvie_endpoints?.map((endpoint: any, index: number) => (
-                    <div key={index} className="endpoint-card">
-                      <div className="endpoint-header">
-                        <h4 className="endpoint-name">{endpoint.endpoint}</h4>
-                        <span className="endpoint-method">{endpoint.method}</span>
-                      </div>
-                      <p className="endpoint-description">{endpoint.description}</p>
-                      <div className="endpoint-requirements">
-                        <strong>Requiere:</strong>
-                        <ul>
-                          {endpoint.requires.map((req: string, i: number) => (
-                            <li key={i}>{req}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-              
-              <div className="api-info">
-                <h4>📡 Información de la API</h4>
-                <div className="api-details">
-                  <p><strong>Base URL:</strong> <code>{endpointsDisponibles?.base_url || '/api/v1/sire/rvie'}</code></p>
-                  <p><strong>Autenticación:</strong> {endpointsDisponibles?.authentication || 'Requiere credenciales SUNAT válidas'}</p>
-                  <p><strong>Estado:</strong> 
-                    <span className={`status-badge ${endpointsDisponibles?.status === 'disponible' ? 'available' : 'unavailable'}`}>
-                      {endpointsDisponibles?.status === 'disponible' ? '✅ Disponible' : '❌ No disponible'}
-                    </span>
-                  </p>
-                </div>
-              </div>
-              
-              <div className="empresa-info">
-                <h4>🏢 Empresa Actual</h4>
-                <div className="empresa-details">
-                  <p><strong>RUC:</strong> {company.ruc}</p>
-                  <p><strong>Razón Social:</strong> {company.razon_social}</p>
-                  <p><strong>Usuario SUNAT:</strong> {company.sunat_usuario ? '✅ Configurado' : '❌ No configurado'}</p>
-                </div>
-              </div>
-            </div>
+        <div className="empresa-resumen">
+          <h4>📋 Información de la Empresa</h4>
+          <div className="info-grid">
+            <p><strong>RUC:</strong> {company.ruc}</p>
+            <p><strong>Razón Social:</strong> {company.razon_social}</p>
+            <p><strong>Usuario SUNAT:</strong> {company.sunat_usuario ? '✅ Configurado' : '❌ No configurado'}</p>
           </div>
+        </div>
+      </div>
+
+      {/* Tabs de navegación */}
+      <div className="vista-tabs">
+        <button 
+          className={`vista-tab ${vistaActiva === 'operaciones' ? 'active' : ''}`}
+          onClick={() => setVistaActiva('operaciones')}
+        >
+          🔧 Operaciones RVIE
+        </button>
+        <button 
+          className={`vista-tab ${vistaActiva === 'tickets' ? 'active' : ''}`}
+          onClick={() => setVistaActiva('tickets')}
+        >
+          🎫 Tickets ({tickets?.length || 0})
+        </button>
+        <button 
+          className={`vista-tab ${vistaActiva === 'ventas' ? 'active' : ''}`}
+          onClick={() => setVistaActiva('ventas')}
+        >
+          💰 Gestión de Ventas
+        </button>
+      </div>
+
+      {/* Contenido de las vistas */}
+      <div className="vista-content">
+        {vistaActiva === 'operaciones' && (
+          <RvieOperaciones
+            periodo={periodo}
+            authStatus={authStatus}
+            loading={loading}
+            operacionActiva={operacionActiva}
+            onDescargarPropuesta={handleDescargarPropuesta}
+            onAceptarPropuesta={handleAceptarPropuesta}
+          />
         )}
 
-        {/* Tab: Operaciones */}
-        {activeTab === 'operaciones' && (
-          <div className="operaciones-tab">
-            {!authStatus?.authenticated && (
-              <div className="auth-required-message">
-                <h3>🔐 Autenticación SUNAT Requerida</h3>
-                <p>Para acceder a las operaciones RVIE debe autenticarse con SUNAT primero.</p>
-                <button 
-                  className="btn-primary"
-                  onClick={() => authenticate()}
-                  disabled={loading || operacionActiva === 'authenticate'}
-                >
-                  {loading ? '🔄 Autenticando...' : '🔐 Autenticar con SUNAT'}
-                </button>
-                
-                {error && (
-                  <div className="error-message">
-                    <p>❌ Error: {error.message}</p>
-                    <button onClick={clearError}>Cerrar</button>
-                  </div>
-                )}
-              </div>
-            )}
-            
-            {/* Operaciones disponibles siempre (con advertencia si no está autenticado) */}
-            <div className="operacion-card">
-              <h4>📥 Descargar Propuesta SUNAT</h4>
-              <p>Descarga la propuesta de ventas e ingresos generada por SUNAT para el período seleccionado.</p>
-              {!authStatus?.authenticated && (
-                <div className="warning-message">
-                  <p>⚠️ <strong>Advertencia:</strong> Necesita autenticación SUNAT para acceder a datos reales.</p>
-                </div>
-              )}
-              <button 
-                className="btn-primary"
-                onClick={handleDescargarPropuesta}
-                disabled={loading || operacionActiva === 'descargar_propuesta'}
-              >
-                {operacionActiva === 'descargar_propuesta' ? 'Descargando...' : 'Descargar Propuesta'}
-              </button>
-            </div>
-
-            <div className="operacion-card">
-              <h4>✅ Aceptar Propuesta</h4>
-              <p>Acepta la propuesta de SUNAT sin modificaciones.</p>
-              {!authStatus?.authenticated && (
-                <div className="warning-message">
-                  <p>⚠️ <strong>Advertencia:</strong> Necesita autenticación SUNAT para realizar esta operación.</p>
-                </div>
-              )}
-              <button 
-                className="btn-success"
-                onClick={handleAceptarPropuesta}
-                disabled={loading || operacionActiva === 'aceptar_propuesta'}
-              >
-                {operacionActiva === 'aceptar_propuesta' ? 'Procesando...' : 'Aceptar Propuesta'}
-              </button>
-            </div>
-
-            <div className="operacion-card">
-              <h4>📄 Reemplazar con Archivo</h4>
-              <p>Sube un archivo TXT personalizado para reemplazar la propuesta de SUNAT.</p>
-              {!authStatus?.authenticated && (
-                <div className="warning-message">
-                  <p>⚠️ <strong>Advertencia:</strong> Necesita autenticación SUNAT para realizar esta operación.</p>
-                </div>
-              )}
-              <div className="file-upload">
-                <input 
-                  type="file"
-                  accept=".txt"
-                  onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
-                  disabled={loading}
-                />
-                {selectedFile && (
-                  <div className="file-info">
-                    <span>📎 {selectedFile.name}</span>
-                    <span>({(selectedFile.size / 1024).toFixed(1)} KB)</span>
-                  </div>
-                )}
-              </div>
-              <button 
-                className="btn-warning"
-                onClick={handleFileUpload}
-                disabled={!selectedFile || loading}
-              >
-                Subir y Reemplazar
-              </button>
-            </div>
-          </div>
+        {vistaActiva === 'tickets' && (
+          <RvieTickets
+            tickets={tickets || []}
+            loading={loading}
+            onConsultarTicket={handleConsultarTicket}
+            onDescargarArchivo={handleDescargarArchivo}
+          />
         )}
 
-        {/* Tab: Tickets */}
-        {activeTab === 'tickets' && (
-          <div className="tickets-tab">
-            {tickets.length === 0 ? (
-              <div className="empty-state">
-                <p>No hay tickets activos</p>
-                <p>Ejecute una operación para generar tickets.</p>
-              </div>
-            ) : (
-              <div className="tickets-list">
-                {tickets.map(ticket => (
-                  <div key={ticket.ticket_id} className={`ticket-card ${(ticket.status || 'unknown').toLowerCase()}`}>
-                    <div className="ticket-header">
-                      <h4>🎫 {ticket.ticket_id}</h4>
-                      <span className={`ticket-status ${(ticket.status || 'unknown').toLowerCase()}`}>
-                        {ticket.status || 'UNKNOWN'}
-                      </span>
-                    </div>
-                    
-                    <div className="ticket-body">
-                      <p><strong>Progreso:</strong> {ticket.progreso_porcentaje}%</p>
-                      <div className="progress-bar">
-                        <div 
-                          className="progress-fill"
-                          style={{ width: `${ticket.progreso_porcentaje}%` }}
-                        ></div>
-                      </div>
-                      <p><strong>Descripción:</strong> {ticket.descripcion}</p>
-                      <p><strong>Creado:</strong> {new Date(ticket.fecha_creacion).toLocaleString()}</p>
-                      {ticket.operacion && (
-                        <p><strong>Operación:</strong> {ticket.operacion}</p>
-                      )}
-                    </div>
-                    
-                    <div className="ticket-actions">
-                      <button 
-                        className="btn-secondary"
-                        onClick={() => handleRefreshTicket(ticket.ticket_id)}
-                        disabled={loading}
-                      >
-                        🔄 Actualizar
-                      </button>
-                      
-                      {(ticket.status === 'TERMINADO' && ticket.archivo_nombre) && (
-                        <button 
-                          className="btn-primary"
-                          onClick={() => handleDownloadFile(ticket.ticket_id)}
-                        >
-                          📥 Descargar
-                        </button>
-                      )}
-                    </div>
-                    
-                    {ticket.status === 'ERROR' && ticket.error_mensaje && (
-                      <div className="ticket-errors">
-                        <h5>❌ Error:</h5>
-                        <p>{ticket.error_mensaje}</p>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Tab: Resumen */}
-        {activeTab === 'resumen' && (
-          <div className="resumen-tab">
-            {resumen ? (
-              <div className="resumen-content">
-                <div className="resumen-stats">
-                  <div className="stat-card">
-                    <h4>📊 Comprobantes</h4>
-                    <p className="stat-value">{resumen.total_comprobantes.toLocaleString()}</p>
-                  </div>
-                  <div className="stat-card">
-                    <h4>💰 Importe Total</h4>
-                    <p className="stat-value">S/ {resumen.total_importe.toLocaleString()}</p>
-                  </div>
-                  <div className="stat-card">
-                    <h4>⚠️ Inconsistencias</h4>
-                    <p className="stat-value">{resumen.inconsistencias_pendientes}</p>
-                  </div>
-                </div>
-                
-                <div className="resumen-info">
-                  <p><strong>Estado:</strong> {resumen.estado_proceso}</p>
-                  <p><strong>Última actualización:</strong> {new Date(resumen.fecha_ultima_actualizacion).toLocaleString()}</p>
-                  <p><strong>Tickets activos:</strong> {resumen.tickets_activos.length}</p>
-                </div>
-              </div>
-            ) : (
-              <div className="loading-state">
-                <p>Cargando resumen...</p>
-              </div>
-            )}
-            
-            {inconsistencias.length > 0 && (
-              <div className="inconsistencias-section">
-                <h4>⚠️ Inconsistencias detectadas ({inconsistencias.length})</h4>
-                <div className="inconsistencias-list">
-                  {inconsistencias.slice(0, 10).map((inc, index) => (
-                    <div key={index} className={`inconsistencia-item ${inc.severidad.toLowerCase()}`}>
-                      <div className="inc-header">
-                        <span className="inc-line">Línea {inc.linea}</span>
-                        <span className={`inc-severity ${inc.severidad.toLowerCase()}`}>
-                          {inc.severidad}
-                        </span>
-                      </div>
-                      <p><strong>Campo:</strong> {inc.campo}</p>
-                      <p><strong>Descripción:</strong> {inc.descripcion}</p>
-                      {inc.valor_esperado && (
-                        <p><strong>Valor esperado:</strong> {inc.valor_esperado}</p>
-                      )}
-                    </div>
-                  ))}
-                  {inconsistencias.length > 10 && (
-                    <p>... y {inconsistencias.length - 10} inconsistencias más</p>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
+        {vistaActiva === 'ventas' && (
+          <RvieVentas
+            ruc={company.ruc}
+            periodo={periodo}
+            authStatus={authStatus}
+            loading={loading}
+          />
         )}
       </div>
 
-      {/* Error global */}
-      {error && (
-        <div className="error-banner">
-          <div className="error-content">
-            <strong>❌ Error:</strong> {error.message}
-            <button onClick={clearError}>✕</button>
-          </div>
+      {/* Mensajes de error */}
+      {(error || rvieError) && (
+        <div className="error-message">
+          <p><strong>Error:</strong> {error || (typeof rvieError === 'string' ? rvieError : rvieError?.message || 'Error desconocido')}</p>
+        </div>
+      )}
+
+      {/* Sección de resultados */}
+      {(loading || resultado) && (
+        <div className="resultado-section">
+          <h3>📋 Resultados</h3>
+          
+          {loading && (
+            <div className="loading-spinner">
+              <p>🔄 Procesando operación...</p>
+            </div>
+          )}
+          
+          {resultado && (
+            <div className="success-message">
+              <h4>✅ Operación completada exitosamente</h4>
+              <pre style={{ 
+                background: '#f8f9fa', 
+                padding: '15px', 
+                borderRadius: '4px', 
+                overflow: 'auto',
+                maxHeight: '300px',
+                fontSize: '12px'
+              }}>
+                {JSON.stringify(resultado, null, 2)}
+              </pre>
+            </div>
+          )}
         </div>
       )}
     </div>
   );
-};
-
-export default RviePanel;
+}

@@ -13,13 +13,14 @@ const apiClient = axios.create({
 // Interceptor para agregar token de autenticación (si es necesario en el futuro)
 apiClient.interceptors.request.use(
   (config) => {
-    // Debug: Log de todas las requests
-    console.log('🌐 [API] Request:', {
-      method: config.method?.toUpperCase(),
-      url: config.url,
-      baseURL: config.baseURL,
-      fullURL: `${config.baseURL}${config.url}`
-    });
+    // Solo log si hay errores (reducir spam en consola)
+    if (config.url?.includes('error') || config.url?.includes('debug')) {
+      console.log('🌐 [API] Request:', {
+        method: config.method?.toUpperCase(),
+        url: config.url,
+        fullURL: `${config.baseURL}${config.url}`
+      });
+    }
     
     // Aquí podríamos agregar tokens de autenticación si fuera necesario
     return config;
@@ -33,11 +34,14 @@ apiClient.interceptors.request.use(
 // Interceptor para manejo de respuestas
 apiClient.interceptors.response.use(
   (response) => {
-    console.log('✅ [API] Response:', {
-      status: response.status,
-      url: response.config.url,
-      data: response.data
-    });
+    // Solo log para errores o endpoints específicos (reducir spam)
+    if (response.config.url?.includes('error') || response.status >= 400) {
+      console.log('✅ [API] Response:', {
+        status: response.status,
+        url: response.config.url,
+        data: response.data
+      });
+    }
     return response;
   },
   (error) => {
