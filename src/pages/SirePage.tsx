@@ -5,13 +5,14 @@
 
 import React, { useState } from 'react';
 import { RviePanel } from '../components/sire';
+import RvieFlowManager from '../components/sire/rvie/RvieFlowManager';
 import { useEmpresaValidation } from '../hooks/useEmpresaValidation';
 import { tieneSire } from '../types/empresa';
 import BackendStatus from '../components/BackendStatus';
 
 const SirePage: React.FC = () => {
   const { empresaActual } = useEmpresaValidation();
-  const [activeModule, setActiveModule] = useState<'home' | 'rvie' | 'rce'>('home');
+  const [activeModule, setActiveModule] = useState<'home' | 'rvie' | 'rce' | 'rvie-flow'>('home');
   
   // SIEMPRE llamar useRvie (nunca condicionalmente)
   // Si no hay empresa, usar RUC por defecto que será ignorado
@@ -89,6 +90,73 @@ const SirePage: React.FC = () => {
           company={empresaActual} 
           onClose={() => setActiveModule('home')}
         />
+      </div>
+    );
+  }
+
+  // Render del módulo RVIE Flujo Completo
+  if (activeModule === 'rvie-flow') {
+    if (!empresaActual) {
+      return <div>Error: No se pudo inicializar el módulo RVIE Flow - empresa no encontrada</div>;
+    }
+
+    return (
+      <div style={{
+        minHeight: '100vh',
+        background: 'linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)',
+        padding: '20px'
+      }}>
+        {/* Header con botón de regreso */}
+        <div style={{
+          background: 'white',
+          borderRadius: '12px',
+          padding: '1rem 2rem',
+          marginBottom: '2rem',
+          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between'
+        }}>
+          <div>
+            <h2 style={{
+              fontSize: '1.5rem',
+              fontWeight: '700',
+              color: '#0369a1',
+              margin: '0',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px'
+            }}>
+              🚀 RVIE Flujo Completo - {empresaActual.razon_social}
+            </h2>
+            <p style={{
+              color: '#6b7280',
+              margin: '0.5rem 0 0 0',
+              fontSize: '0.9rem'
+            }}>
+              Secuencia automática según Manual SUNAT v25
+            </p>
+          </div>
+          <button
+            onClick={() => setActiveModule('home')}
+            style={{
+              background: 'linear-gradient(135deg, #6b7280 0%, #4b5563 100%)',
+              color: 'white',
+              border: 'none',
+              padding: '0.75rem 1.5rem',
+              borderRadius: '6px',
+              fontSize: '1rem',
+              cursor: 'pointer',
+              transition: 'transform 0.3s ease'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+            onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+          >
+            ← Volver al Menú SIRE
+          </button>
+        </div>
+        
+        <RvieFlowManager />
       </div>
     );
   }
@@ -293,6 +361,89 @@ const SirePage: React.FC = () => {
             </div>
             <div>
               • Consulta de inconsistencias
+            </div>
+          </div>
+        </div>
+
+        {/* RVIE FLUJO COMPLETO - NUEVO */}
+        <div style={{
+          background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)',
+          borderRadius: '12px',
+          padding: '2rem',
+          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
+          border: '2px solid #0ea5e9',
+          transition: 'all 0.3s ease',
+          cursor: tieneSire(empresaActual) ? 'pointer' : 'not-allowed',
+          opacity: tieneSire(empresaActual) ? 1 : 0.6
+        }}
+        onClick={tieneSire(empresaActual) ? () => setActiveModule('rvie-flow') : undefined}
+        onMouseEnter={(e) => {
+          if (tieneSire(empresaActual)) {
+            e.currentTarget.style.transform = 'translateY(-4px)';
+            e.currentTarget.style.borderColor = '#0284c7';
+            e.currentTarget.style.boxShadow = '0 8px 30px rgba(2, 132, 199, 0.25)';
+          }
+        }}
+        onMouseLeave={(e) => {
+          if (tieneSire(empresaActual)) {
+            e.currentTarget.style.transform = 'translateY(0)';
+            e.currentTarget.style.borderColor = '#0ea5e9';
+            e.currentTarget.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.1)';
+          }
+        }}
+        >
+          <div style={{
+            fontSize: '3rem',
+            marginBottom: '1rem',
+            textAlign: 'center'
+          }}>
+            🚀
+          </div>
+          <h3 style={{
+            fontSize: '1.5rem',
+            fontWeight: '700',
+            color: '#0369a1',
+            margin: '0 0 1rem 0',
+            textAlign: 'center'
+          }}>
+            RVIE Flujo Completo
+          </h3>
+          <div style={{
+            background: '#22c55e',
+            color: 'white',
+            padding: '0.25rem 0.75rem',
+            borderRadius: '12px',
+            fontSize: '0.75rem',
+            fontWeight: '600',
+            textAlign: 'center',
+            marginBottom: '1rem'
+          }}>
+            ✨ NUEVO - Manual SUNAT v25
+          </div>
+          <p style={{
+            color: '#0369a1',
+            lineHeight: '1.6',
+            margin: '0 0 1.5rem 0',
+            textAlign: 'center'
+          }}>
+            <strong>Secuencia automática según Manual oficial</strong>
+          </p>
+          <div style={{
+            fontSize: '0.9rem',
+            color: '#0369a1',
+            lineHeight: '1.5'
+          }}>
+            <div style={{ marginBottom: '0.5rem' }}>
+              • ⚡ Flujo automático completo
+            </div>
+            <div style={{ marginBottom: '0.5rem' }}>
+              • 📥 Descarga → ✅ Acepta → 📋 Preliminar
+            </div>
+            <div style={{ marginBottom: '0.5rem' }}>
+              • 🎯 Según secuencia SUNAT oficial
+            </div>
+            <div>
+              • 📊 Monitoreo en tiempo real
             </div>
           </div>
         </div>
