@@ -13,6 +13,7 @@ import type {
   RvieTicketResponse,
   RvieArchivoResponse,
   RvieResumenResponse,
+  RviePropuesta,
   RvieInconsistencia,
   SireAuthStatus,
   SireStatusResponse
@@ -246,6 +247,19 @@ export const rvieService = {
   ): Promise<RvieResumenResponse> {
     const response = await api.get(
       `${RVIE_BASE_URL}/${ruc}/resumen/${periodo}`
+    );
+    return response.data;
+  },
+
+  /**
+   * Consultar propuesta guardada (sin nueva descarga)
+   */
+  async consultarPropuestaGuardada(
+    ruc: string,
+    periodo: string
+  ): Promise<RviePropuesta> {
+    const response = await api.get(
+      `${RVIE_BASE_URL}/${ruc}/propuesta/${periodo}`
     );
     return response.data;
   }

@@ -51,6 +51,30 @@ export default function RvieTickets({
     });
   };
 
+  const formatPeriodo = (periodo: string) => {
+    if (periodo && periodo.length === 6) {
+      const año = periodo.substring(0, 4);
+      const mes = periodo.substring(4, 6);
+      const meses = [
+        'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+        'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+      ];
+      return `${meses[parseInt(mes) - 1]} ${año}`;
+    }
+    return periodo || 'Sin período';
+  };
+
+  const getOperacionDescripcion = (operacion: string) => {
+    switch (operacion) {
+      case 'descargar-propuesta': return '📥 Descargar Propuesta SUNAT';
+      case 'aceptar-propuesta': return '✅ Aceptar Propuesta';
+      case 'reemplazar-propuesta': return '🔄 Reemplazar Propuesta';
+      case 'registrar-preliminar': return '📝 Registrar Preliminar';
+      case 'consultar-inconsistencias': return '🔍 Consultar Inconsistencias';
+      default: return `🔧 ${operacion.charAt(0).toUpperCase() + operacion.slice(1)}`;
+    }
+  };
+
   if (loading) {
     return (
       <div className="tickets-section">
@@ -91,7 +115,7 @@ export default function RvieTickets({
             <div className="ticket-header">
               <div className="ticket-info">
                 <h4>
-                  {getStatusIcon(ticket.status)} {ticket.operacion}
+                  {getStatusIcon(ticket.status)} {getOperacionDescripcion(ticket.operacion)}
                 </h4>
                 <span className="ticket-id">ID: {ticket.ticket_id.slice(0, 8)}...</span>
               </div>
@@ -104,10 +128,12 @@ export default function RvieTickets({
             </div>
 
             <div className="ticket-details">
-              <p><strong>Período:</strong> {ticket.periodo}</p>
-              <p><strong>RUC:</strong> {ticket.ruc}</p>
-              <p><strong>Creado:</strong> {formatFecha(ticket.fecha_creacion)}</p>
-              <p><strong>Actualizado:</strong> {formatFecha(ticket.fecha_actualizacion)}</p>
+              <div className="periodo-destacado">
+                <p><strong>📅 Período:</strong> <span className="periodo-badge">{formatPeriodo(ticket.periodo)}</span></p>
+              </div>
+              <p><strong>🏢 RUC:</strong> {ticket.ruc}</p>
+              <p><strong>⏰ Creado:</strong> {formatFecha(ticket.fecha_creacion)}</p>
+              <p><strong>🔄 Actualizado:</strong> {formatFecha(ticket.fecha_actualizacion)}</p>
               
               {ticket.progreso_porcentaje !== undefined && (
                 <div className="progress-container">

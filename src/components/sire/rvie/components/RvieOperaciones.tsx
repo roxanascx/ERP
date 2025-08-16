@@ -4,12 +4,13 @@
  */
 
 import { useState } from 'react';
-import type { RvieDescargarPropuestaRequest, RvieAceptarPropuestaRequest } from '../../../../types/sire';
+import type { RvieDescargarPropuestaRequest, RvieAceptarPropuestaRequest, RvieResumenResponse } from '../../../../types/sire';
 import './rvie-components.css';
 
 interface RvieOperacionesProps {
   periodo: { año: string; mes: string };
   authStatus: any;
+  resumen: RvieResumenResponse | null;
   loading: boolean;
   operacionActiva: string | null;
   onDescargarPropuesta: (params: RvieDescargarPropuestaRequest) => Promise<void>;
@@ -29,12 +30,13 @@ interface OpcionesAceptacion {
 export default function RvieOperaciones({
   periodo,
   authStatus,
+  resumen,
   loading,
   operacionActiva,
   onDescargarPropuesta,
   onAceptarPropuesta
 }: RvieOperacionesProps) {
-  console.log('🔧 [RvieOperaciones] Renderizando con:', { periodo, authStatus, loading, operacionActiva });
+  console.log('🔧 [RvieOperaciones] Renderizando con:', { periodo, authStatus, resumen, loading, operacionActiva });
 
   // Estados para opciones avanzadas
   const [mostrarOpcionesAvanzadas, setMostrarOpcionesAvanzadas] = useState(false);
@@ -72,6 +74,30 @@ export default function RvieOperaciones({
       <div className="operacion-card">
         <h4>📥 Descargar Propuesta SUNAT</h4>
         <p>Descarga la propuesta de ventas e ingresos generada por SUNAT para el período seleccionado.</p>
+        
+        {/* Estado actual del período */}
+        {resumen ? (
+          <div className="estado-propuesta success">
+            <div className="estado-header">
+              <span className="estado-icon">✅</span>
+              <span className="estado-texto">Propuesta ya descargada</span>
+            </div>
+            <div className="estado-detalles">
+              <p><strong>Comprobantes:</strong> {resumen.total_comprobantes}</p>
+              <p><strong>Importe:</strong> S/ {resumen.total_importe.toLocaleString('es-PE', { minimumFractionDigits: 2 })}</p>
+              <p><strong>Estado:</strong> {resumen.estado_proceso}</p>
+            </div>
+          </div>
+        ) : (
+          <div className="estado-propuesta warning">
+            <div className="estado-header">
+              <span className="estado-icon">⚠️</span>
+              <span className="estado-texto">No hay propuesta descargada</span>
+            </div>
+            <p>Debe descargar la propuesta desde SUNAT para este período.</p>
+          </div>
+        )}
+        
         {!authStatus?.authenticated && (
           <div className="warning-message">
             <p>⚠️ <strong>Advertencia:</strong> Necesita autenticación SUNAT para acceder a datos reales.</p>
@@ -136,6 +162,34 @@ export default function RvieOperaciones({
       <div className="operacion-card">
         <h4>✅ Aceptar Propuesta</h4>
         <p>Acepta la propuesta de SUNAT con opciones de personalización.</p>
+        
+        {/* Estado para aceptación */}
+        {!resumen ? (
+          <div className="estado-propuesta error">
+            <div className="estado-header">
+              <span className="estado-icon">❌</span>
+              <span className="estado-texto">No se puede aceptar</span>
+            </div>
+            <p>Debe descargar la propuesta primero antes de aceptarla.</p>
+          </div>
+        ) : resumen.estado_proceso === 'ACEPTADO' ? (
+          <div className="estado-propuesta success">
+            <div className="estado-header">
+              <span className="estado-icon">✅</span>
+              <span className="estado-texto">Propuesta ya aceptada</span>
+            </div>
+            <p>La propuesta para este período ya ha sido aceptada en SUNAT.</p>
+          </div>
+        ) : (
+          <div className="estado-propuesta info">
+            <div className="estado-header">
+              <span className="estado-icon">📋</span>
+              <span className="estado-texto">Lista para aceptar</span>
+            </div>
+            <p>La propuesta está descargada y lista para ser aceptada.</p>
+          </div>
+        )}
+        
         {!authStatus?.authenticated && (
           <div className="warning-message">
             <p>⚠️ <strong>Advertencia:</strong> Necesita autenticación SUNAT para realizar esta operación.</p>
@@ -196,9 +250,19 @@ export default function RvieOperaciones({
         <button 
           className="btn-success"
           onClick={handleAceptarPropuesta}
-          disabled={loading || operacionActiva === 'aceptar_propuesta'}
+          disabled={
+            loading || 
+            operacionActiva === 'aceptar_propuesta' || 
+            !resumen || 
+            resumen.estado_proceso === 'ACEPTADO' ||
+            !authStatus?.authenticated
+          }
         >
-          {operacionActiva === 'aceptar_propuesta' ? 'Procesando...' : 'Aceptar Propuesta'}
+          {operacionActiva === 'aceptar_propuesta' ? 'Procesando...' : 
+           !resumen ? 'Descargar propuesta primero' :
+           resumen.estado_proceso === 'ACEPTADO' ? 'Ya aceptada' :
+           !authStatus?.authenticated ? 'Requiere autenticación' :
+           'Aceptar Propuesta'}
         </button>
       </div>
     </div>

@@ -171,33 +171,69 @@ export function useRvie(options: UseRvieOptions) {
         incluir_detalle: request.incluir_detalle !== false
       });
 
-      // Llamar directamente al servicio RVIE mejorado
-      const response = await rvieService.descargarPropuesta(ruc, {
-        periodo: request.periodo,
-        forzar_descarga: request.forzar_descarga || false,
-        incluir_detalle: request.incluir_detalle !== false
-      });
+      // OPCIÓN 1: Llamar directamente (respuesta inmediata)
+      if (!request.forzar_descarga) {
+        try {
+          const response = await rvieService.descargarPropuesta(ruc, {
+            periodo: request.periodo,
+            forzar_descarga: false,
+            incluir_detalle: request.incluir_detalle !== false
+          });
 
-      console.log('✅ [FRONTEND] Respuesta de descarga propuesta:', response);
+          console.log('✅ [FRONTEND] Respuesta inmediata de descarga propuesta:', response);
 
-      // Si es una respuesta con ticket, crear ticket para el estado
-      const ticket: RvieTicketResponse = {
-        ticket_id: response.ticket_id || `manual_${Date.now()}`,
-        status: response.estado === 'COMPLETADO' ? 'TERMINADO' : response.estado === 'ERROR' ? 'ERROR' : 'TERMINADO',
-        descripcion: `Descarga propuesta ${request.periodo}`,
-        operacion: 'descargar-propuesta',
+          // Crear ticket local para mostrar en la UI
+          const ticket: RvieTicketResponse = {
+            ticket_id: response.ticket_id || `sync_${Date.now()}`,
+            status: 'TERMINADO',
+            descripcion: `Descarga propuesta ${request.periodo}`,
+            operacion: 'descargar-propuesta',
+            ruc,
+            periodo: request.periodo,
+            fecha_creacion: new Date().toISOString(),
+            fecha_actualizacion: new Date().toISOString(),
+            resultado: response,
+            progreso_porcentaje: 100
+          };
+          
+          // Agregar ticket al estado para mostrar en UI
+          setTickets(prev => [ticket, ...prev]);
+          
+          // Recargar tickets desde backend para sincronizar
+          await cargarTickets();
+          
+          clearError();
+          return ticket;
+          
+        } catch (error: any) {
+          // Si la respuesta inmediata falla, usar flujo de tickets
+          console.log('⚠️ [FRONTEND] Respuesta inmediata falló, usando flujo de tickets');
+        }
+      }
+
+      // OPCIÓN 2: Generar ticket (operación asíncrona)
+      console.log('🎫 [FRONTEND] Generando ticket para operación asíncrona');
+      
+      const ticketRequest = {
         ruc,
         periodo: request.periodo,
-        fecha_creacion: new Date().toISOString(),
-        fecha_actualizacion: new Date().toISOString(),
-        resultado: response,
-        progreso_porcentaje: 100
+        operacion: 'descargar-propuesta' as const
       };
+
+      const ticket = await sireService.tickets.generarTicket(ticketRequest);
       
-      // Agregar ticket al estado
-      setTickets(prev => [...prev, ticket]);
+      console.log('✅ [FRONTEND] Ticket generado:', ticket);
+      
+      // Agregar ticket al estado inmediatamente
+      setTickets(prev => [ticket, ...prev]);
+      
+      // Iniciar monitoreo del ticket
+      if (ticket.status === 'PROCESANDO' || ticket.status === 'PENDIENTE') {
+        startTicketPolling(ticket.ticket_id);
+      }
       
       clearError();
+      return ticket;
       return ticket;
     } catch (error) {
       handleError(error, 'descarga de propuesta');
@@ -379,11 +415,43 @@ export function useRvie(options: UseRvieOptions) {
 
   const cargarResumen = useCallback(async (periodo: string) => {
     try {
+      console.log(`📊 [RVIE] Cargando resumen guardado para ${ruc}-${periodo}`);
       const resumenData = await sireService.rvie.obtenerResumen(ruc, periodo);
       setResumen(resumenData);
+      console.log(`✅ [RVIE] Resumen cargado:`, resumenData);
       return resumenData;
-    } catch (error) {
-      console.warn('Error cargando resumen RVIE:', error);
+    } catch (error: any) {
+      console.warn('⚠️ [RVIE] Error cargando resumen:', error);
+      
+      // Si no existe resumen guardado (404), eso es normal
+      if (error.response?.status === 404) {
+        console.log(`ℹ️ [RVIE] No hay propuesta guardada para ${periodo}. Necesita descargar primero.`);
+        setResumen(null);
+      } else {
+        console.error('❌ [RVIE] Error inesperado cargando resumen:', error);
+      }
+      
+      return null;
+    }
+  }, [ruc]);
+
+  const cargarPropuestaGuardada = useCallback(async (periodo: string) => {
+    try {
+      console.log(`📄 [RVIE] Consultando propuesta guardada para ${ruc}-${periodo}`);
+      const propuesta = await sireService.rvie.consultarPropuestaGuardada(ruc, periodo);
+      console.log(`✅ [RVIE] Propuesta guardada encontrada:`, propuesta);
+      return propuesta;
+    } catch (error: any) {
+      console.warn('⚠️ [RVIE] Error consultando propuesta guardada:', error);
+      
+      // Si no existe propuesta guardada (404), eso es normal
+      if (error.response?.status === 404) {
+        console.log(`ℹ️ [RVIE] No hay propuesta guardada para ${periodo}. Necesita descargar primero.`);
+      } else {
+        console.error('❌ [RVIE] Error inesperado consultando propuesta:', error);
+      }
+      
+      return null;
     }
   }, [ruc]);
 
@@ -496,6 +564,7 @@ export function useRvie(options: UseRvieOptions) {
     
     // Datos complementarios
     cargarResumen,
+    cargarPropuestaGuardada,
     cargarInconsistencias,
     cargarEndpoints,
     

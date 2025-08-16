@@ -5,7 +5,35 @@
 ======================================== */
 
 .operaciones-rvie {
-  margin-bottom: 30px;
+  margin-bottom: 20px;
+}
+
+.ticket-details {
+  margin-bottom: 15px;
+}
+
+.periodo-destacado {
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  padding: 12px;
+  margin-bottom: 15px;
+}
+
+.periodo-badge {
+  background: #007bff;
+  color: white;
+  padding: 4px 12px;
+  border-radius: 16px;
+  font-weight: bold;
+  font-size: 14px;
+  margin-left: 8px;
+}
+
+.ticket-details p {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+  color: #333;
 }
 
 .operacion-card {
@@ -473,6 +501,68 @@
 }
 
 /* ========================================
+   ESTADOS DE PROPUESTA
+======================================== */
+
+.estado-propuesta {
+  margin: 15px 0;
+  padding: 15px;
+  border-radius: 8px;
+  border: 1px solid;
+}
+
+.estado-propuesta.success {
+  background: #f8fff8;
+  border-color: #28a745;
+  color: #155724;
+}
+
+.estado-propuesta.warning {
+  background: #fff8f0;
+  border-color: #ffc107;
+  color: #856404;
+}
+
+.estado-propuesta.error {
+  background: #fff5f5;
+  border-color: #dc3545;
+  color: #721c24;
+}
+
+.estado-propuesta.info {
+  background: #f8f9ff;
+  border-color: #007bff;
+  color: #004085;
+}
+
+.estado-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+.estado-icon {
+  font-size: 18px;
+}
+
+.estado-texto {
+  font-size: 16px;
+}
+
+.estado-detalles {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(0,0,0,0.1);
+}
+
+.estado-detalles p {
+  margin: 5px 0;
+  font-size: 14px;
+}
+
+/* ========================================
    RESPONSIVE
 ======================================== */
 
@@ -505,5 +595,11 @@
   
   .acciones-ventas {
     flex-direction: column;
+  }
+
+  .estado-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
   }
 }

@@ -56,12 +56,15 @@ export default function RviePanel({ company, onClose }: RviePanelProps) {
   const {
     authStatus,
     tickets,
+    resumen,
     loading,
     error: rvieError,
     descargarPropuesta,
     aceptarPropuesta,
     checkAuth,
     cargarTickets,
+    cargarResumen,
+    // cargarPropuestaGuardada, // No se usa actualmente
     consultarTicket,
     descargarArchivo
   } = useRvie({ ruc: company?.ruc || '' });
@@ -76,6 +79,23 @@ export default function RviePanel({ company, onClose }: RviePanelProps) {
   const [error, setError] = useState<string | null>(null);
   const [resultado, setResultado] = useState<any>(null);
   const [vistaActiva, setVistaActiva] = useState<'operaciones' | 'tickets' | 'ventas'>('operaciones');
+  const [periodoSeleccionado, setPeriodoSeleccionado] = useState<string>('');
+
+  // ========================================
+  // UTILIDADES
+  // ========================================
+
+  const formatPeriodo = (periodoStr: string) => {
+    if (periodoStr.length !== 6) return periodoStr;
+    const año = periodoStr.substring(0, 4);
+    const mes = periodoStr.substring(4, 6);
+    const mesNombre = MESES.find(m => m.value === mes)?.label || mes;
+    return `${mesNombre} ${año}`;
+  };
+
+  const getPeriodoActual = () => {
+    return `${periodo.año}${periodo.mes}`;
+  };
 
   // ========================================
   // EFECTOS
@@ -88,11 +108,30 @@ export default function RviePanel({ company, onClose }: RviePanelProps) {
     }
   }, [company?.ruc]); // Solo depende del RUC, no de las funciones
 
+  // Cargar resumen automáticamente cuando cambia el período
+  useEffect(() => {
+    const periodoActual = getPeriodoActual();
+    if (periodoActual !== periodoSeleccionado && company?.ruc) {
+      setPeriodoSeleccionado(periodoActual);
+      console.log(`📅 [RVIE] Período cambiado a: ${formatPeriodo(periodoActual)}`);
+      
+      // Cargar resumen guardado para el nuevo período
+      cargarResumen(periodoActual).then((resumen) => {
+        if (resumen) {
+          console.log(`✅ [RVIE] Resumen cargado para ${formatPeriodo(periodoActual)}:`, resumen);
+        } else {
+          console.log(`ℹ️ [RVIE] No hay datos guardados para ${formatPeriodo(periodoActual)}`);
+        }
+      });
+    }
+  }, [periodo.año, periodo.mes, company?.ruc, periodoSeleccionado, cargarResumen]);
+
   // Debug: Para ver si los tickets están llegando
   useEffect(() => {
     console.log('🎫 RVIE Debug - Tickets actuales:', tickets);
     console.log('🎫 RVIE Debug - Total tickets:', tickets?.length || 0);
-  }, [tickets]);
+    console.log('📊 RVIE Debug - Resumen actual:', resumen);
+  }, [tickets, resumen]);
 
   // ========================================
   // HANDLERS
@@ -217,6 +256,122 @@ export default function RviePanel({ company, onClose }: RviePanelProps) {
           padding: 20px;
           border-radius: 8px;
           margin-bottom: 20px;
+        }
+
+        .periodo-resumen {
+          margin-top: 20px;
+          padding: 15px;
+          background: white;
+          border-radius: 6px;
+          border: 2px solid #007bff;
+        }
+
+        .periodo-actual h4 {
+          margin: 0 0 10px 0;
+          color: #333;
+          font-size: 16px;
+        }
+
+        .periodo-badge-grande {
+          background: linear-gradient(45deg, #007bff, #0056b3);
+          color: white;
+          padding: 12px 24px;
+          border-radius: 25px;
+          font-weight: bold;
+          font-size: 18px;
+          text-align: center;
+          margin: 10px 0;
+          box-shadow: 0 2px 4px rgba(0,123,255,0.3);
+        }
+
+        .periodo-codigo {
+          margin: 10px 0 0 0;
+          color: #666;
+          font-size: 13px;
+          text-align: center;
+          font-family: 'Courier New', monospace;
+        }
+
+        .periodo-estado-con-datos, .periodo-estado-sin-datos {
+          margin-top: 15px;
+          padding: 15px;
+          border-radius: 6px;
+          border: 1px solid #ddd;
+        }
+
+        .periodo-estado-con-datos {
+          background: #f8fff8;
+          border-color: #28a745;
+        }
+
+        .periodo-estado-sin-datos {
+          background: #fff8f0;
+          border-color: #ffc107;
+        }
+
+        .estado-badge {
+          display: inline-block;
+          padding: 6px 12px;
+          border-radius: 15px;
+          font-size: 14px;
+          font-weight: 600;
+          margin-bottom: 10px;
+        }
+
+        .estado-badge.success {
+          background: #d4edda;
+          color: #155724;
+          border: 1px solid #c3e6cb;
+        }
+
+        .estado-badge.warning {
+          background: #fff3cd;
+          color: #856404;
+          border: 1px solid #ffeaa7;
+        }
+
+        .resumen-datos {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+          gap: 8px;
+          margin-top: 10px;
+        }
+
+        .resumen-datos p {
+          margin: 5px 0;
+          font-size: 14px;
+        }
+
+        .estado-proceso {
+          background: #e3f2fd;
+          color: #1976d2;
+          padding: 2px 8px;
+          border-radius: 12px;
+          font-size: 12px;
+          font-weight: 500;
+        }
+
+        .inconsistencias {
+          background: #ffeaa7;
+          color: #d63031;
+          padding: 2px 8px;
+          border-radius: 12px;
+          font-size: 12px;
+          font-weight: 600;
+        }
+
+        .mensaje-sin-datos, .accion-requerida {
+          margin: 8px 0;
+          font-size: 14px;
+        }
+
+        .mensaje-sin-datos {
+          color: #856404;
+        }
+
+        .accion-requerida {
+          color: #d63031;
+          font-weight: 500;
         }
 
         .periodo-row {
@@ -448,6 +603,39 @@ export default function RviePanel({ company, onClose }: RviePanelProps) {
             </select>
           </div>
         </div>
+        
+        {/* Resumen del período seleccionado */}
+        <div className="periodo-resumen">
+          <div className="periodo-actual">
+            <h4>🗓️ Período de trabajo actual:</h4>
+            <div className="periodo-badge-grande">
+              {formatPeriodo(getPeriodoActual())}
+            </div>
+            <p className="periodo-codigo">Código SUNAT: {getPeriodoActual()}</p>
+            
+            {/* Estado del período */}
+            {resumen ? (
+              <div className="periodo-estado-con-datos">
+                <div className="estado-badge success">✅ Propuesta Descargada</div>
+                <div className="resumen-datos">
+                  <p><strong>📊 Comprobantes:</strong> {resumen.total_comprobantes}</p>
+                  <p><strong>💰 Importe Total:</strong> S/ {resumen.total_importe.toLocaleString('es-PE', { minimumFractionDigits: 2 })}</p>
+                  <p><strong>📅 Descargado:</strong> {resumen.fecha_descarga ? new Date(resumen.fecha_descarga).toLocaleDateString('es-PE') : 'N/A'}</p>
+                  <p><strong>🔄 Estado:</strong> <span className="estado-proceso">{resumen.estado_proceso}</span></p>
+                  {resumen.inconsistencias_pendientes > 0 && (
+                    <p><strong>⚠️ Inconsistencias:</strong> <span className="inconsistencias">{resumen.inconsistencias_pendientes}</span></p>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="periodo-estado-sin-datos">
+                <div className="estado-badge warning">⚠️ Sin Datos</div>
+                <p className="mensaje-sin-datos">No hay propuesta descargada para este período.</p>
+                <p className="accion-requerida">Debe descargar la propuesta desde SUNAT primero.</p>
+              </div>
+            )}
+          </div>
+        </div>
 
         <div className="empresa-resumen">
           <h4>📋 Información de la Empresa</h4>
@@ -487,6 +675,7 @@ export default function RviePanel({ company, onClose }: RviePanelProps) {
           <RvieOperaciones
             periodo={periodo}
             authStatus={authStatus}
+            resumen={resumen}
             loading={loading}
             operacionActiva={operacionActiva}
             onDescargarPropuesta={handleDescargarPropuesta}

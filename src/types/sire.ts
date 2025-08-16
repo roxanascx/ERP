@@ -143,9 +143,13 @@ export interface RvieResumenResponse {
   periodo: string;
   ruc: string;
   total_comprobantes: number;
+  total_base_imponible?: number;
+  total_igv?: number;
+  total_otros_tributos?: number;
   total_importe: number;
-  fecha_ultima_actualizacion: string;
   estado_proceso: string;
+  fecha_descarga?: string;
+  fecha_ultima_actualizacion: string;
   inconsistencias_pendientes: number;
   tickets_activos: string[];
 }
