@@ -358,7 +358,7 @@ function mapTicketResponse(backendResponse: any): RvieTicketResponse {
     periodo: backendResponse.periodo,
     resultado: backendResponse.resultado,
     error_mensaje: backendResponse.error_mensaje,
-    archivo_nombre: backendResponse.archivo_nombre,
+    archivo_nombre: backendResponse.archivo_nombre || backendResponse.output_file_name, // Mapear ambos campos
     archivo_size: backendResponse.archivo_size
   };
 }
@@ -416,8 +416,63 @@ export const rvieTicketService = {
       const ticket = mapTicketResponse(response.data);
       console.log(`📊 [RVIE-TICKET] Estado del ticket: ${ticket.status}`);
       return ticket;
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ [RVIE-TICKET] Error consultando ticket:', error);
+      
+      // Si el ticket no se encuentra en la BD, intentar consultar directamente a SUNAT
+      if (error.response?.status === 404) {
+        console.log('⚠️ [RVIE-TICKET] Ticket no encontrado en BD, consultando SUNAT directamente...');
+        return await this.consultarTicketSunat(ruc, ticketId);
+      }
+      
+      throw error;
+    }
+  },
+
+  /**
+   * Consultar ticket directamente en SUNAT (fallback)
+   */
+  async consultarTicketSunat(ruc: string, ticketId: string): Promise<RvieTicketResponse> {
+    try {
+      console.log(`🔍 [RVIE-TICKET] Consultando ticket ${ticketId} directamente en SUNAT`);
+      
+      // Usar endpoint de consulta directa a SUNAT
+      const response = await api.get(`${RVIE_BASE_URL}/consultar-ticket-sunat`, {
+        params: { ruc, ticket_id: ticketId }
+      });
+      
+      const ticket = mapTicketResponse(response.data);
+      console.log(`📊 [RVIE-TICKET] Estado del ticket desde SUNAT: ${ticket.status}`);
+      
+      // Opcionalmente, guardar el ticket en la BD para futuras consultas
+      try {
+        await this.sincronizarTicket(ruc, ticket);
+      } catch (syncError) {
+        console.warn('⚠️ No se pudo sincronizar el ticket:', syncError);
+      }
+      
+      return ticket;
+    } catch (error) {
+      console.error('❌ [RVIE-TICKET] Error consultando ticket en SUNAT:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Sincronizar ticket externo con la base de datos
+   */
+  async sincronizarTicket(ruc: string, ticket: RvieTicketResponse): Promise<void> {
+    try {
+      console.log(`🔄 [RVIE-TICKET] Sincronizando ticket ${ticket.ticket_id}`);
+      
+      await api.post(`${RVIE_BASE_URL}/sincronizar-ticket`, {
+        ruc,
+        ticket
+      });
+      
+      console.log(`✅ [RVIE-TICKET] Ticket sincronizado: ${ticket.ticket_id}`);
+    } catch (error) {
+      console.error('❌ [RVIE-TICKET] Error sincronizando ticket:', error);
       throw error;
     }
   },
@@ -440,35 +495,32 @@ export const rvieTicketService = {
   },
 
   /**
-   * Descargar archivo y convertir a blob para descarga en navegador
+   * Descargar archivo como blob directamente desde el endpoint
    */
   async descargarArchivoBlob(ruc: string, ticketId: string): Promise<{ filename: string; blob: Blob }> {
     try {
-      const archivoData = await this.descargarArchivo(ruc, ticketId);
+      console.log(`📥 [RVIE-TICKET] Descargando archivo del ticket ${ticketId}`);
       
-      // Si el contenido viene en base64, convertir a blob
-      if (archivoData.content) {
-        const binaryString = atob(archivoData.content);
-        const bytes = new Uint8Array(binaryString.length);
-        for (let i = 0; i < binaryString.length; i++) {
-          bytes[i] = binaryString.charCodeAt(i);
+      const response = await api.get(`${RVIE_BASE_URL}/archivo/${ruc}/${ticketId}`, {
+        responseType: 'blob'  // Importante: recibir como blob
+      });
+      
+      // Extraer el nombre del archivo del header Content-Disposition
+      const contentDisposition = response.headers['content-disposition'];
+      let filename = `SIRE_DESCARGA_${ticketId}.zip`;
+      
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename=(.+)/);
+        if (filenameMatch) {
+          filename = filenameMatch[1].replace(/"/g, ''); // Quitar comillas si las hay
         }
-        
-        const blob = new Blob([bytes], { 
-          type: archivoData.content_type || 'text/plain' 
-        });
-        
-        return {
-          filename: archivoData.filename,
-          blob
-        };
       }
       
-      // Si no hay contenido, crear blob vacío
-      const blob = new Blob([], { type: 'text/plain' });
+      console.log(`✅ [RVIE-TICKET] Archivo descargado: ${filename} (${response.data.size} bytes)`);
+      
       return {
-        filename: archivoData.filename || 'archivo.txt',
-        blob
+        filename,
+        blob: response.data  // response.data ya es un Blob cuando responseType es 'blob'
       };
     } catch (error) {
       console.error('❌ [RVIE-TICKET] Error descargando archivo como blob:', error);

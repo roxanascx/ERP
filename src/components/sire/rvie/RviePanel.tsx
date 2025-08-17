@@ -104,7 +104,8 @@ export default function RviePanel({ company, onClose }: RviePanelProps) {
   useEffect(() => {
     if (company?.ruc) {
       checkAuth();
-      cargarTickets(); // Cargar tickets existentes
+      cargarTickets(); // Cargar tickets existentes solo al cambiar RUC
+      console.log('🔄 [RviePanel] Carga inicial de tickets para RUC:', company.ruc);
     }
   }, [company?.ruc]); // Solo depende del RUC, no de las funciones
 
@@ -144,8 +145,8 @@ export default function RviePanel({ company, onClose }: RviePanelProps) {
     try {
       const result = await descargarPropuesta(params);
       setResultado(result);
-      // Recargar tickets después de la operación
-      await cargarTickets();
+      // No recargar tickets automáticamente - el hook ya maneja la sincronización
+      console.log('🎫 [RviePanel] Propuesta descargada, hook maneja sincronización');
     } catch (err) {
       console.error('Error al descargar propuesta:', err);
       setError(err instanceof Error ? err.message : 'Error desconocido al descargar propuesta');
@@ -161,8 +162,8 @@ export default function RviePanel({ company, onClose }: RviePanelProps) {
     try {
       const result = await aceptarPropuesta(params);
       setResultado(result);
-      // Recargar tickets después de la operación
-      await cargarTickets();
+      // No recargar tickets automáticamente - el hook ya maneja la sincronización
+      console.log('🎫 [RviePanel] Propuesta aceptada, hook maneja sincronización');
     } catch (err) {
       console.error('Error al aceptar propuesta:', err);
       setError(err instanceof Error ? err.message : 'Error desconocido al aceptar propuesta');
@@ -174,8 +175,8 @@ export default function RviePanel({ company, onClose }: RviePanelProps) {
   const handleConsultarTicket = async (ticketId: string) => {
     try {
       await consultarTicket(ticketId);
-      // Recargar tickets para obtener el estado actualizado
-      await cargarTickets();
+      // No recargar tickets automáticamente para preservar ticket consultado externamente
+      console.log('🎫 [RviePanel] Ticket consultado, manteniendo estado actual');
     } catch (err) {
       console.error('Error al consultar ticket:', err);
       setError(err instanceof Error ? err.message : 'Error al consultar ticket');

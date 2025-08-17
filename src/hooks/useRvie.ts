@@ -323,17 +323,25 @@ export function useRvie(options: UseRvieOptions) {
 
   const consultarTicket = useCallback(async (ticketId: string): Promise<RvieTicketResponse> => {
     try {
+      console.log(`🔍 [useRvie] Consultando ticket ${ticketId}...`);
       const ticket = await sireService.tickets.consultarTicket(ruc, ticketId);
+      console.log(`✅ [useRvie] Ticket consultado exitosamente:`, ticket);
       
       // Actualizar ticket en la lista
       setTickets(prev => {
+        console.log(`📝 [useRvie] Tickets antes de actualizar:`, prev.length);
         const index = prev.findIndex(t => t.ticket_id === ticketId);
+        console.log(`🔍 [useRvie] Índice del ticket existente:`, index);
+        
         if (index >= 0) {
           const newTickets = [...prev];
           newTickets[index] = ticket;
+          console.log(`🔄 [useRvie] Ticket actualizado en posición ${index}`);
           return newTickets;
         } else {
-          return [...prev, ticket];
+          const newTickets = [...prev, ticket];
+          console.log(`➕ [useRvie] Ticket agregado. Total tickets:`, newTickets.length);
+          return newTickets;
         }
       });
       

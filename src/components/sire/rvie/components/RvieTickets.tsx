@@ -3,6 +3,7 @@
  * Historial de operaciones y estados
  */
 
+import { useState } from 'react';
 import type { RvieTicketResponse } from '../../../../types/sire';
 import './rvie-components.css';
 
@@ -20,6 +21,27 @@ export default function RvieTickets({
   onDescargarArchivo
 }: RvieTicketsProps) {
   console.log('🎫 [RvieTickets] Renderizando con:', { tickets: tickets.length, loading });
+
+  const [ticketIdManual, setTicketIdManual] = useState('');
+  const [consultandoManual, setConsultandoManual] = useState(false);
+
+  const handleConsultarTicketManual = async () => {
+    if (!ticketIdManual.trim()) {
+      alert('Por favor ingresa un ID de ticket válido');
+      return;
+    }
+
+    try {
+      setConsultandoManual(true);
+      await onConsultarTicket(ticketIdManual.trim());
+      setTicketIdManual(''); // Limpiar campo después de consulta exitosa
+    } catch (error) {
+      console.error('Error consultando ticket manual:', error);
+      alert('Error al consultar el ticket. Verifica el ID e intenta nuevamente.');
+    } finally {
+      setConsultandoManual(false);
+    }
+  };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -90,6 +112,53 @@ export default function RvieTickets({
     return (
       <div className="tickets-section">
         <h3>🎫 Historial de Operaciones</h3>
+        
+        {/* Sección para consultar tickets externos */}
+        <div className="consulta-manual-section" style={{ 
+          marginBottom: '1.5rem',
+          padding: '1rem',
+          backgroundColor: '#f8f9fa',
+          borderRadius: '8px',
+          border: '1px solid #dee2e6'
+        }}>
+          <h4>🔍 Consultar Ticket Externo</h4>
+          <p>Si generaste un ticket desde scripts externos o Postman, consúltalo aquí:</p>
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+            <input
+              type="text"
+              value={ticketIdManual}
+              onChange={(e) => setTicketIdManual(e.target.value)}
+              placeholder="Ejemplo: 20240300000018"
+              style={{
+                flex: 1,
+                padding: '0.5rem',
+                border: '1px solid #ccc',
+                borderRadius: '4px',
+                fontSize: '14px'
+              }}
+              disabled={consultandoManual}
+            />
+            <button
+              onClick={handleConsultarTicketManual}
+              disabled={consultandoManual || !ticketIdManual.trim()}
+              style={{
+                padding: '0.5rem 1rem',
+                backgroundColor: consultandoManual ? '#6c757d' : '#007bff',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: consultandoManual ? 'not-allowed' : 'pointer',
+                fontSize: '14px'
+              }}
+            >
+              {consultandoManual ? '🔄 Consultando...' : '🔍 Consultar'}
+            </button>
+          </div>
+          <small style={{ color: '#6c757d', marginTop: '0.5rem', display: 'block' }}>
+            💡 Tip: Puedes consultar tickets generados externamente que no aparecen en el historial
+          </small>
+        </div>
+
         <div className="empty-tickets">
           <p>📭 No hay operaciones registradas aún.</p>
           <small>Realiza una operación RVIE para ver el historial aquí.</small>
@@ -109,6 +178,55 @@ export default function RvieTickets({
   return (
     <div className="tickets-section">
       <h3>🎫 Historial de Operaciones ({tickets.length})</h3>
+      
+      {/* Sección para consultar tickets externos */}
+      <div className="consulta-manual-section" style={{ 
+        marginBottom: '1.5rem',
+        padding: '1rem',
+        backgroundColor: '#f8f9fa',
+        borderRadius: '8px',
+        border: '1px solid #dee2e6'
+      }}>
+        <h4>🔍 Consultar Ticket Externo</h4>
+        <p style={{ margin: '0.5rem 0', fontSize: '14px' }}>
+          Busca tickets generados desde scripts externos o Postman:
+        </p>
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+          <input
+            type="text"
+            value={ticketIdManual}
+            onChange={(e) => setTicketIdManual(e.target.value)}
+            placeholder="Ejemplo: 20240300000018"
+            style={{
+              flex: 1,
+              padding: '0.5rem',
+              border: '1px solid #ccc',
+              borderRadius: '4px',
+              fontSize: '14px'
+            }}
+            disabled={consultandoManual}
+          />
+          <button
+            onClick={handleConsultarTicketManual}
+            disabled={consultandoManual || !ticketIdManual.trim()}
+            style={{
+              padding: '0.5rem 1rem',
+              backgroundColor: consultandoManual ? '#6c757d' : '#007bff',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: consultandoManual ? 'not-allowed' : 'pointer',
+              fontSize: '14px'
+            }}
+          >
+            {consultandoManual ? '🔄 Consultando...' : '🔍 Consultar'}
+          </button>
+        </div>
+        <small style={{ color: '#6c757d', marginTop: '0.5rem', display: 'block' }}>
+          💡 Tip: Esto sincronizará automáticamente el ticket con la base de datos
+        </small>
+      </div>
+      
       <div className="tickets-grid">
         {tickets.map((ticket) => (
           <div key={ticket.ticket_id} className="ticket-card">
@@ -170,14 +288,18 @@ export default function RvieTickets({
             </div>
 
             <div className="ticket-actions">
-              <button 
-                className="btn-secondary"
-                onClick={() => onConsultarTicket(ticket.ticket_id)}
-                disabled={loading}
-              >
-                🔄 Consultar
-              </button>
+              {/* Mostrar solo "Consultar" si el ticket no está terminado o no tiene archivo */}
+              {!(ticket.status === 'TERMINADO' && ticket.archivo_nombre) && (
+                <button 
+                  className="btn-secondary"
+                  onClick={() => onConsultarTicket(ticket.ticket_id)}
+                  disabled={loading}
+                >
+                  🔄 Consultar
+                </button>
+              )}
               
+              {/* Mostrar solo "Descargar" si el ticket está terminado y tiene archivo */}
               {ticket.status === 'TERMINADO' && ticket.archivo_nombre && (
                 <button 
                   className="btn-primary"
