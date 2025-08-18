@@ -24,8 +24,8 @@ const RvieTicketsPage: React.FC = () => {
     cargarTodosTickets
   } = useRvie({ ruc: empresaActual?.ruc || '' });
 
-  // Estado para mostrar todos los tickets o filtrados
-  const [mostrarTodos, setMostrarTodos] = useState(false);
+  // Estado para mostrar todos los tickets o solo con archivos
+  const [mostrarTodos, setMostrarTodos] = useState(true); // ✅ CAMBIADO: Por defecto mostrar todos
 
   if (!empresaActual) {
     return (
@@ -66,10 +66,12 @@ const RvieTicketsPage: React.FC = () => {
 
   const handleToggleTodos = async () => {
     setMostrarTodos(!mostrarTodos);
-    if (!mostrarTodos) {
-      await cargarTodosTickets();
-    } else {
+    if (mostrarTodos) {
+      // Si actualmente mostramos todos, cambiar a solo con archivos
       await cargarTickets();
+    } else {
+      // Si actualmente mostramos solo con archivos, cambiar a todos
+      await cargarTodosTickets();
     }
   };
 
@@ -170,16 +172,16 @@ const RvieTicketsPage: React.FC = () => {
           </div>
           
           <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-            {/* Toggle para mostrar todos */}
+            {/* Toggle para filtrar tickets */}
             <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
               <input
                 type="checkbox"
-                checked={mostrarTodos}
+                checked={!mostrarTodos}
                 onChange={handleToggleTodos}
                 style={{ cursor: 'pointer' }}
               />
               <span style={{ fontSize: '0.9rem', color: '#374151' }}>
-                Mostrar tickets SYNC
+                Solo tickets con archivos
               </span>
             </label>
 

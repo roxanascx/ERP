@@ -723,23 +723,45 @@ export const rvieVentasService = {
 
   /**
    * Actualizar datos desde SUNAT y guardar localmente
+   * ✅ CORREGIDO: Usar endpoint que existe y funciona
    */
-  async actualizarDesdeSunat(ruc: string, periodo: string, tiposResumen: number[] = [1, 4, 5]) {
+  async actualizarDesdeSunat(ruc: string, periodo: string, _tiposResumen: number[] = [1, 4, 5]) {
     try {
       console.log(`🔄 [RVIE-VENTAS] Actualizando desde SUNAT - RUC: ${ruc}, Período: ${periodo}`);
       
-      const response = await api.post(
-        `${RVIE_BASE_URL}/ventas/actualizar-desde-sunat/${ruc}/${periodo}`,
+      // ✅ USAR ENDPOINT QUE SÍ EXISTE: /comprobantes/{ruc}/{periodo}
+      const response = await api.get(
+        `${RVIE_BASE_URL}/ventas/comprobantes/${ruc}/${periodo}`,
         {
-          periodo,
-          tipos_resumen: tiposResumen,
-          formato: 0,
-          forzar_actualizacion: true
+          params: {
+            page: 1,
+            per_page: 99,
+            tipo_resumen: 1  // Usar tipo 1 por defecto (propuesta)
+          }
         }
       );
       
-      console.log(`✅ [RVIE-VENTAS] Datos actualizados desde SUNAT:`, response.data);
-      return response.data;
+      console.log(`✅ [RVIE-VENTAS] Datos obtenidos desde SUNAT:`, response.data);
+      
+      // Verificar si hay datos
+      if (response.data?.data?.registros && response.data.data.registros.length > 0) {
+        console.log(`📊 [RVIE-VENTAS] Encontrados ${response.data.data.registros.length} comprobantes`);
+        return {
+          success: true,
+          data: response.data.data,
+          mensaje: `Se encontraron ${response.data.data.registros.length} comprobantes`,
+          periodo: periodo
+        };
+      } else {
+        console.log(`📭 [RVIE-VENTAS] No se encontraron comprobantes para el período ${periodo}`);
+        return {
+          success: true,
+          data: { registros: [], paginacion: { totalRegistros: 0 } },
+          mensaje: `No hay comprobantes disponibles para el período ${periodo}`,
+          periodo: periodo
+        };
+      }
+      
     } catch (error) {
       console.error('❌ [RVIE-VENTAS] Error actualizando desde SUNAT:', error);
       throw error;

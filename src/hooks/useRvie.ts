@@ -142,12 +142,7 @@ export function useRvie(options: UseRvieOptions) {
       setTickets(ticketsData);
       console.log(`✅ [RVIE] Cargados ${ticketsData.length} tickets existentes`);
       
-      // Iniciar monitoreo automático para tickets en proceso
-      ticketsData.forEach((ticket: RvieTicketResponse) => {
-        if (ticket.status === 'PROCESANDO' || ticket.status === 'PENDIENTE') {
-          startTicketPolling(ticket.ticket_id);
-        }
-      });
+      // Nota: El monitoreo automático se configurará después de definir startTicketPolling
       
     } catch (error) {
       console.error('Error cargando tickets existentes:', error);
@@ -162,12 +157,7 @@ export function useRvie(options: UseRvieOptions) {
       setTickets(ticketsData);
       console.log(`✅ [RVIE] Cargados ${ticketsData.length} tickets completos`);
       
-      // Iniciar monitoreo automático para tickets en proceso
-      ticketsData.forEach((ticket: RvieTicketResponse) => {
-        if (ticket.status === 'PROCESANDO' || ticket.status === 'PENDIENTE') {
-          startTicketPolling(ticket.ticket_id);
-        }
-      });
+      // Nota: El monitoreo automático se configurará después de definir startTicketPolling
       
     } catch (error) {
       console.error('Error cargando todos los tickets:', error);
@@ -530,8 +520,8 @@ export function useRvie(options: UseRvieOptions) {
           }
         }
         
-        // Cargar tickets existentes independientemente del estado de autenticación
-        await cargarTickets();
+        // Cargar TODOS los tickets existentes por defecto (incluyendo consultas)
+        await cargarTodosTickets();
         
       } catch (error) {
         console.error('❌ [RVIE] Error en inicialización:', error);
@@ -540,7 +530,7 @@ export function useRvie(options: UseRvieOptions) {
 
     initializeAuth();
     cargarEndpoints(); // Cargar endpoints disponibles
-  }, [ruc, cargarTickets]); // Añadido cargarTickets a las dependencias
+  }, [ruc, cargarTodosTickets]); // ✅ CAMBIADO: Dependencia corregida
 
   // Auto-refresh si está habilitado
   useEffect(() => {

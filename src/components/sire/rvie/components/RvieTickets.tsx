@@ -1,6 +1,10 @@
 /**
  * Componente para gestionar los tickets RVIE
  * Historial de operaciones y estados
+ * 
+ * TIPOS DE TICKETS:
+ * - Tickets con archivos: Operaciones que generan archivos descargables (propuestas, exportaciones)
+ * - Tickets de consulta: Operaciones de consulta que no generan archivos (verificaciones, estados)
  */
 
 import { useState } from 'react';

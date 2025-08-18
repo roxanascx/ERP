@@ -1,13 +1,12 @@
 /**
  * Componente para gestionar las ventas e ingresos
- * Visualización, análisis y gestión de comprobantes
- * ACTUALIZADO: Usa consulta directa a SUNAT
+ * Diseño profesional y elegante para análisis de datos SUNAT SIRE
+ * ACTUALIZADO: Diseño luxury con toques suaves
  */
 
 import { useState, useEffect } from 'react';
 import { rvieVentasService } from '../../../../services/sire';
-import type { RvieComprobante } from '../../../../types/sire';
-import './rvie-components.css';
+import './rvie-luxury.css';
 
 interface RvieVentasProps {
   ruc: string;
@@ -24,165 +23,334 @@ interface VentasStats {
 }
 
 interface ComprobanteVenta {
-  ruc_emisor: string;
-  tipo_comprobante: string;
-  serie: string;
-  numero: string;
-  fecha_emision: string;
-  moneda?: string;
-  importe_total: number;
-  base_imponible?: number;
-  igv?: number;
-  exonerado?: number;
-  inafecto?: number;
-  estado?: string;
-  observaciones?: string;
-  fecha_consulta?: string;
+  _id?: string;
+  id?: string;
+  numRuc?: string;
+  nomRazonSocial?: string;
+  codTipoCDP?: string;
+  desTipoCDP?: string;
+  numSerieCDP?: string;
+  numCDP?: string;
+  fecEmisionCDP?: string;
+  codTipoDocIdentidad?: string;
+  numDocReceptor?: string;
+  apeNomRznSocReceptor?: string;
+  mtoOperGravadas?: number;
+  mtoIGV?: number;
+  mtoOperExoneradas?: number;
+  mtoOperInafectas?: number;
+  mtoTotalCP?: number;
+  codMoneda?: string;
+  desEstadoComprobante?: string;
+  indTipoOperacion?: string;
+  // Campos adicionales que pueden venir de SUNAT
+  [key: string]: any;
 }
 
-export default function RvieVentas({
+const RvieVentas = ({
   ruc,
   periodo,
   authStatus,
   loading
-}: RvieVentasProps) {
+}: RvieVentasProps) => {
   console.log('💰 [RvieVentas] Renderizando con:', { ruc, periodo, authStatus, loading });
 
   const [comprobantes, setComprobantes] = useState<ComprobanteVenta[]>([]);
-  const [loadingComprobantes, setLoadingComprobantes] = useState(false);
   const [stats, setStats] = useState<VentasStats | null>(null);
+  const [loadingComprobantes, setLoadingComprobantes] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [ultimaActualizacion, setUltimaActualizacion] = useState<Date | null>(null);
   
   const [filtros, setFiltros] = useState({
     tipo_comprobante: '',
     estado: '',
-    fecha_desde: '',
-    fecha_hasta: '',
     monto_min: '',
     monto_max: ''
   });
 
-  // Cargar comprobantes cuando cambie el período
+  // 📦 SISTEMA DE CACHE LOCAL INTELIGENTE
+  // ====================================
+  // El cache permite:
+  // 1. Evitar consultas innecesarias a SUNAT
+  // 2. Mejorar la velocidad de carga
+  // 3. Funcionar offline con datos previos
+  // 4. Reducir la carga en los servidores de SUNAT
+  
   useEffect(() => {
     const cargarDatos = async () => {
-      if (!authStatus?.authenticated) {
-        console.log('⚠️ [RvieVentas] No autenticado, no se cargan comprobantes');
-        setError('No se ha autenticado con SUNAT. Las funciones de ventas requieren autenticación.');
-        return;
-      }
-
       try {
-        setLoadingComprobantes(true);
-        setError(null);
+        // 🔍 VERIFICAR CACHE LOCAL
+        // Creamos una clave única por RUC y período
+        const cacheKey = `rvie_ventas_${ruc}_${periodo.año}${periodo.mes}`;
+        const datosCache = localStorage.getItem(cacheKey);
         
-        const periodoFormateado = `${periodo.año}${periodo.mes.padStart(2, '0')}`;
-        console.log('📅 [RvieVentas] Cargando datos para período:', periodoFormateado);
-        
-        // Primero intentar obtener comprobantes existentes
-        let comprobantesData = await rvieVentasService.obtenerComprobantesVentas(ruc, periodoFormateado);
-        
-        if (comprobantesData.length === 0) {
-          console.log('📥 [RvieVentas] No hay datos en cache, consultando SUNAT...');
+        if (datosCache) {
+          console.log('📦 [Cache] Verificando datos en localStorage...');
           
-          // Si no hay datos, consultar directamente desde SUNAT
-          const resumenSunat = await rvieVentasService.consultarResumenSunat(ruc, periodoFormateado, 1);
-          
-          if (resumenSunat.estado_consulta === 'EXITOSO') {
-            comprobantesData = resumenSunat.comprobantes;
-            setUltimaActualizacion(new Date(resumenSunat.fecha_consulta));
-          } else if (resumenSunat.estado_consulta === 'SIN_DATOS') {
-            setError(`No hay datos de ventas disponibles para el período ${periodo.mes}/${periodo.año}. 
-                     Para obtener datos, debe: 
-                     1. Ir a "Operaciones RVIE" 
-                     2. Descargar la propuesta para este período
-                     3. Volver a "Gestión de Ventas"`);
-            comprobantesData = [];
-          } else {
-            setError(`Error consultando datos: ${resumenSunat.mensaje}`);
-            comprobantesData = [];
+          try {
+            const { comprobantes: comprobantesCache, timestamp } = JSON.parse(datosCache);
+            const tiempoCache = new Date(timestamp);
+            const ahora = new Date();
+            const diferencia = ahora.getTime() - tiempoCache.getTime();
+            const horasCache = diferencia / (1000 * 60 * 60);
+            
+            console.log(`⏰ [Cache] Datos guardados hace ${horasCache.toFixed(1)} horas`);
+            
+            // ✅ CACHE VÁLIDO (menos de 24 horas)
+            if (horasCache < 24) {
+              console.log('✅ [Cache] Usando datos del cache (válidos por 24h)');
+              setComprobantes(comprobantesCache);
+              calcularEstadisticas(comprobantesCache);
+              setUltimaActualizacion(tiempoCache);
+              return; // No consultar SUNAT
+            } else {
+              console.log('⚠️ [Cache] Cache expirado, se consultará SUNAT');
+              localStorage.removeItem(cacheKey); // Limpiar cache viejo
+            }
+          } catch (parseError) {
+            console.warn('⚠️ [Cache] Error al parsear cache, se limpiará:', parseError);
+            localStorage.removeItem(cacheKey);
           }
         } else {
-          setUltimaActualizacion(new Date());
+          console.log('📭 [Cache] No hay datos en cache para este período');
         }
         
-        setComprobantes(comprobantesData);
-        calcularEstadisticas(comprobantesData);
-        
-      } catch (error: any) {
-        console.error('❌ [RvieVentas] Error cargando comprobantes:', error);
-        setError(`Error cargando datos de ventas: ${error.message || 'Error desconocido'}`);
-        setComprobantes([]);
-        setStats(null);
-      } finally {
-        setLoadingComprobantes(false);
+        // 🔄 Si no hay cache válido Y está autenticado, consultar SUNAT
+        if (authStatus?.authenticated) {
+          console.log('🔄 [Cache] Consultando datos frescos desde SUNAT...');
+          await actualizarDesdeSunat();
+        } else {
+          console.log('❌ [Cache] No autenticado, no se puede consultar SUNAT');
+        }
+      } catch (error) {
+        console.error('❌ [RvieVentas] Error en carga de datos:', error);
       }
     };
 
-    if (ruc && periodo.año && periodo.mes) {
-      cargarDatos();
-    }
+    cargarDatos();
   }, [ruc, periodo, authStatus?.authenticated]);
 
-  // Función para actualizar datos desde SUNAT
   const actualizarDesdeSunat = async () => {
     try {
       setLoadingComprobantes(true);
       setError(null);
+      setSuccessMessage(null);
       
       const periodoFormateado = `${periodo.año}${periodo.mes.padStart(2, '0')}`;
-      console.log('🔄 [RvieVentas] Actualizando desde SUNAT para período:', periodoFormateado);
+      console.log('🔄 [SUNAT] Consultando período:', periodoFormateado);
       
       const resumenActualizado = await rvieVentasService.actualizarDesdeSunat(ruc, periodoFormateado, [1, 4, 5]);
       
-      if (resumenActualizado.estado_consulta === 'EXITOSO') {
-        setComprobantes(resumenActualizado.comprobantes);
-        calcularEstadisticas(resumenActualizado.comprobantes);
-        setUltimaActualizacion(new Date(resumenActualizado.fecha_consulta));
+      if (resumenActualizado.success) {
+        const comprobantesData = resumenActualizado.data?.registros || [];
+        console.log(`✅ [SUNAT] Recibidos ${comprobantesData.length} comprobantes`);
+        
+        setComprobantes(comprobantesData);
+        calcularEstadisticas(comprobantesData);
+        setUltimaActualizacion(new Date());
+        
+        // 💾 GUARDAR EN CACHE LOCAL
+        // =========================
+        // Estructura del cache:
+        // {
+        //   comprobantes: [...], // Array de comprobantes de SUNAT
+        //   timestamp: "2025-08-18T10:30:00.000Z" // Cuándo se guardó
+        // }
+        const cacheKey = `rvie_ventas_${ruc}_${periodo.año}${periodo.mes}`;
+        const datosCache = {
+          comprobantes: comprobantesData,
+          timestamp: new Date().toISOString()
+        };
+        
+        try {
+          localStorage.setItem(cacheKey, JSON.stringify(datosCache));
+          console.log(`💾 [Cache] Datos guardados en localStorage con clave: ${cacheKey}`);
+          console.log(`📊 [Cache] Tamaño aprox: ${JSON.stringify(datosCache).length} caracteres`);
+        } catch (storageError) {
+          console.warn('⚠️ [Cache] Error al guardar en localStorage (posible límite):', storageError);
+        }
+        
+        setSuccessMessage(`✅ Datos actualizados exitosamente. ${comprobantesData.length} comprobantes encontrados.`);
+        setTimeout(() => setSuccessMessage(null), 5000);
       } else {
-        setError(`Error actualizando datos: ${resumenActualizado.mensaje}`);
+        setError(resumenActualizado.mensaje || 'Error al obtener datos de SUNAT');
       }
-      
-    } catch (error: any) {
-      console.error('❌ [RvieVentas] Error actualizando desde SUNAT:', error);
-      setError(`Error actualizando desde SUNAT: ${error.message || 'Error desconocido'}`);
+    } catch (error) {
+      console.error('❌ [SUNAT] Error en consulta:', error);
+      setError('Error de conexión con SUNAT. Intente nuevamente.');
     } finally {
       setLoadingComprobantes(false);
     }
   };
 
-  const calcularEstadisticas = (datos: ComprobanteVenta[]) => {
-    if (datos.length === 0) {
+  const calcularEstadisticas = (comprobantesData: ComprobanteVenta[]) => {
+    console.log('📊 [Stats] Calculando estadísticas para:', comprobantesData.length, 'comprobantes');
+    console.log('📊 [Stats] Primer comprobante:', comprobantesData[0]);
+    
+    if (!comprobantesData || comprobantesData.length === 0) {
       setStats(null);
       return;
     }
 
-    const statsCalculadas: VentasStats = {
-      total_comprobantes: datos.length,
-      total_monto: 0,
-      por_tipo: {},
-      por_estado: {}
-    };
+    const porTipo: Record<string, { cantidad: number; monto: number }> = {};
+    const porEstado: Record<string, number> = {};
+    let totalMonto = 0;
 
-    datos.forEach(comp => {
-      // Sumar monto total
-      statsCalculadas.total_monto += comp.importe_total || 0;
+    comprobantesData.forEach((comp, index) => {
+      console.log(`📊 [Stats] Procesando comprobante ${index + 1}:`, comp);
       
-      // Agrupar por tipo
-      const tipo = comp.tipo_comprobante || 'DESCONOCIDO';
-      if (!statsCalculadas.por_tipo[tipo]) {
-        statsCalculadas.por_tipo[tipo] = { cantidad: 0, monto: 0 };
+      // Obtener el tipo de comprobante (puede venir en diferentes campos)
+      const tipoComprobante = comp.codTipoCDP || comp.desTipoCDP || 'SIN_TIPO';
+      
+      // Por tipo
+      if (!porTipo[tipoComprobante]) {
+        porTipo[tipoComprobante] = { cantidad: 0, monto: 0 };
       }
-      statsCalculadas.por_tipo[tipo].cantidad++;
-      statsCalculadas.por_tipo[tipo].monto += comp.importe_total || 0;
+      porTipo[tipoComprobante].cantidad++;
       
-      // Agrupar por estado
-      const estado = comp.estado || 'PROCESADO';
-      statsCalculadas.por_estado[estado] = (statsCalculadas.por_estado[estado] || 0) + 1;
+      // Monto total - puede venir en diferentes campos
+      const monto = comp.mtoTotalCP || comp.total || comp.monto || 0;
+      porTipo[tipoComprobante].monto += monto;
+
+      // Por estado
+      const estado = comp.desEstadoComprobante || comp.estado || 'SIN_ESTADO';
+      porEstado[estado] = (porEstado[estado] || 0) + 1;
+
+      totalMonto += monto;
     });
 
-    setStats(statsCalculadas);
-    console.log('📊 [RvieVentas] Estadísticas calculadas:', statsCalculadas);
+    console.log('📊 [Stats] Estadísticas calculadas:', {
+      total_comprobantes: comprobantesData.length,
+      total_monto: totalMonto,
+      por_tipo: porTipo,
+      por_estado: porEstado
+    });
+
+    setStats({
+      total_comprobantes: comprobantesData.length,
+      total_monto: totalMonto,
+      por_tipo: porTipo,
+      por_estado: porEstado
+    });
+  };
+
+  const filtrarComprobantes = () => {
+    return comprobantes.filter(comp => {
+      // Función helper para obtener valores de campos
+      const getFieldValue = (comp: any, ...fieldNames: string[]) => {
+        for (const fieldName of fieldNames) {
+          if (comp[fieldName] !== undefined && comp[fieldName] !== null && comp[fieldName] !== '') {
+            return comp[fieldName];
+          }
+        }
+        return null;
+      };
+
+      // Aplicar filtros
+      const tipoComprobante = getFieldValue(comp, 'codTipoCDP', 'desTipoCDP', 'tipo');
+      const estado = getFieldValue(comp, 'desEstadoComprobante', 'estado');
+      const total = Number(getFieldValue(comp, 'mtoTotalCP', 'total', 'monto') || 0);
+
+      if (filtros.tipo_comprobante && tipoComprobante !== filtros.tipo_comprobante) return false;
+      if (filtros.estado && estado !== filtros.estado) return false;
+      if (filtros.monto_min && total < parseFloat(filtros.monto_min)) return false;
+      if (filtros.monto_max && total > parseFloat(filtros.monto_max)) return false;
+      
+      return true;
+    });
+  };
+
+  const exportarCSV = () => {
+    try {
+      const comprobantesFiltrados = filtrarComprobantes();
+      
+      if (comprobantesFiltrados.length === 0) {
+        setError('No hay datos para exportar con los filtros aplicados.');
+        return;
+      }
+
+      const headers = [
+        'ID', 'Tipo', 'Serie', 'Número', 'Fecha', 'Cliente', 'Doc_Tipo', 'Doc_Cliente', 'RUC',
+        'Base_Gravada', 'IGV', 'Exonerado', 'Inafecto', 'Total', 'Moneda', 'Estado', 'Tipo_Operacion'
+      ];
+
+      const datosExport = comprobantesFiltrados.map(comp => {
+        // Función helper para obtener valores de campos
+        const getFieldValue = (comp: any, ...fieldNames: string[]) => {
+          for (const fieldName of fieldNames) {
+            if (comp[fieldName] !== undefined && comp[fieldName] !== null && comp[fieldName] !== '') {
+              return comp[fieldName];
+            }
+          }
+          return '';
+        };
+
+        return {
+          ID: getFieldValue(comp, '_id', 'id'),
+          Tipo: getFieldValue(comp, 'codTipoCDP', 'desTipoCDP', 'tipo'),
+          Serie: getFieldValue(comp, 'numSerieCDP', 'serie'),
+          Número: getFieldValue(comp, 'numCDP', 'numero'),
+          Fecha: getFieldValue(comp, 'fecEmisionCDP', 'fecha'),
+          Cliente: getFieldValue(comp, 'apeNomRznSocReceptor', 'nomRazonSocial', 'cliente', 'razonSocial'),
+          Doc_Tipo: getFieldValue(comp, 'codTipoDocIdentidad', 'tipoDocumento'),
+          Doc_Cliente: getFieldValue(comp, 'numDocReceptor', 'numeroDocumento', 'documento'),
+          RUC: getFieldValue(comp, 'numRuc', 'ruc'),
+          Base_Gravada: Number(getFieldValue(comp, 'mtoOperGravadas', 'baseGravada', 'gravada') || 0),
+          IGV: Number(getFieldValue(comp, 'mtoIGV', 'igv') || 0),
+          Exonerado: Number(getFieldValue(comp, 'mtoOperExoneradas', 'exonerado') || 0),
+          Inafecto: Number(getFieldValue(comp, 'mtoOperInafectas', 'inafecto') || 0),
+          Total: Number(getFieldValue(comp, 'mtoTotalCP', 'total', 'monto') || 0),
+          Moneda: getFieldValue(comp, 'codMoneda', 'moneda') || 'PEN',
+          Estado: getFieldValue(comp, 'desEstadoComprobante', 'estado'),
+          Tipo_Operacion: getFieldValue(comp, 'indTipoOperacion', 'tipoOperacion')
+        };
+      });
+
+      const csvContent = [
+        headers.join(','),
+        ...datosExport.map(row => 
+          headers.map(header => {
+            const value = (row as any)[header];
+            if (typeof value === 'string' && value.includes(',')) {
+              return `"${value.replace(/"/g, '""')}"`;
+            }
+            return `"${value || ''}"`;
+          }).join(',')
+        )
+      ].join('\n');
+
+      const timestamp = new Date().toISOString().slice(0, 19).replace(/[:-]/g, '');
+      const filename = `SIRE_Ventas_${ruc}_${periodo.año}${periodo.mes.padStart(2, '0')}_${timestamp}.csv`;
+
+      const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', filename);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      setSuccessMessage(`✅ Reporte exportado exitosamente: ${filename}`);
+      setTimeout(() => setSuccessMessage(null), 5000);
+      
+    } catch (error) {
+      console.error('❌ [Export] Error exportando:', error);
+      setError('Error al exportar el reporte. Intente nuevamente.');
+    }
+  };
+
+  const verEnSunat = () => {
+    try {
+      const url = 'https://e-menu.sunat.gob.pe/cl-ti-itmenu/MenuInternet.htm';
+      window.open(url, '_blank', 'noopener,noreferrer');
+    } catch (error) {
+      console.error('❌ [SUNAT] Error abriendo portal:', error);
+      setError('Error al abrir el portal SUNAT.');
+    }
   };
 
   const formatMonto = (monto: number) => {
@@ -192,339 +360,576 @@ export default function RvieVentas({
     }).format(monto);
   };
 
-  const filtrarComprobantes = () => {
-    return comprobantes.filter(comp => {
-      if (filtros.tipo_comprobante && comp.tipo_comprobante !== filtros.tipo_comprobante) return false;
-      if (filtros.estado && comp.estado !== filtros.estado) return false;
-      if (filtros.monto_min && comp.importe_total < parseFloat(filtros.monto_min)) return false;
-      if (filtros.monto_max && comp.importe_total > parseFloat(filtros.monto_max)) return false;
-      return true;
-    });
+  const getTipoNombre = (codigo: string) => {
+    switch (codigo) {
+      case '01': return 'FACTURA';
+      case '03': return 'BOLETA';
+      case '07': return 'NOTA DE CRÉDITO';
+      case '08': return 'NOTA DE DÉBITO';
+      default: return `TIPO ${codigo}`;
+    }
   };
 
-  const actualizarDatos = async () => {
-    if (!authStatus?.authenticated) {
-      alert('Debe autenticarse primero para actualizar los datos');
-      return;
+  const getTipoBadgeClass = (codigo: string | null | undefined) => {
+    if (!codigo) return 'factura'; // Default
+    
+    switch (codigo) {
+      case '01': return 'factura';
+      case '03': return 'boleta';
+      case '07': return 'nota-credito';
+      case '08': return 'nota-debito';
+      default: return 'factura';
     }
+  };
 
-    try {
-      setLoadingComprobantes(true);
-      const periodoStr = `${periodo.año}${periodo.mes.padStart(2, '0')}`;
-      const comprobantesData = await cargarComprobantes(periodoStr);
-      setComprobantes(comprobantesData || []);
-    } catch (error) {
-      console.error('Error actualizando datos:', error);
-      alert('Error al actualizar los datos');
-    } finally {
-      setLoadingComprobantes(false);
+  // 🧹 FUNCIÓN PARA LIMPIAR CACHE (DEBUG)
+  const limpiarCache = () => {
+    const cacheKey = `rvie_ventas_${ruc}_${periodo.año}${periodo.mes}`;
+    localStorage.removeItem(cacheKey);
+    console.log('🧹 [Cache] Cache limpiado para:', cacheKey);
+    setSuccessMessage('🧹 Cache limpiado. La próxima consulta será desde SUNAT.');
+    setTimeout(() => setSuccessMessage(null), 3000);
+  };
+
+  // 🔍 FUNCIÓN PARA DEBUG DE DATOS (NUEVA)
+  const debugDatos = () => {
+    console.log('🔍 [DEBUG] Estado completo del componente:');
+    console.log('📊 Stats:', stats);
+    console.log('📋 Comprobantes RAW:', comprobantes);
+    console.log('🎯 Filtros:', filtros);
+    console.log('📑 Comprobantes filtrados:', comprobantesFiltrados);
+    console.log('🔄 Loading:', loadingComprobantes);
+    console.log('🔐 Auth:', authStatus);
+    
+    // Analizar estructura detallada del primer comprobante
+    if (comprobantes.length > 0) {
+      console.log('🔬 [DEBUG] ESTRUCTURA DETALLADA DEL PRIMER COMPROBANTE:');
+      const primer = comprobantes[0];
+      console.log('- Objeto completo:', primer);
+      console.log('- Todas las claves disponibles:', Object.keys(primer));
+      console.log('- Valores específicos:');
+      console.log('  - fecEmisionCDP:', primer.fecEmisionCDP);
+      console.log('  - fecha:', primer.fecha);
+      console.log('  - mtoOperExoneradas:', primer.mtoOperExoneradas);
+      console.log('  - exonerado:', primer.exonerado);
+      console.log('  - indTipoOperacion:', primer.indTipoOperacion);
+      console.log('  - tipoOperacion:', primer.tipoOperacion);
+      console.log('  - apeNomRznSocReceptor:', primer.apeNomRznSocReceptor);
+      console.log('  - cliente:', primer.cliente);
+      
+      // Mostrar TODOS los campos que contienen la palabra "fecha"
+      Object.keys(primer).forEach(key => {
+        if (key.toLowerCase().includes('fecha') || key.toLowerCase().includes('fec')) {
+          console.log(`  - ${key}:`, primer[key]);
+        }
+      });
+      
+      // Mostrar TODOS los campos que contienen nombres o clientes
+      Object.keys(primer).forEach(key => {
+        const value = primer[key];
+        if (typeof value === 'string' && value.length > 5) {
+          // Buscar campos que contengan nombres de personas
+          if (key.toLowerCase().includes('nombre') || 
+              key.toLowerCase().includes('cliente') || 
+              key.toLowerCase().includes('receptor') ||
+              key.toLowerCase().includes('razon') ||
+              // Buscar por contenido que parece nombre de persona
+              value.includes('CASTRO') || 
+              value.includes('TORRES') ||
+              value.includes('GUILLERMO') ||
+              value.includes('ARNOL') ||
+              value.includes('MIGDONIO') ||
+              value.includes('WILLIAM')) {
+            console.log(`  🏷️ CLIENTE CANDIDATO - ${key}:`, value);
+          }
+        }
+      });
     }
+    
+    // Mostrar en pantalla también
+    setSuccessMessage(`🔍 Debug: ${comprobantes.length} comprobantes totales, ${comprobantesFiltrados.length} filtrados. Ver consola para detalles completos.`);
+    setTimeout(() => setSuccessMessage(null), 8000);
   };
 
   const comprobantesFiltrados = filtrarComprobantes();
 
   return (
-    <div className="rvie-ventas">
-      <h3>💰 Gestión de Ventas e Ingresos</h3>
-
-      {/* Mensaje de error si hay alguno */}
-      {error && (
-        <div style={{
-          backgroundColor: '#fef3c7',
-          border: '1px solid #f59e0b',
-          padding: '1rem',
-          borderRadius: '8px',
-          marginBottom: '1rem',
-          whiteSpace: 'pre-line'
-        }}>
-          <h5 style={{ color: '#92400e', margin: '0 0 0.5rem 0' }}>⚠️ Información</h5>
-          <p style={{ color: '#92400e', margin: 0 }}>{error}</p>
-        </div>
-      )}
-
-      {/* Información del período actual */}
-      <div className="periodo-info" style={{ 
-        backgroundColor: '#f8f9fa', 
-        padding: '1rem', 
-        borderRadius: '8px', 
-        marginBottom: '1rem' 
-      }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
-            <h4>📅 Período Actual: {periodo.mes}/{periodo.año}</h4>
-            <p>RUC: {ruc}</p>
-            <p>Estado de autenticación: {authStatus?.authenticated ? '✅ Autenticado' : '❌ No autenticado'}</p>
+    <div className="rvie-ventas-luxury">
+      {/* FILA 1: HEADER COMPACTO CON INFO DEL PERÍODO */}
+      <div className="compact-header-row">
+        <div className="header-info-compact">
+          <h2>📊 Ventas e Ingresos</h2>
+          <div className="header-badges">
+            <span className="info-badge">📅 {periodo.mes}/{periodo.año}</span>
+            <span className="info-badge">🏢 {ruc}</span>
+            <span className={`info-badge ${authStatus?.authenticated ? 'success' : 'error'}`}>
+              {authStatus?.authenticated ? '✅ Autenticado' : '❌ No autenticado'}
+            </span>
             {ultimaActualizacion && (
-              <p style={{ fontSize: '0.9rem', color: '#6b7280' }}>
-                Última actualización: {ultimaActualizacion.toLocaleString('es-PE')}
-              </p>
+              <span className="info-badge">🕒 {ultimaActualizacion.toLocaleString('es-PE', { 
+                day: '2-digit', 
+                month: '2-digit', 
+                hour: '2-digit', 
+                minute: '2-digit' 
+              })}</span>
             )}
           </div>
-          
-          {/* Botón de actualización */}
+        </div>
+        
+        <div className="header-actions">
           <button
+            className="compact-button primary"
             onClick={actualizarDesdeSunat}
             disabled={loadingComprobantes || !authStatus?.authenticated}
-            style={{
-              background: loadingComprobantes ? '#6b7280' : '#3b82f6',
-              color: 'white',
-              border: 'none',
-              padding: '0.5rem 1rem',
-              borderRadius: '6px',
-              cursor: loadingComprobantes ? 'not-allowed' : 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem'
-            }}
           >
-            {loadingComprobantes ? '⏳ Actualizando...' : '🔄 Actualizar desde SUNAT'}
+            {loadingComprobantes ? (
+              <>
+                <div className="loading-spinner"></div>
+                Actualizando...
+              </>
+            ) : (
+              <>🔄 Actualizar SUNAT</>
+            )}
+          </button>
+          
+          <button
+            onClick={limpiarCache}
+            className="compact-button secondary"
+            title="Limpiar cache local"
+          >
+            🧹 Cache
+          </button>
+
+          <button
+            onClick={debugDatos}
+            className="compact-button debug"
+            title="Debug - Ver datos en consola"
+          >
+            🔍 Debug
           </button>
         </div>
         
         {(loading || loadingComprobantes) && (
-          <div style={{ marginTop: '0.5rem' }}>
-            <div style={{ 
-              background: '#e5e7eb', 
-              borderRadius: '4px', 
-              height: '4px', 
-              overflow: 'hidden' 
-            }}>
-              <div style={{ 
-                background: '#3b82f6', 
-                height: '100%', 
-                animation: 'progress 2s ease-in-out infinite',
-                width: '30%'
-              }}></div>
-            </div>
-            <p style={{ fontSize: '0.9rem', margin: '0.5rem 0 0 0' }}>
-              ⏳ Consultando datos desde SUNAT...
-            </p>
+          <div className="compact-loading">
+            <div className="loading-spinner"></div>
+            <span>Consultando SUNAT...</span>
           </div>
         )}
       </div>
 
-      {/* Estadísticas Generales */}
-      {stats ? (
-        <div className="stats-section">
-          <h4>📊 Resumen del Período {periodo.mes}/{periodo.año}</h4>
-          <div className="stats-grid">
-            <div className="stat-card">
-              <div className="stat-value">{stats.total_comprobantes}</div>
-              <div className="stat-label">Total Comprobantes</div>
+      {/* FILA 2: ESTADÍSTICAS + ANÁLISIS + FILTROS EN UNA SOLA FILA */}
+      {stats && (
+        <div className="compact-analysis-row">
+          {/* ESTADÍSTICAS PRINCIPALES */}
+          <div className="stats-compact">
+            <div className="stat-item-compact total">
+              <div className="stat-icon">📄</div>
+              <div className="stat-details">
+                <div className="stat-value">{stats.total_comprobantes.toLocaleString()}</div>
+                <div className="stat-label">Comprobantes</div>
+              </div>
             </div>
-            <div className="stat-card">
-              <div className="stat-value">{formatMonto(stats.total_monto)}</div>
-              <div className="stat-label">Monto Total</div>
+            
+            <div className="stat-item-compact monto">
+              <div className="stat-icon">💰</div>
+              <div className="stat-details">
+                <div className="stat-value">{formatMonto(stats.total_monto)}</div>
+                <div className="stat-label">Total</div>
+              </div>
             </div>
-            <div className="stat-card">
-              <div className="stat-value">{Object.keys(stats.por_tipo).length}</div>
-              <div className="stat-label">Tipos de Comprobante</div>
+            
+            <div className="stat-item-compact promedio">
+              <div className="stat-icon">📊</div>
+              <div className="stat-details">
+                <div className="stat-value">
+                  {formatMonto(stats.total_comprobantes > 0 ? stats.total_monto / stats.total_comprobantes : 0)}
+                </div>
+                <div className="stat-label">Promedio</div>
+              </div>
             </div>
           </div>
 
-          {/* Estadísticas por tipo */}
-          <div className="tipo-stats">
-            <h5>Por Tipo de Comprobante:</h5>
-            <div className="tipo-grid">
-              {Object.entries(stats.por_tipo).map(([tipo, data]) => (
-                <div key={tipo} className="tipo-item">
-                  <strong>{tipo}:</strong> {data.cantidad} docs - {formatMonto(data.monto)}
-                </div>
-              ))}
+          {/* ANÁLISIS POR TIPO */}
+          <div className="tipo-analysis-compact">
+            <h4>🔍 Por Tipo</h4>
+            <div className="tipo-breakdown-compact">
+              {Object.entries(stats.por_tipo).map(([tipo, data]) => {
+                const porcentaje = (data.cantidad / stats.total_comprobantes * 100).toFixed(1);
+                return (
+                  <div key={tipo} className="tipo-item-compact">
+                    <span className={`tipo-badge-compact ${getTipoBadgeClass(tipo)}`}>
+                      {getTipoNombre(tipo)}
+                    </span>
+                    <div className="tipo-stats-compact">
+                      <span>{data.cantidad} ({porcentaje}%)</span>
+                      <span>{formatMonto(data.monto)}</span>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
-        </div>
-      ) : (
-        <div className="empty-ventas" style={{
-          backgroundColor: '#f8f9fa',
-          padding: '2rem',
-          borderRadius: '8px',
-          textAlign: 'center'
-        }}>
-          <h4>📋 No hay datos de ventas disponibles</h4>
-          <p>Para ver los comprobantes de ventas del período <strong>{periodo.mes}/{periodo.año}</strong>, debe:</p>
-          <ol style={{ textAlign: 'left', display: 'inline-block', marginBottom: '1.5rem' }}>
-            <li>🔐 Autenticarse con SUNAT (✅ Completado)</li>
-            <li>📥 <strong>Descargar la propuesta RVIE</strong> para el período</li>
-            <li>📊 Procesar los comprobantes del período</li>
-          </ol>
-          
-          <div style={{ 
-            marginTop: '1rem', 
-            padding: '1rem', 
-            backgroundColor: '#e3f2fd', 
-            borderRadius: '6px',
-            border: '1px solid #2196f3'
-          }}>
-            <h5>💡 ¿Cómo descargar la propuesta?</h5>
-            <p style={{ marginBottom: '0.5rem' }}>Vaya a la pestaña <strong>"Operaciones RVIE"</strong> y:</p>
-            <ul style={{ textAlign: 'left', display: 'inline-block', margin: 0 }}>
-              <li>Seleccione el período <strong>{periodo.mes}/{periodo.año}</strong></li>
-              <li>Haga clic en <strong>"Descargar Propuesta"</strong></li>
-              <li>Espere a que se procese y descargue</li>
-              <li>Regrese aquí para ver los comprobantes</li>
-            </ul>
+
+          {/* FILTROS COMPACTOS */}
+          <div className="filtros-compact">
+            <h4>🎯 Filtros</h4>
+            <div className="filtros-grid-compact">
+              <div className="filtro-compact">
+                <label>Tipo</label>
+                <select
+                  value={filtros.tipo_comprobante}
+                  onChange={(e) => setFiltros(prev => ({ ...prev, tipo_comprobante: e.target.value }))}
+                >
+                  <option value="">Todos</option>
+                  <option value="01">Factura</option>
+                  <option value="03">Boleta</option>
+                  <option value="07">N.Crédito</option>
+                  <option value="08">N.Débito</option>
+                </select>
+              </div>
+
+              <div className="filtro-compact">
+                <label>Estado</label>
+                <select
+                  value={filtros.estado}
+                  onChange={(e) => setFiltros(prev => ({ ...prev, estado: e.target.value }))}
+                >
+                  <option value="">Todos</option>
+                  <option value="ACTIVO">Activo</option>
+                  <option value="ANULADO">Anulado</option>
+                </select>
+              </div>
+
+              <div className="filtro-compact">
+                <label>Monto Min</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={filtros.monto_min}
+                  onChange={(e) => setFiltros(prev => ({ ...prev, monto_min: e.target.value }))}
+                  placeholder="0.00"
+                />
+              </div>
+
+              <div className="filtro-compact">
+                <label>Monto Max</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={filtros.monto_max}
+                  onChange={(e) => setFiltros(prev => ({ ...prev, monto_max: e.target.value }))}
+                  placeholder="∞"
+                />
+              </div>
+            </div>
           </div>
-          
-          <div style={{ marginTop: '1rem', padding: '1rem', backgroundColor: '#e9ecef', borderRadius: '6px' }}>
-            <h5>� Funcionalidades una vez descargada:</h5>
-            <ul style={{ textAlign: 'left', display: 'inline-block' }}>
-              <li>Visualización de todos los comprobantes</li>
-              <li>Estadísticas por tipo y estado</li>
-              <li>Filtros avanzados por fecha y monto</li>
-              <li>Exportación de reportes</li>
-            </ul>
+
+          {/* ESTADOS COMPACTOS */}
+          <div className="estados-compact">
+            <h4>📋 Estados</h4>
+            <div className="estados-list-compact">
+              {Object.entries(stats.por_estado).map(([estado, cantidad]) => {
+                const porcentaje = (cantidad / stats.total_comprobantes * 100).toFixed(1);
+                return (
+                  <div key={estado} className="estado-item-compact">
+                    <span className={`estado-badge-compact ${estado.toLowerCase()}`}>
+                      {estado}
+                    </span>
+                    <span className="estado-stats-compact">
+                      {cantidad} ({porcentaje}%)
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
       )}
 
-      {/* Filtros */}
-      <div className="filtros-section">
-        <h4>🔍 Filtros</h4>
-        <div className="filtros-grid">
-          <div className="filtro-group">
-            <label>Tipo de Comprobante:</label>
-            <select
-              value={filtros.tipo_comprobante}
-              onChange={(e) => setFiltros(prev => ({ ...prev, tipo_comprobante: e.target.value }))}
-            >
-              <option value="">Todos</option>
-              <option value="01">Factura</option>
-              <option value="03">Boleta</option>
-              <option value="07">Nota de Crédito</option>
-              <option value="08">Nota de Débito</option>
-            </select>
+      {/* TABLA LUXURY */}
+      {comprobantesFiltrados.length > 0 ? (
+        <div className="luxury-table-section">
+          <div className="table-header-luxury">
+            <h3 className="table-title">📋 Comprobantes ({comprobantesFiltrados.length})</h3>
+            <div className="table-actions">
+              <button className="action-button export" onClick={exportarCSV}>
+                📊 Exportar CSV
+              </button>
+              <button className="action-button sunat" onClick={verEnSunat}>
+                🔗 Ver en SUNAT
+              </button>
+            </div>
           </div>
 
-          <div className="filtro-group">
-            <label>Estado:</label>
-            <select
-              value={filtros.estado}
-              onChange={(e) => setFiltros(prev => ({ ...prev, estado: e.target.value }))}
-            >
-              <option value="">Todos</option>
-              <option value="VALIDO">Válido</option>
-              <option value="RECHAZADO">Rechazado</option>
-              <option value="PENDIENTE">Pendiente</option>
-            </select>
-          </div>
+          <div className="luxury-table-wrapper">
+            <table className="luxury-table">
+              <thead>
+                <tr>
+                  <th>Tipo</th>
+                  <th>Número</th>
+                  <th>Fecha</th>
+                  <th>Cliente</th>
+                  <th>Doc. Cliente</th>
+                  <th style={{ textAlign: 'right' }}>Base Gravada</th>
+                  <th style={{ textAlign: 'right' }}>IGV</th>
+                  <th style={{ textAlign: 'right' }}>Exonerado</th>
+                  <th style={{ textAlign: 'right' }}>Inafecto</th>
+                  <th style={{ textAlign: 'right' }}>Total</th>
+                  <th style={{ textAlign: 'center' }}>Estado</th>
+                  <th style={{ textAlign: 'center' }}>Tipo Op.</th>
+                </tr>
+              </thead>
+              <tbody>
+                {comprobantesFiltrados.slice(0, 50).map((comp, index) => {
+                  console.log(`[Tabla] Comprobante ${index + 1}:`, comp);
+                  
+                  // Mapeo inteligente de campos - detecta la estructura real
+                  const getFieldValue = (comp: any, ...fieldNames: string[]) => {
+                    for (const fieldName of fieldNames) {
+                      // Buscar en el nivel raíz
+                      if (comp[fieldName] !== undefined && comp[fieldName] !== null && comp[fieldName] !== '') {
+                        return comp[fieldName];
+                      }
+                      
+                      // Buscar en propiedades anidadas comunes
+                      if (comp.data && comp.data[fieldName] !== undefined && comp.data[fieldName] !== null && comp.data[fieldName] !== '') {
+                        return comp.data[fieldName];
+                      }
+                      
+                      // Buscar en otras posibles estructuras anidadas
+                      if (comp.comprobante && comp.comprobante[fieldName] !== undefined && comp.comprobante[fieldName] !== null && comp.comprobante[fieldName] !== '') {
+                        return comp.comprobante[fieldName];
+                      }
+                    }
+                    return null;
+                  };
 
-          <div className="filtro-group">
-            <label>Monto Mínimo:</label>
-            <input
-              type="number"
-              step="0.01"
-              value={filtros.monto_min}
-              onChange={(e) => setFiltros(prev => ({ ...prev, monto_min: e.target.value }))}
-              placeholder="0.00"
-            />
-          </div>
+                  // También crear una función para buscar por valor similar
+                  const findFieldByPattern = (comp: any, pattern: string) => {
+                    const keys = Object.keys(comp);
+                    for (const key of keys) {
+                      if (key.toLowerCase().includes(pattern.toLowerCase())) {
+                        const value = comp[key];
+                        if (value !== undefined && value !== null && value !== '') {
+                          console.log(`🔍 [Pattern] Encontrado ${pattern} en campo '${key}':`, value);
+                          return value;
+                        }
+                      }
+                    }
+                    return null;
+                  };
 
-          <div className="filtro-group">
-            <label>Monto Máximo:</label>
-            <input
-              type="number"
-              step="0.01"
-              value={filtros.monto_max}
-              onChange={(e) => setFiltros(prev => ({ ...prev, monto_max: e.target.value }))}
-              placeholder="Sin límite"
-            />
+                  const id = getFieldValue(comp, '_id', 'id') || `temp_${index}`;
+                  const tipoComprobante = getFieldValue(comp, 'codTipoCDP', 'desTipoCDP', 'tipo');
+                  const serie = getFieldValue(comp, 'numSerieCDP', 'serie');
+                  const numero = getFieldValue(comp, 'numCDP', 'numero');
+                  // FECHA - Múltiples posibilidades + búsqueda por patrón
+                  const fecha = getFieldValue(comp, 'fecEmisionCDP', 'fecha', 'fechaEmision', 'fecEmision', 'dateEmision') || 
+                               findFieldByPattern(comp, 'fecha') || 
+                               findFieldByPattern(comp, 'fec');
+                  // CLIENTE - Múltiples posibilidades + búsqueda por patrón (CORREGIDO)
+                  // Primero intentar campos específicos de receptor/cliente
+                  const cliente = getFieldValue(comp, 'apeNomRznSocReceptor', 'nombreReceptor', 'clienteNombre', 'receptor') ||
+                                 findFieldByPattern(comp, 'receptor') ||
+                                 findFieldByPattern(comp, 'cliente') ||
+                                 // Solo como último recurso usar razón social (que puede ser de la empresa emisora)
+                                 getFieldValue(comp, 'nomRazonSocial', 'razonSocial') ||
+                                 findFieldByPattern(comp, 'nombre');
+                  const tipoDocumento = getFieldValue(comp, 'codTipoDocIdentidad', 'tipoDocumento', 'tipoDoc');
+                  const numeroDocumento = getFieldValue(comp, 'numDocReceptor', 'numeroDocumento', 'documento', 'docReceptor');
+                  const ruc = getFieldValue(comp, 'numRuc', 'ruc');
+                  const baseGravada = Number(getFieldValue(comp, 'mtoOperGravadas', 'baseGravada', 'gravada', 'operGravadas') || 
+                                           findFieldByPattern(comp, 'gravada') || 0);
+                  const igv = Number(getFieldValue(comp, 'mtoIGV', 'igv', 'IGV') || 
+                                    findFieldByPattern(comp, 'igv') || 0);
+                  // EXONERADO - Múltiples posibilidades + búsqueda por patrón
+                  const exonerado = Number(getFieldValue(comp, 'mtoOperExoneradas', 'exonerado', 'operExoneradas', 'montoExonerado', 'mtoExonerado') || 
+                                          findFieldByPattern(comp, 'exoner') || 
+                                          findFieldByPattern(comp, 'exo') || 0);
+                  const inafecto = Number(getFieldValue(comp, 'mtoOperInafectas', 'inafecto', 'operInafectas', 'montoInafecto', 'mtoInafecto') || 
+                                         findFieldByPattern(comp, 'inafect') || 0);
+                  const total = Number(getFieldValue(comp, 'mtoTotalCP', 'total', 'monto', 'montoTotal', 'totalComprobante') || 
+                                      findFieldByPattern(comp, 'total') || 0);
+                  const moneda = getFieldValue(comp, 'codMoneda', 'moneda') || 'PEN';
+                  const estado = getFieldValue(comp, 'desEstadoComprobante', 'estado', 'estadoComprobante') || 
+                                findFieldByPattern(comp, 'estado') || 'SIN_ESTADO';
+                  // TIPO OPERACIÓN - Múltiples posibilidades + búsqueda por patrón
+                  const tipoOperacion = getFieldValue(comp, 'indTipoOperacion', 'tipoOperacion', 'operacion', 'codOperacion', 'indicadorOperacion') ||
+                                       findFieldByPattern(comp, 'operacion') ||
+                                       findFieldByPattern(comp, 'tipo');
+
+                  // DEBUG: Log detallado de cada comprobante
+                  console.log(`🔬 [Fila ${index + 1}] Valores extraídos:`, {
+                    id: typeof id === 'string' ? id.slice(-8) : id,
+                    tipoComprobante,
+                    serie,
+                    numero,
+                    fecha,
+                    cliente: `"${cliente}" (debería ser ${index === 0 ? 'CASTRO ALBORNOZ...' : 'TORRES GUILLERMO...'})`,
+                    tipoDocumento,
+                    numeroDocumento,
+                    ruc,
+                    baseGravada,
+                    igv,
+                    exonerado: `${exonerado} (debería ser ${index === 0 ? '660' : '640'} para comp ${index + 1})`,
+                    inafecto,
+                    total,
+                    moneda,
+                    estado,
+                    tipoOperacion: `${tipoOperacion} (debería ser 0101)`
+                  });
+                  
+                  // DEBUG ESPECÍFICO PARA CLIENTE: Mostrar todos los campos que podrían ser el cliente
+                  console.log(`🏷️ [Fila ${index + 1}] CAMPOS DE CLIENTE CANDIDATOS:`, {
+                    apeNomRznSocReceptor: comp.apeNomRznSocReceptor,
+                    nombreReceptor: comp.nombreReceptor,
+                    clienteNombre: comp.clienteNombre,
+                    receptor: comp.receptor,
+                    nomRazonSocial: comp.nomRazonSocial,
+                    razonSocial: comp.razonSocial,
+                    // Buscar campos que contengan los nombres esperados
+                    camposConCASTRO: Object.keys(comp).filter(k => typeof comp[k] === 'string' && comp[k].includes('CASTRO')).map(k => ({[k]: comp[k]})),
+                    camposConTORRES: Object.keys(comp).filter(k => typeof comp[k] === 'string' && comp[k].includes('TORRES')).map(k => ({[k]: comp[k]}))
+                  });
+                  
+                  console.log(`🔬 [Fila ${index + 1}] Objeto original:`, comp);
+
+                  return (
+                    <tr key={id}>
+                      <td>
+                        <span className={`table-badge ${getTipoBadgeClass(tipoComprobante)}`}>
+                          {tipoComprobante === '01' ? 'FAC' : 
+                           tipoComprobante === '03' ? 'BOL' : 
+                           tipoComprobante === '07' ? 'NCR' : 
+                           tipoComprobante === '08' ? 'NDB' : (tipoComprobante || 'N/A')}
+                        </span>
+                        <div style={{ fontSize: '0.7rem', color: '#64748b', marginTop: '2px' }}>
+                          {tipoComprobante || 'N/A'}
+                        </div>
+                      </td>
+                      <td style={{ fontFamily: 'monospace', fontSize: '0.8rem' }}>
+                        <strong>{serie || 'N/A'}-{numero || 'N/A'}</strong>
+                        {id && (
+                          <div style={{ fontSize: '0.6rem', color: '#64748b', marginTop: '2px' }}>
+                            ID: {typeof id === 'string' ? id.slice(-8) : id}
+                          </div>
+                        )}
+                      </td>
+                      <td style={{ textAlign: 'center', fontSize: '0.8rem' }}>
+                        <strong>{fecha || 'N/A'}</strong>
+                      </td>
+                      <td style={{ maxWidth: '200px' }}>
+                        <div style={{ fontWeight: '600', fontSize: '0.85rem' }}>
+                          {cliente || 'Sin datos'}
+                        </div>
+                      </td>
+                      <td style={{ textAlign: 'center', fontSize: '0.8rem' }}>
+                        <strong>{tipoDocumento ? `${tipoDocumento}-` : ''}{numeroDocumento || 'N/A'}</strong>
+                        {ruc && (
+                          <div style={{ fontSize: '0.7rem', color: '#64748b', marginTop: '2px' }}>
+                            RUC: {ruc}
+                          </div>
+                        )}
+                      </td>
+                      <td className="table-amount">
+                        <strong>{formatMonto(Number(baseGravada))}</strong>
+                      </td>
+                      <td className="table-amount">
+                        <strong>{formatMonto(Number(igv))}</strong>
+                      </td>
+                      <td className="table-amount">
+                        <strong>{formatMonto(Number(exonerado))}</strong>
+                      </td>
+                      <td className="table-amount">
+                        <strong>{formatMonto(Number(inafecto))}</strong>
+                      </td>
+                      <td className="table-amount total">
+                        <strong>{formatMonto(Number(total))}</strong>
+                        {moneda && moneda !== 'PEN' && (
+                          <div style={{ fontSize: '0.7rem', color: '#64748b', marginTop: '2px' }}>
+                            {moneda}
+                          </div>
+                        )}
+                      </td>
+                      <td style={{ textAlign: 'center' }}>
+                        <span className={`table-badge ${estado?.toLowerCase() || 'sin-estado'}`}>
+                          {estado || 'SIN ESTADO'}
+                        </span>
+                      </td>
+                      <td style={{ textAlign: 'center', fontSize: '0.8rem' }}>
+                        <strong>{tipoOperacion || 'N/A'}</strong>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+            
+            {comprobantesFiltrados.length > 50 && (
+              <div style={{
+                padding: '1rem',
+                textAlign: 'center',
+                background: '#f8fafc',
+                borderTop: '1px solid #e2e8f0',
+                color: '#64748b',
+                fontSize: '0.9rem'
+              }}>
+                📋 Mostrando primeros 50 de {comprobantesFiltrados.length} comprobantes. 
+                Use los filtros para refinar o{' '}
+                <button 
+                  onClick={exportarCSV} 
+                  style={{ 
+                    background: 'none', 
+                    border: 'none', 
+                    color: '#3b82f6', 
+                    cursor: 'pointer', 
+                    textDecoration: 'underline',
+                    fontWeight: '600'
+                  }}
+                >
+                  exporte todos a CSV
+                </button>
+              </div>
+            )}
           </div>
         </div>
-      </div>
+      ) : !stats && !loading && !loadingComprobantes ? (
+        <div className="luxury-empty-state">
+          <div className="empty-icon">📭</div>
+          <h3 className="empty-title">No hay datos disponibles</h3>
+          <p className="empty-description">
+            Para ver los comprobantes de ventas del período <strong>{periodo.mes}/{periodo.año}</strong>,<br />
+            haga clic en "Actualizar desde SUNAT" para obtener los datos más recientes.
+          </p>
+          <button className="luxury-button" onClick={actualizarDesdeSunat} disabled={!authStatus?.authenticated}>
+            🔄 Obtener Datos de SUNAT
+          </button>
+        </div>
+      ) : stats && comprobantesFiltrados.length === 0 ? (
+        <div className="luxury-empty-state">
+          <div className="empty-icon">🔍</div>
+          <h3 className="empty-title">Sin resultados</h3>
+          <p className="empty-description">
+            No se encontraron comprobantes que coincidan con los filtros aplicados.<br />
+            Ajuste los criterios de búsqueda para ver más resultados.
+          </p>
+        </div>
+      ) : null}
 
-      {/* Lista de Comprobantes */}
-      <div className="comprobantes-section">
-        <h4>📋 Comprobantes ({comprobantesFiltrados.length})</h4>
-        
-        {comprobantesFiltrados.length === 0 ? (
-          <div className="empty-comprobantes">
-            <p>📭 No se encontraron comprobantes con los filtros aplicados.</p>
-          </div>
-        ) : (
-          <div className="comprobantes-table">
-            <div className="table-header">
-              <div>Tipo</div>
-              <div>Serie-Número</div>
-              <div>Fecha</div>
-              <div>RUC Emisor</div>
-              <div>Moneda</div>
-              <div>Importe</div>
-              <div>Estado</div>
-            </div>
-            
-            {comprobantesFiltrados.map((comp, index) => (
-              <div key={index} className="table-row">
-                <div>{comp.tipo_comprobante}</div>
-                <div>{comp.serie}-{comp.numero}</div>
-                <div>{new Date(comp.fecha_emision).toLocaleDateString('es-PE')}</div>
-                <div>{comp.ruc_emisor}</div>
-                <div>{comp.moneda}</div>
-                <div className="monto">{formatMonto(comp.importe_total)}</div>
-                <div className={`estado estado-${comp.estado?.toLowerCase()}`}>
-                  {comp.estado || 'Sin estado'}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+      {/* MENSAJES */}
+      {error && (
+        <div className="luxury-message error">
+          ⚠️ {error}
+        </div>
+      )}
 
-      {/* Acciones */}
-      {comprobantes.length > 0 && (
-        <div className="acciones-ventas" style={{ 
-          marginTop: '2rem',
-          display: 'flex',
-          gap: '1rem',
-          justifyContent: 'center'
-        }}>
-          <button 
-            className="btn-primary" 
-            disabled={loading || loadingComprobantes}
-            style={{
-              background: '#059669',
-              color: 'white',
-              border: 'none',
-              padding: '0.75rem 1.5rem',
-              borderRadius: '6px',
-              cursor: 'pointer'
-            }}
-          >
-            📊 Exportar Reporte
-          </button>
-          
-          <button 
-            className="btn-secondary" 
-            disabled={loading || loadingComprobantes}
-            onClick={actualizarDesdeSunat}
-            style={{
-              background: '#3b82f6',
-              color: 'white',
-              border: 'none',
-              padding: '0.75rem 1.5rem',
-              borderRadius: '6px',
-              cursor: 'pointer'
-            }}
-          >
-            🔄 Actualizar desde SUNAT
-          </button>
-          
-          <button 
-            className="btn-secondary" 
-            disabled={loading || loadingComprobantes}
-            style={{
-              background: '#6b7280',
-              color: 'white',
-              border: 'none',
-              padding: '0.75rem 1.5rem',
-              borderRadius: '6px',
-              cursor: 'pointer'
-            }}
-          >
-            📤 Ver en SUNAT
-          </button>
+      {successMessage && (
+        <div className="luxury-message success">
+          ✅ {successMessage}
         </div>
       )}
     </div>
   );
-}
+};
+
+export default RvieVentas;

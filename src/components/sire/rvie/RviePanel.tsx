@@ -65,7 +65,6 @@ export default function RviePanel({ company, onClose }: RviePanelProps) {
     cargarTickets,
     cargarTodosTickets,
     cargarResumen,
-    cargarComprobantes,
     // cargarPropuestaGuardada, // No se usa actualmente
     consultarTicket,
     descargarArchivo
@@ -717,7 +716,6 @@ export default function RviePanel({ company, onClose }: RviePanelProps) {
             periodo={periodo}
             authStatus={authStatus}
             loading={loading}
-            cargarComprobantes={cargarComprobantes}
           />
         )}
       </div>
