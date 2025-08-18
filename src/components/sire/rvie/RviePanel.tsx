@@ -63,7 +63,9 @@ export default function RviePanel({ company, onClose }: RviePanelProps) {
     aceptarPropuesta,
     checkAuth,
     cargarTickets,
+    cargarTodosTickets,
     cargarResumen,
+    cargarComprobantes,
     // cargarPropuestaGuardada, // No se usa actualmente
     consultarTicket,
     descargarArchivo
@@ -108,6 +110,19 @@ export default function RviePanel({ company, onClose }: RviePanelProps) {
       console.log('🔄 [RviePanel] Carga inicial de tickets para RUC:', company.ruc);
     }
   }, [company?.ruc]); // Solo depende del RUC, no de las funciones
+
+  // Cargar tickets apropiados según la vista activa
+  useEffect(() => {
+    if (company?.ruc) {
+      if (vistaActiva === 'operaciones') {
+        console.log('🔧 [RviePanel] Cargando todos los tickets para operaciones');
+        cargarTodosTickets();
+      } else {
+        console.log('📋 [RviePanel] Cargando tickets con archivos para tickets');
+        cargarTickets();
+      }
+    }
+  }, [vistaActiva, company?.ruc, cargarTickets, cargarTodosTickets]);
 
   // Cargar resumen automáticamente cuando cambia el período
   useEffect(() => {
@@ -679,8 +694,11 @@ export default function RviePanel({ company, onClose }: RviePanelProps) {
             resumen={resumen}
             loading={loading}
             operacionActiva={operacionActiva}
+            tickets={tickets || []}
             onDescargarPropuesta={handleDescargarPropuesta}
             onAceptarPropuesta={handleAceptarPropuesta}
+            onConsultarTicket={handleConsultarTicket}
+            onDescargarArchivo={handleDescargarArchivo}
           />
         )}
 
@@ -699,6 +717,7 @@ export default function RviePanel({ company, onClose }: RviePanelProps) {
             periodo={periodo}
             authStatus={authStatus}
             loading={loading}
+            cargarComprobantes={cargarComprobantes}
           />
         )}
       </div>

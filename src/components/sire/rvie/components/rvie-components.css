@@ -603,3 +603,105 @@
     gap: 4px;
   }
 }
+
+/* Estilos para Tickets de Descarga */
+.tickets-descarga-list {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  margin-top: 15px;
+}
+
+.ticket-descarga-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 15px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  background: #fafafa;
+  gap: 15px;
+}
+
+.ticket-info {
+  flex: 1;
+}
+
+.ticket-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.ticket-id {
+  font-family: 'Courier New', monospace;
+  font-weight: bold;
+  font-size: 14px;
+  color: #2c3e50;
+  background: #ecf0f1;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.ticket-status {
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+.ticket-status.terminado {
+  background: #d4edda;
+  color: #155724;
+}
+
+.ticket-status.pendiente {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.ticket-status.error {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+.ticket-details {
+  font-size: 13px;
+  color: #666;
+}
+
+.ticket-details p {
+  margin: 4px 0;
+}
+
+.ticket-actions {
+  display: flex;
+  align-items: center;
+}
+
+.ticket-actions button {
+  min-width: 100px;
+  height: 36px;
+}
+
+/* Responsive para tickets de descarga */
+@media (max-width: 768px) {
+  .ticket-descarga-item {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .ticket-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .ticket-actions {
+    justify-content: flex-start;
+    margin-top: 10px;
+  }
+}

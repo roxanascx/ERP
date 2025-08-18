@@ -14,6 +14,7 @@ import type {
   RvieArchivoResponse,
   RvieResumenResponse,
   RviePropuesta,
+  RvieComprobante,
   RvieInconsistencia,
   SireAuthStatus,
   SireStatusResponse
@@ -262,6 +263,53 @@ export const rvieService = {
       `${RVIE_BASE_URL}/${ruc}/propuesta/${periodo}`
     );
     return response.data;
+  },
+
+  /**
+   * Obtener comprobantes de ventas de la propuesta
+   */
+  async obtenerComprobantes(
+    ruc: string,
+    periodo: string
+  ): Promise<RvieComprobante[]> {
+    try {
+      console.log(`💰 [RVIE-VENTAS] Obteniendo comprobantes para RUC: ${ruc}, período: ${periodo}`);
+      
+      try {
+        const propuesta = await this.consultarPropuestaGuardada(ruc, periodo);
+        
+        if (propuesta?.comprobantes && propuesta.comprobantes.length > 0) {
+          // Convertir los comprobantes del backend al formato frontend
+          const comprobantes: RvieComprobante[] = propuesta.comprobantes.map(comp => ({
+            ruc_emisor: ruc,
+            tipo_comprobante: comp.tipo_comprobante,
+            serie: comp.serie,
+            numero: comp.numero,
+            fecha_emision: comp.fecha_emision,
+            moneda: 'PEN', // Asumimos PEN por defecto
+            importe_total: comp.importe_total,
+            estado: 'VALIDO', // Estado por defecto
+            observaciones: ''
+          }));
+          
+          console.log(`✅ [RVIE-VENTAS] Obtenidos ${comprobantes.length} comprobantes`);
+          return comprobantes;
+        }
+      } catch (error: any) {
+        if (error.response?.status !== 404) {
+          // Si no es un 404, es un error real
+          throw error;
+        }
+      }
+      
+      // No hay propuesta - informar que se debe descargar primero
+      console.log(`ℹ️ [RVIE-VENTAS] No hay propuesta para período ${periodo}. Debe descargar propuesta RVIE primero.`);
+      return [];
+      
+    } catch (error) {
+      console.error('❌ [RVIE-VENTAS] Error obteniendo comprobantes:', error);
+      return [];
+    }
   }
 };
 
@@ -389,17 +437,36 @@ export const rvieTicketService = {
   /**
    * Listar todos los tickets de un RUC
    */
-  async listarTickets(ruc: string): Promise<RvieTicketResponse[]> {
+  async listarTickets(ruc: string, incluirTodos: boolean = false): Promise<RvieTicketResponse[]> {
     try {
-      console.log(`📋 [RVIE-TICKETS] Listando tickets para RUC: ${ruc}`);
+      console.log(`📋 [RVIE-TICKETS] Listando tickets para RUC: ${ruc}, incluirTodos: ${incluirTodos}`);
       
-      const response = await api.get(`${RVIE_BASE_URL}/tickets/${ruc}`);
+      const params = incluirTodos ? '?incluir_todos=true' : '';
+      const response = await api.get(`${RVIE_BASE_URL}/tickets/${ruc}${params}`);
       
       const tickets = response.data.map((ticketData: any) => mapTicketResponse(ticketData));
       console.log(`✅ [RVIE-TICKETS] Encontrados ${tickets.length} tickets`);
       return tickets;
     } catch (error) {
       console.error('❌ [RVIE-TICKETS] Error listando tickets:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Listar todos los tickets incluyendo SYNC para operaciones
+   */
+  async listarTodosTickets(ruc: string): Promise<RvieTicketResponse[]> {
+    try {
+      console.log(`📋 [RVIE-TICKETS] Listando TODOS los tickets para RUC: ${ruc}`);
+      
+      const response = await api.get(`${RVIE_BASE_URL}/tickets/${ruc}?incluir_todos=true`);
+      
+      const tickets = response.data.map((ticketData: any) => mapTicketResponse(ticketData));
+      console.log(`✅ [RVIE-TICKETS] Encontrados ${tickets.length} tickets (incluyendo SYNC)`);
+      return tickets;
+    } catch (error) {
+      console.error('❌ [RVIE-TICKETS] Error listando todos los tickets:', error);
       throw error;
     }
   },
@@ -590,12 +657,129 @@ export const rvieTicketService = {
 };
 
 // ========================================
+// SERVICIOS DE VENTAS RVIE (NUEVO)
+// ========================================
+
+export const rvieVentasService = {
+  /**
+   * Consultar resumen de ventas directo desde SUNAT
+   */
+  async consultarResumenSunat(ruc: string, periodo: string, tipoResumen: number = 1) {
+    try {
+      console.log(`🔍 [RVIE-VENTAS] Consultando resumen SUNAT - RUC: ${ruc}, Período: ${periodo}, Tipo: ${tipoResumen}`);
+      
+      const response = await api.get(
+        `${RVIE_BASE_URL}/ventas/resumen-sunat/${ruc}/${periodo}?tipo_resumen=${tipoResumen}`
+      );
+      
+      console.log(`✅ [RVIE-VENTAS] Resumen obtenido:`, response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error('❌ [RVIE-VENTAS] Error consultando resumen SUNAT:', error);
+      
+      if (error.response?.status === 404) {
+        return {
+          ruc,
+          periodo,
+          tipo_resumen: tipoResumen,
+          fecha_consulta: new Date().toISOString(),
+          total_comprobantes: 0,
+          comprobantes: [],
+          totales: {},
+          estado_consulta: 'SIN_DATOS',
+          mensaje: 'No se encontraron datos para el período seleccionado',
+          archivos_descargados: []
+        };
+      }
+      
+      throw error;
+    }
+  },
+
+  /**
+   * Obtener comprobantes de ventas procesados
+   */
+  async obtenerComprobantesVentas(ruc: string, periodo: string, tipoResumen: number = 1) {
+    try {
+      console.log(`📋 [RVIE-VENTAS] Obteniendo comprobantes - RUC: ${ruc}, Período: ${periodo}`);
+      
+      const response = await api.get(
+        `${RVIE_BASE_URL}/ventas/comprobantes/${ruc}/${periodo}?tipo_resumen=${tipoResumen}`
+      );
+      
+      console.log(`✅ [RVIE-VENTAS] Comprobantes obtenidos:`, response.data.length);
+      return response.data;
+    } catch (error: any) {
+      console.error('❌ [RVIE-VENTAS] Error obteniendo comprobantes:', error);
+      
+      if (error.response?.status === 404) {
+        // Retornar array vacío en lugar de lanzar error
+        return [];
+      }
+      
+      throw error;
+    }
+  },
+
+  /**
+   * Actualizar datos desde SUNAT y guardar localmente
+   */
+  async actualizarDesdeSunat(ruc: string, periodo: string, tiposResumen: number[] = [1, 4, 5]) {
+    try {
+      console.log(`🔄 [RVIE-VENTAS] Actualizando desde SUNAT - RUC: ${ruc}, Período: ${periodo}`);
+      
+      const response = await api.post(
+        `${RVIE_BASE_URL}/ventas/actualizar-desde-sunat/${ruc}/${periodo}`,
+        {
+          periodo,
+          tipos_resumen: tiposResumen,
+          formato: 0,
+          forzar_actualizacion: true
+        }
+      );
+      
+      console.log(`✅ [RVIE-VENTAS] Datos actualizados desde SUNAT:`, response.data);
+      return response.data;
+    } catch (error) {
+      console.error('❌ [RVIE-VENTAS] Error actualizando desde SUNAT:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Obtener estadísticas de ventas para el dashboard
+   */
+  async obtenerEstadisticasVentas(ruc: string, periodo: string) {
+    try {
+      // Por ahora calculamos estadísticas desde los comprobantes
+      const comprobantes = await this.obtenerComprobantesVentas(ruc, periodo);
+      
+      const estadisticas = {
+        periodo,
+        total_comprobantes: comprobantes.length,
+        total_facturado: comprobantes.reduce((sum: number, comp: any) => sum + (comp.importe_total || 0), 0),
+        total_igv: comprobantes.reduce((sum: number, comp: any) => sum + (comp.igv || 0), 0),
+        por_tipo_comprobante: {},
+        distribucion_mensual: [],
+        fecha_ultima_actualizacion: new Date().toISOString()
+      };
+      
+      return estadisticas;
+    } catch (error) {
+      console.error('❌ [RVIE-VENTAS] Error obteniendo estadísticas:', error);
+      throw error;
+    }
+  }
+};
+
+// ========================================
 // SERVICIO PRINCIPAL SIRE (ACTUALIZADO)
 // ========================================
 
 export const sireService = {
   auth: sireAuthService,
   rvie: rvieService,
+  ventas: rvieVentasService,  // Nuevo servicio de ventas
   tickets: rvieTicketService,
   files: sireFileUtils
 };

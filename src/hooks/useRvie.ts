@@ -138,7 +138,7 @@ export function useRvie(options: UseRvieOptions) {
   const cargarTickets = useCallback(async () => {
     try {
       console.log(`🔄 [RVIE] Cargando tickets existentes para RUC: ${ruc}`);
-      const ticketsData = await sireService.tickets.listarTickets(ruc);
+      const ticketsData = await sireService.tickets.listarTickets(ruc, false); // Solo tickets con archivos
       setTickets(ticketsData);
       console.log(`✅ [RVIE] Cargados ${ticketsData.length} tickets existentes`);
       
@@ -151,6 +151,26 @@ export function useRvie(options: UseRvieOptions) {
       
     } catch (error) {
       console.error('Error cargando tickets existentes:', error);
+      // No lanzar error para no bloquear la inicialización
+    }
+  }, [ruc]);
+
+  const cargarTodosTickets = useCallback(async () => {
+    try {
+      console.log(`🔄 [RVIE] Cargando TODOS los tickets para RUC: ${ruc}`);
+      const ticketsData = await sireService.tickets.listarTickets(ruc, true); // Incluir tickets SYNC
+      setTickets(ticketsData);
+      console.log(`✅ [RVIE] Cargados ${ticketsData.length} tickets completos`);
+      
+      // Iniciar monitoreo automático para tickets en proceso
+      ticketsData.forEach((ticket: RvieTicketResponse) => {
+        if (ticket.status === 'PROCESANDO' || ticket.status === 'PENDIENTE') {
+          startTicketPolling(ticket.ticket_id);
+        }
+      });
+      
+    } catch (error) {
+      console.error('Error cargando todos los tickets:', error);
       // No lanzar error para no bloquear la inicialización
     }
   }, [ruc]);
@@ -473,6 +493,22 @@ export function useRvie(options: UseRvieOptions) {
     }
   }, [ruc]);
 
+  const cargarComprobantes = useCallback(async (periodo: string) => {
+    try {
+      console.log(`📋 [RVIE] Cargando comprobantes para ${ruc}-${periodo}`);
+      setLoading(true);
+      const comprobantes = await rvieService.obtenerComprobantes(ruc, periodo);
+      console.log(`✅ [RVIE] Comprobantes cargados:`, comprobantes);
+      return comprobantes;
+    } catch (error: any) {
+      console.error('❌ [RVIE] Error cargando comprobantes:', error);
+      handleError(error, 'cargarComprobantes');
+      return [];
+    } finally {
+      setLoading(false);
+    }
+  }, [ruc, handleError]);
+
   // ========================================
   // EFECTOS Y LIMPIEZA
   // ========================================
@@ -569,11 +605,13 @@ export function useRvie(options: UseRvieOptions) {
     stopTicketPolling,
     descargarArchivo,
     cargarTickets,
+    cargarTodosTickets,
     
     // Datos complementarios
     cargarResumen,
     cargarPropuestaGuardada,
     cargarInconsistencias,
+    cargarComprobantes,
     cargarEndpoints,
     
     // Utilidades

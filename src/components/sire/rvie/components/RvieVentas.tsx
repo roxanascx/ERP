@@ -1,9 +1,11 @@
 /**
  * Componente para gestionar las ventas e ingresos
  * Visualización, análisis y gestión de comprobantes
+ * ACTUALIZADO: Usa consulta directa a SUNAT
  */
 
 import { useState, useEffect } from 'react';
+import { rvieVentasService } from '../../../../services/sire';
 import type { RvieComprobante } from '../../../../types/sire';
 import './rvie-components.css';
 
@@ -21,6 +23,23 @@ interface VentasStats {
   por_estado: Record<string, number>;
 }
 
+interface ComprobanteVenta {
+  ruc_emisor: string;
+  tipo_comprobante: string;
+  serie: string;
+  numero: string;
+  fecha_emision: string;
+  moneda?: string;
+  importe_total: number;
+  base_imponible?: number;
+  igv?: number;
+  exonerado?: number;
+  inafecto?: number;
+  estado?: string;
+  observaciones?: string;
+  fecha_consulta?: string;
+}
+
 export default function RvieVentas({
   ruc,
   periodo,
@@ -29,8 +48,12 @@ export default function RvieVentas({
 }: RvieVentasProps) {
   console.log('💰 [RvieVentas] Renderizando con:', { ruc, periodo, authStatus, loading });
 
-  const [comprobantes] = useState<RvieComprobante[]>([]);
+  const [comprobantes, setComprobantes] = useState<ComprobanteVenta[]>([]);
+  const [loadingComprobantes, setLoadingComprobantes] = useState(false);
   const [stats, setStats] = useState<VentasStats | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [ultimaActualizacion, setUltimaActualizacion] = useState<Date | null>(null);
+  
   const [filtros, setFiltros] = useState({
     tipo_comprobante: '',
     estado: '',
@@ -40,32 +63,127 @@ export default function RvieVentas({
     monto_max: ''
   });
 
-  // Calcular estadísticas
+  // Cargar comprobantes cuando cambie el período
   useEffect(() => {
-    if (comprobantes.length > 0) {
-      const nuevasStats: VentasStats = {
-        total_comprobantes: comprobantes.length,
-        total_monto: comprobantes.reduce((sum, comp) => sum + comp.importe_total, 0),
-        por_tipo: {},
-        por_estado: {}
-      };
+    const cargarDatos = async () => {
+      if (!authStatus?.authenticated) {
+        console.log('⚠️ [RvieVentas] No autenticado, no se cargan comprobantes');
+        setError('No se ha autenticado con SUNAT. Las funciones de ventas requieren autenticación.');
+        return;
+      }
 
-      comprobantes.forEach(comp => {
-        // Por tipo
-        if (!nuevasStats.por_tipo[comp.tipo_comprobante]) {
-          nuevasStats.por_tipo[comp.tipo_comprobante] = { cantidad: 0, monto: 0 };
+      try {
+        setLoadingComprobantes(true);
+        setError(null);
+        
+        const periodoFormateado = `${periodo.año}${periodo.mes.padStart(2, '0')}`;
+        console.log('📅 [RvieVentas] Cargando datos para período:', periodoFormateado);
+        
+        // Primero intentar obtener comprobantes existentes
+        let comprobantesData = await rvieVentasService.obtenerComprobantesVentas(ruc, periodoFormateado);
+        
+        if (comprobantesData.length === 0) {
+          console.log('📥 [RvieVentas] No hay datos en cache, consultando SUNAT...');
+          
+          // Si no hay datos, consultar directamente desde SUNAT
+          const resumenSunat = await rvieVentasService.consultarResumenSunat(ruc, periodoFormateado, 1);
+          
+          if (resumenSunat.estado_consulta === 'EXITOSO') {
+            comprobantesData = resumenSunat.comprobantes;
+            setUltimaActualizacion(new Date(resumenSunat.fecha_consulta));
+          } else if (resumenSunat.estado_consulta === 'SIN_DATOS') {
+            setError(`No hay datos de ventas disponibles para el período ${periodo.mes}/${periodo.año}. 
+                     Para obtener datos, debe: 
+                     1. Ir a "Operaciones RVIE" 
+                     2. Descargar la propuesta para este período
+                     3. Volver a "Gestión de Ventas"`);
+            comprobantesData = [];
+          } else {
+            setError(`Error consultando datos: ${resumenSunat.mensaje}`);
+            comprobantesData = [];
+          }
+        } else {
+          setUltimaActualizacion(new Date());
         }
-        nuevasStats.por_tipo[comp.tipo_comprobante].cantidad++;
-        nuevasStats.por_tipo[comp.tipo_comprobante].monto += comp.importe_total;
+        
+        setComprobantes(comprobantesData);
+        calcularEstadisticas(comprobantesData);
+        
+      } catch (error: any) {
+        console.error('❌ [RvieVentas] Error cargando comprobantes:', error);
+        setError(`Error cargando datos de ventas: ${error.message || 'Error desconocido'}`);
+        setComprobantes([]);
+        setStats(null);
+      } finally {
+        setLoadingComprobantes(false);
+      }
+    };
 
-        // Por estado
-        const estado = comp.estado || 'Sin estado';
-        nuevasStats.por_estado[estado] = (nuevasStats.por_estado[estado] || 0) + 1;
-      });
-
-      setStats(nuevasStats);
+    if (ruc && periodo.año && periodo.mes) {
+      cargarDatos();
     }
-  }, [comprobantes]);
+  }, [ruc, periodo, authStatus?.authenticated]);
+
+  // Función para actualizar datos desde SUNAT
+  const actualizarDesdeSunat = async () => {
+    try {
+      setLoadingComprobantes(true);
+      setError(null);
+      
+      const periodoFormateado = `${periodo.año}${periodo.mes.padStart(2, '0')}`;
+      console.log('🔄 [RvieVentas] Actualizando desde SUNAT para período:', periodoFormateado);
+      
+      const resumenActualizado = await rvieVentasService.actualizarDesdeSunat(ruc, periodoFormateado, [1, 4, 5]);
+      
+      if (resumenActualizado.estado_consulta === 'EXITOSO') {
+        setComprobantes(resumenActualizado.comprobantes);
+        calcularEstadisticas(resumenActualizado.comprobantes);
+        setUltimaActualizacion(new Date(resumenActualizado.fecha_consulta));
+      } else {
+        setError(`Error actualizando datos: ${resumenActualizado.mensaje}`);
+      }
+      
+    } catch (error: any) {
+      console.error('❌ [RvieVentas] Error actualizando desde SUNAT:', error);
+      setError(`Error actualizando desde SUNAT: ${error.message || 'Error desconocido'}`);
+    } finally {
+      setLoadingComprobantes(false);
+    }
+  };
+
+  const calcularEstadisticas = (datos: ComprobanteVenta[]) => {
+    if (datos.length === 0) {
+      setStats(null);
+      return;
+    }
+
+    const statsCalculadas: VentasStats = {
+      total_comprobantes: datos.length,
+      total_monto: 0,
+      por_tipo: {},
+      por_estado: {}
+    };
+
+    datos.forEach(comp => {
+      // Sumar monto total
+      statsCalculadas.total_monto += comp.importe_total || 0;
+      
+      // Agrupar por tipo
+      const tipo = comp.tipo_comprobante || 'DESCONOCIDO';
+      if (!statsCalculadas.por_tipo[tipo]) {
+        statsCalculadas.por_tipo[tipo] = { cantidad: 0, monto: 0 };
+      }
+      statsCalculadas.por_tipo[tipo].cantidad++;
+      statsCalculadas.por_tipo[tipo].monto += comp.importe_total || 0;
+      
+      // Agrupar por estado
+      const estado = comp.estado || 'PROCESADO';
+      statsCalculadas.por_estado[estado] = (statsCalculadas.por_estado[estado] || 0) + 1;
+    });
+
+    setStats(statsCalculadas);
+    console.log('📊 [RvieVentas] Estadísticas calculadas:', statsCalculadas);
+  };
 
   const formatMonto = (monto: number) => {
     return new Intl.NumberFormat('es-PE', {
@@ -84,11 +202,45 @@ export default function RvieVentas({
     });
   };
 
+  const actualizarDatos = async () => {
+    if (!authStatus?.authenticated) {
+      alert('Debe autenticarse primero para actualizar los datos');
+      return;
+    }
+
+    try {
+      setLoadingComprobantes(true);
+      const periodoStr = `${periodo.año}${periodo.mes.padStart(2, '0')}`;
+      const comprobantesData = await cargarComprobantes(periodoStr);
+      setComprobantes(comprobantesData || []);
+    } catch (error) {
+      console.error('Error actualizando datos:', error);
+      alert('Error al actualizar los datos');
+    } finally {
+      setLoadingComprobantes(false);
+    }
+  };
+
   const comprobantesFiltrados = filtrarComprobantes();
 
   return (
     <div className="rvie-ventas">
       <h3>💰 Gestión de Ventas e Ingresos</h3>
+
+      {/* Mensaje de error si hay alguno */}
+      {error && (
+        <div style={{
+          backgroundColor: '#fef3c7',
+          border: '1px solid #f59e0b',
+          padding: '1rem',
+          borderRadius: '8px',
+          marginBottom: '1rem',
+          whiteSpace: 'pre-line'
+        }}>
+          <h5 style={{ color: '#92400e', margin: '0 0 0.5rem 0' }}>⚠️ Información</h5>
+          <p style={{ color: '#92400e', margin: 0 }}>{error}</p>
+        </div>
+      )}
 
       {/* Información del período actual */}
       <div className="periodo-info" style={{ 
@@ -97,10 +249,58 @@ export default function RvieVentas({
         borderRadius: '8px', 
         marginBottom: '1rem' 
       }}>
-        <h4>📅 Período Actual: {periodo.mes}/{periodo.año}</h4>
-        <p>RUC: {ruc}</p>
-        <p>Estado de autenticación: {authStatus?.authenticated ? '✅ Autenticado' : '❌ No autenticado'}</p>
-        {loading && <p>⏳ Cargando datos...</p>}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <h4>📅 Período Actual: {periodo.mes}/{periodo.año}</h4>
+            <p>RUC: {ruc}</p>
+            <p>Estado de autenticación: {authStatus?.authenticated ? '✅ Autenticado' : '❌ No autenticado'}</p>
+            {ultimaActualizacion && (
+              <p style={{ fontSize: '0.9rem', color: '#6b7280' }}>
+                Última actualización: {ultimaActualizacion.toLocaleString('es-PE')}
+              </p>
+            )}
+          </div>
+          
+          {/* Botón de actualización */}
+          <button
+            onClick={actualizarDesdeSunat}
+            disabled={loadingComprobantes || !authStatus?.authenticated}
+            style={{
+              background: loadingComprobantes ? '#6b7280' : '#3b82f6',
+              color: 'white',
+              border: 'none',
+              padding: '0.5rem 1rem',
+              borderRadius: '6px',
+              cursor: loadingComprobantes ? 'not-allowed' : 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem'
+            }}
+          >
+            {loadingComprobantes ? '⏳ Actualizando...' : '🔄 Actualizar desde SUNAT'}
+          </button>
+        </div>
+        
+        {(loading || loadingComprobantes) && (
+          <div style={{ marginTop: '0.5rem' }}>
+            <div style={{ 
+              background: '#e5e7eb', 
+              borderRadius: '4px', 
+              height: '4px', 
+              overflow: 'hidden' 
+            }}>
+              <div style={{ 
+                background: '#3b82f6', 
+                height: '100%', 
+                animation: 'progress 2s ease-in-out infinite',
+                width: '30%'
+              }}></div>
+            </div>
+            <p style={{ fontSize: '0.9rem', margin: '0.5rem 0 0 0' }}>
+              ⏳ Consultando datos desde SUNAT...
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Estadísticas Generales */}
@@ -142,18 +342,36 @@ export default function RvieVentas({
           textAlign: 'center'
         }}>
           <h4>📋 No hay datos de ventas disponibles</h4>
-          <p>Los datos de ventas aparecerán aquí después de:</p>
-          <ol style={{ textAlign: 'left', display: 'inline-block' }}>
-            <li>Autenticarse con SUNAT</li>
-            <li>Descargar la propuesta RVIE</li>
-            <li>Procesar los comprobantes del período</li>
+          <p>Para ver los comprobantes de ventas del período <strong>{periodo.mes}/{periodo.año}</strong>, debe:</p>
+          <ol style={{ textAlign: 'left', display: 'inline-block', marginBottom: '1.5rem' }}>
+            <li>🔐 Autenticarse con SUNAT (✅ Completado)</li>
+            <li>📥 <strong>Descargar la propuesta RVIE</strong> para el período</li>
+            <li>📊 Procesar los comprobantes del período</li>
           </ol>
+          
+          <div style={{ 
+            marginTop: '1rem', 
+            padding: '1rem', 
+            backgroundColor: '#e3f2fd', 
+            borderRadius: '6px',
+            border: '1px solid #2196f3'
+          }}>
+            <h5>💡 ¿Cómo descargar la propuesta?</h5>
+            <p style={{ marginBottom: '0.5rem' }}>Vaya a la pestaña <strong>"Operaciones RVIE"</strong> y:</p>
+            <ul style={{ textAlign: 'left', display: 'inline-block', margin: 0 }}>
+              <li>Seleccione el período <strong>{periodo.mes}/{periodo.año}</strong></li>
+              <li>Haga clic en <strong>"Descargar Propuesta"</strong></li>
+              <li>Espere a que se procese y descargue</li>
+              <li>Regrese aquí para ver los comprobantes</li>
+            </ul>
+          </div>
+          
           <div style={{ marginTop: '1rem', padding: '1rem', backgroundColor: '#e9ecef', borderRadius: '6px' }}>
-            <h5>💡 Funcionalidades futuras:</h5>
+            <h5>� Funcionalidades una vez descargada:</h5>
             <ul style={{ textAlign: 'left', display: 'inline-block' }}>
-              <li>Visualización de comprobantes</li>
-              <li>Estadísticas por tipo</li>
-              <li>Filtros avanzados</li>
+              <li>Visualización de todos los comprobantes</li>
+              <li>Estadísticas por tipo y estado</li>
+              <li>Filtros avanzados por fecha y monto</li>
               <li>Exportación de reportes</li>
             </ul>
           </div>
@@ -253,17 +471,60 @@ export default function RvieVentas({
       </div>
 
       {/* Acciones */}
-      <div className="acciones-ventas">
-        <button className="btn-primary" disabled={loading}>
-          📊 Exportar Reporte
-        </button>
-        <button className="btn-secondary" disabled={loading}>
-          🔄 Actualizar Datos
-        </button>
-        <button className="btn-secondary" disabled={loading}>
-          📤 Enviar a SUNAT
-        </button>
-      </div>
+      {comprobantes.length > 0 && (
+        <div className="acciones-ventas" style={{ 
+          marginTop: '2rem',
+          display: 'flex',
+          gap: '1rem',
+          justifyContent: 'center'
+        }}>
+          <button 
+            className="btn-primary" 
+            disabled={loading || loadingComprobantes}
+            style={{
+              background: '#059669',
+              color: 'white',
+              border: 'none',
+              padding: '0.75rem 1.5rem',
+              borderRadius: '6px',
+              cursor: 'pointer'
+            }}
+          >
+            📊 Exportar Reporte
+          </button>
+          
+          <button 
+            className="btn-secondary" 
+            disabled={loading || loadingComprobantes}
+            onClick={actualizarDesdeSunat}
+            style={{
+              background: '#3b82f6',
+              color: 'white',
+              border: 'none',
+              padding: '0.75rem 1.5rem',
+              borderRadius: '6px',
+              cursor: 'pointer'
+            }}
+          >
+            🔄 Actualizar desde SUNAT
+          </button>
+          
+          <button 
+            className="btn-secondary" 
+            disabled={loading || loadingComprobantes}
+            style={{
+              background: '#6b7280',
+              color: 'white',
+              border: 'none',
+              padding: '0.75rem 1.5rem',
+              borderRadius: '6px',
+              cursor: 'pointer'
+            }}
+          >
+            📤 Ver en SUNAT
+          </button>
+        </div>
+      )}
     </div>
   );
 }

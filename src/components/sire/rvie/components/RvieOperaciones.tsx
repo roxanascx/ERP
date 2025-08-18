@@ -4,7 +4,7 @@
  */
 
 import { useState } from 'react';
-import type { RvieDescargarPropuestaRequest, RvieAceptarPropuestaRequest, RvieResumenResponse } from '../../../../types/sire';
+import type { RvieDescargarPropuestaRequest, RvieAceptarPropuestaRequest, RvieResumenResponse, RvieTicketResponse } from '../../../../types/sire';
 import './rvie-components.css';
 
 interface RvieOperacionesProps {
@@ -13,8 +13,11 @@ interface RvieOperacionesProps {
   resumen: RvieResumenResponse | null;
   loading: boolean;
   operacionActiva: string | null;
+  tickets: RvieTicketResponse[];
   onDescargarPropuesta: (params: RvieDescargarPropuestaRequest) => Promise<void>;
   onAceptarPropuesta: (params: RvieAceptarPropuestaRequest) => Promise<void>;
+  onConsultarTicket: (ticketId: string) => Promise<void>;
+  onDescargarArchivo: (ticketId: string) => Promise<void>;
 }
 
 interface OpcionesDescarga {
@@ -33,8 +36,11 @@ export default function RvieOperaciones({
   resumen,
   loading,
   operacionActiva,
+  tickets,
   onDescargarPropuesta,
-  onAceptarPropuesta
+  onAceptarPropuesta,
+  onConsultarTicket,
+  onDescargarArchivo
 }: RvieOperacionesProps) {
   console.log('🔧 [RvieOperaciones] Renderizando con:', { periodo, authStatus, resumen, loading, operacionActiva });
 
@@ -49,6 +55,14 @@ export default function RvieOperaciones({
     acepta_completa: true,
     observaciones: ''
   });
+
+  // Filtrar tickets de descarga-propuesta
+  const ticketsDescarga = tickets.filter(ticket => 
+    ticket.operacion === 'descargar-propuesta' && 
+    ticket.ticket_id.startsWith('SYNC-')
+  );
+
+  console.log('🎫 [RvieOperaciones] Tickets de descarga encontrados:', ticketsDescarga.length);
 
   const handleDescargarPropuesta = async () => {
     await onDescargarPropuesta({
@@ -265,6 +279,60 @@ export default function RvieOperaciones({
            'Aceptar Propuesta'}
         </button>
       </div>
+
+      {/* Sección de Tickets de Descarga */}
+      {ticketsDescarga.length > 0 && (
+        <div className="operacion-card">
+          <h4>📋 Tickets de Descarga Generados</h4>
+          <p>Gestiona los tickets de descarga-propuesta desde aquí:</p>
+          
+          <div className="tickets-descarga-list">
+            {ticketsDescarga.map((ticket) => (
+              <div key={ticket.ticket_id} className="ticket-descarga-item">
+                <div className="ticket-info">
+                  <div className="ticket-header">
+                    <span className="ticket-id">🎫 {ticket.ticket_id}</span>
+                    <span className={`ticket-status ${ticket.status.toLowerCase()}`}>
+                      {ticket.status}
+                    </span>
+                  </div>
+                  
+                  <div className="ticket-details">
+                    <p><strong>📅 Período:</strong> {ticket.periodo}</p>
+                    <p><strong>⏰ Creado:</strong> {new Date(ticket.fecha_creacion).toLocaleString()}</p>
+                    {ticket.descripcion && (
+                      <p><strong>📝 Descripción:</strong> {ticket.descripcion}</p>
+                    )}
+                    {ticket.archivo_nombre && (
+                      <p><strong>📁 Archivo:</strong> {ticket.archivo_nombre}</p>
+                    )}
+                  </div>
+                </div>
+                
+                <div className="ticket-actions">
+                  {ticket.status === 'TERMINADO' && ticket.archivo_nombre ? (
+                    <button 
+                      className="btn-primary"
+                      onClick={() => onDescargarArchivo(ticket.ticket_id)}
+                      disabled={loading}
+                    >
+                      📥 Descargar
+                    </button>
+                  ) : (
+                    <button 
+                      className="btn-secondary"
+                      onClick={() => onConsultarTicket(ticket.ticket_id)}
+                      disabled={loading}
+                    >
+                      🔄 Consultar
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

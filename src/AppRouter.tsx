@@ -1,7 +1,17 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useUser } from '@clerk/clerk-react';
-import { HomePage, DashboardPage, EmpresaPage, SirePage } from './pages';
+import { 
+  HomePage, 
+  DashboardPage, 
+  EmpresaPage, 
+  SirePage,
+  SireHomePage,
+  RvieHomePage,
+  RvieVentasPage,
+  RvieTicketsPage,
+  RvieOperacionesPage
+} from './pages';
 import TestLogoutPage from './pages/TestLogoutPage';
 import EmpresaProtectedRoute from './components/EmpresaProtectedRoute';
 
@@ -90,6 +100,76 @@ const AppRouter: React.FC = () => {
         {/* SIRE - requiere empresa seleccionada */}
         <Route 
           path="/sire" 
+          element={
+            isSignedIn ? (
+              <EmpresaProtectedRoute>
+                <SireHomePage />
+              </EmpresaProtectedRoute>
+            ) : (
+              <Navigate to="/" replace />
+            )
+          } 
+        />
+
+        {/* RVIE Dashboard */}
+        <Route 
+          path="/sire/rvie" 
+          element={
+            isSignedIn ? (
+              <EmpresaProtectedRoute>
+                <RvieHomePage />
+              </EmpresaProtectedRoute>
+            ) : (
+              <Navigate to="/" replace />
+            )
+          } 
+        />
+
+        {/* RVIE Operaciones */}
+        <Route 
+          path="/sire/rvie/operaciones" 
+          element={
+            isSignedIn ? (
+              <EmpresaProtectedRoute>
+                <RvieOperacionesPage />
+              </EmpresaProtectedRoute>
+            ) : (
+              <Navigate to="/" replace />
+            )
+          } 
+        />
+
+        {/* RVIE Tickets */}
+        <Route 
+          path="/sire/rvie/tickets" 
+          element={
+            isSignedIn ? (
+              <EmpresaProtectedRoute>
+                <RvieTicketsPage />
+              </EmpresaProtectedRoute>
+            ) : (
+              <Navigate to="/" replace />
+            )
+          } 
+        />
+
+        {/* RVIE Ventas */}
+        <Route 
+          path="/sire/rvie/ventas" 
+          element={
+            isSignedIn ? (
+              <EmpresaProtectedRoute>
+                <RvieVentasPage />
+              </EmpresaProtectedRoute>
+            ) : (
+              <Navigate to="/" replace />
+            )
+          } 
+        />
+
+        {/* SIRE Legacy - mantener compatibilidad temporal */}
+        <Route 
+          path="/sire-legacy" 
           element={
             isSignedIn ? (
               <EmpresaProtectedRoute>
