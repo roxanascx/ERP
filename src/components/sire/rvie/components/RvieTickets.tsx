@@ -24,7 +24,6 @@ export default function RvieTickets({
   onConsultarTicket,
   onDescargarArchivo
 }: RvieTicketsProps) {
-  console.log('🎫 [RvieTickets] Renderizando con:', { tickets: tickets.length, loading });
 
   const [ticketIdManual, setTicketIdManual] = useState('');
   const [consultandoManual, setConsultandoManual] = useState(false);
@@ -40,7 +39,6 @@ export default function RvieTickets({
       await onConsultarTicket(ticketIdManual.trim());
       setTicketIdManual(''); // Limpiar campo después de consulta exitosa
     } catch (error) {
-      console.error('Error consultando ticket manual:', error);
       alert('Error al consultar el ticket. Verifica el ID e intenta nuevamente.');
     } finally {
       setConsultandoManual(false);

@@ -53,7 +53,6 @@ const RvieVentas = ({
   authStatus,
   loading
 }: RvieVentasProps) => {
-  console.log('💰 [RvieVentas] Renderizando con:', { ruc, periodo, authStatus, loading });
 
   const [comprobantes, setComprobantes] = useState<ComprobanteVenta[]>([]);
   const [stats, setStats] = useState<VentasStats | null>(null);
@@ -86,7 +85,6 @@ const RvieVentas = ({
         const datosCache = localStorage.getItem(cacheKey);
         
         if (datosCache) {
-          console.log('📦 [Cache] Verificando datos en localStorage...');
           
           try {
             const { comprobantes: comprobantesCache, timestamp } = JSON.parse(datosCache);
@@ -95,36 +93,28 @@ const RvieVentas = ({
             const diferencia = ahora.getTime() - tiempoCache.getTime();
             const horasCache = diferencia / (1000 * 60 * 60);
             
-            console.log(`⏰ [Cache] Datos guardados hace ${horasCache.toFixed(1)} horas`);
             
             // ✅ CACHE VÁLIDO (menos de 24 horas)
             if (horasCache < 24) {
-              console.log('✅ [Cache] Usando datos del cache (válidos por 24h)');
               setComprobantes(comprobantesCache);
               calcularEstadisticas(comprobantesCache);
               setUltimaActualizacion(tiempoCache);
               return; // No consultar SUNAT
             } else {
-              console.log('⚠️ [Cache] Cache expirado, se consultará SUNAT');
               localStorage.removeItem(cacheKey); // Limpiar cache viejo
             }
           } catch (parseError) {
-            console.warn('⚠️ [Cache] Error al parsear cache, se limpiará:', parseError);
             localStorage.removeItem(cacheKey);
           }
         } else {
-          console.log('📭 [Cache] No hay datos en cache para este período');
         }
         
         // 🔄 Si no hay cache válido Y está autenticado, consultar SUNAT
         if (authStatus?.authenticated) {
-          console.log('🔄 [Cache] Consultando datos frescos desde SUNAT...');
           await actualizarDesdeSunat();
         } else {
-          console.log('❌ [Cache] No autenticado, no se puede consultar SUNAT');
         }
       } catch (error) {
-        console.error('❌ [RvieVentas] Error en carga de datos:', error);
       }
     };
 
@@ -138,13 +128,11 @@ const RvieVentas = ({
       setSuccessMessage(null);
       
       const periodoFormateado = `${periodo.año}${periodo.mes.padStart(2, '0')}`;
-      console.log('🔄 [SUNAT] Consultando período:', periodoFormateado);
       
       const resumenActualizado = await rvieVentasService.actualizarDesdeSunat(ruc, periodoFormateado, [1, 4, 5]);
       
       if (resumenActualizado.success) {
         const comprobantesData = resumenActualizado.data?.registros || [];
-        console.log(`✅ [SUNAT] Recibidos ${comprobantesData.length} comprobantes`);
         
         setComprobantes(comprobantesData);
         calcularEstadisticas(comprobantesData);
@@ -165,10 +153,7 @@ const RvieVentas = ({
         
         try {
           localStorage.setItem(cacheKey, JSON.stringify(datosCache));
-          console.log(`💾 [Cache] Datos guardados en localStorage con clave: ${cacheKey}`);
-          console.log(`📊 [Cache] Tamaño aprox: ${JSON.stringify(datosCache).length} caracteres`);
         } catch (storageError) {
-          console.warn('⚠️ [Cache] Error al guardar en localStorage (posible límite):', storageError);
         }
         
         setSuccessMessage(`✅ Datos actualizados exitosamente. ${comprobantesData.length} comprobantes encontrados.`);
@@ -177,7 +162,6 @@ const RvieVentas = ({
         setError(resumenActualizado.mensaje || 'Error al obtener datos de SUNAT');
       }
     } catch (error) {
-      console.error('❌ [SUNAT] Error en consulta:', error);
       setError('Error de conexión con SUNAT. Intente nuevamente.');
     } finally {
       setLoadingComprobantes(false);
@@ -185,8 +169,6 @@ const RvieVentas = ({
   };
 
   const calcularEstadisticas = (comprobantesData: ComprobanteVenta[]) => {
-    console.log('📊 [Stats] Calculando estadísticas para:', comprobantesData.length, 'comprobantes');
-    console.log('📊 [Stats] Primer comprobante:', comprobantesData[0]);
     
     if (!comprobantesData || comprobantesData.length === 0) {
       setStats(null);
@@ -198,7 +180,6 @@ const RvieVentas = ({
     let totalMonto = 0;
 
     comprobantesData.forEach((comp, index) => {
-      console.log(`📊 [Stats] Procesando comprobante ${index + 1}:`, comp);
       
       // Obtener el tipo de comprobante (puede venir en diferentes campos)
       const tipoComprobante = comp.codTipoCDP || comp.desTipoCDP || 'SIN_TIPO';
@@ -220,12 +201,6 @@ const RvieVentas = ({
       totalMonto += monto;
     });
 
-    console.log('📊 [Stats] Estadísticas calculadas:', {
-      total_comprobantes: comprobantesData.length,
-      total_monto: totalMonto,
-      por_tipo: porTipo,
-      por_estado: porEstado
-    });
 
     setStats({
       total_comprobantes: comprobantesData.length,
@@ -338,7 +313,6 @@ const RvieVentas = ({
       setTimeout(() => setSuccessMessage(null), 5000);
       
     } catch (error) {
-      console.error('❌ [Export] Error exportando:', error);
       setError('Error al exportar el reporte. Intente nuevamente.');
     }
   };
@@ -348,7 +322,6 @@ const RvieVentas = ({
       const url = 'https://e-menu.sunat.gob.pe/cl-ti-itmenu/MenuInternet.htm';
       window.open(url, '_blank', 'noopener,noreferrer');
     } catch (error) {
-      console.error('❌ [SUNAT] Error abriendo portal:', error);
       setError('Error al abrir el portal SUNAT.');
     }
   };
@@ -386,66 +359,16 @@ const RvieVentas = ({
   const limpiarCache = () => {
     const cacheKey = `rvie_ventas_${ruc}_${periodo.año}${periodo.mes}`;
     localStorage.removeItem(cacheKey);
-    console.log('🧹 [Cache] Cache limpiado para:', cacheKey);
     setSuccessMessage('🧹 Cache limpiado. La próxima consulta será desde SUNAT.');
     setTimeout(() => setSuccessMessage(null), 3000);
   };
 
   // 🔍 FUNCIÓN PARA DEBUG DE DATOS (NUEVA)
   const debugDatos = () => {
-    console.log('🔍 [DEBUG] Estado completo del componente:');
-    console.log('📊 Stats:', stats);
-    console.log('📋 Comprobantes RAW:', comprobantes);
-    console.log('🎯 Filtros:', filtros);
-    console.log('📑 Comprobantes filtrados:', comprobantesFiltrados);
-    console.log('🔄 Loading:', loadingComprobantes);
-    console.log('🔐 Auth:', authStatus);
-    
     // Analizar estructura detallada del primer comprobante
     if (comprobantes.length > 0) {
-      console.log('🔬 [DEBUG] ESTRUCTURA DETALLADA DEL PRIMER COMPROBANTE:');
-      const primer = comprobantes[0];
-      console.log('- Objeto completo:', primer);
-      console.log('- Todas las claves disponibles:', Object.keys(primer));
-      console.log('- Valores específicos:');
-      console.log('  - fecEmisionCDP:', primer.fecEmisionCDP);
-      console.log('  - fecha:', primer.fecha);
-      console.log('  - mtoOperExoneradas:', primer.mtoOperExoneradas);
-      console.log('  - exonerado:', primer.exonerado);
-      console.log('  - indTipoOperacion:', primer.indTipoOperacion);
-      console.log('  - tipoOperacion:', primer.tipoOperacion);
-      console.log('  - apeNomRznSocReceptor:', primer.apeNomRznSocReceptor);
-      console.log('  - cliente:', primer.cliente);
-      
-      // Mostrar TODOS los campos que contienen la palabra "fecha"
-      Object.keys(primer).forEach(key => {
-        if (key.toLowerCase().includes('fecha') || key.toLowerCase().includes('fec')) {
-          console.log(`  - ${key}:`, primer[key]);
-        }
-      });
-      
-      // Mostrar TODOS los campos que contienen nombres o clientes
-      Object.keys(primer).forEach(key => {
-        const value = primer[key];
-        if (typeof value === 'string' && value.length > 5) {
-          // Buscar campos que contengan nombres de personas
-          if (key.toLowerCase().includes('nombre') || 
-              key.toLowerCase().includes('cliente') || 
-              key.toLowerCase().includes('receptor') ||
-              key.toLowerCase().includes('razon') ||
-              // Buscar por contenido que parece nombre de persona
-              value.includes('CASTRO') || 
-              value.includes('TORRES') ||
-              value.includes('GUILLERMO') ||
-              value.includes('ARNOL') ||
-              value.includes('MIGDONIO') ||
-              value.includes('WILLIAM')) {
-            console.log(`  🏷️ CLIENTE CANDIDATO - ${key}:`, value);
-          }
-        }
-      });
+      // ...
     }
-    
     // Mostrar en pantalla también
     setSuccessMessage(`🔍 Debug: ${comprobantes.length} comprobantes totales, ${comprobantesFiltrados.length} filtrados. Ver consola para detalles completos.`);
     setTimeout(() => setSuccessMessage(null), 8000);

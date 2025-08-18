@@ -52,7 +52,7 @@ const RvieTicketsPage: React.FC = () => {
     try {
       await consultarTicket(ticketId);
     } catch (error) {
-      console.error('Error al consultar ticket:', error);
+      // ...
     }
   };
 
@@ -60,7 +60,7 @@ const RvieTicketsPage: React.FC = () => {
     try {
       await descargarArchivo(ticketId);
     } catch (error) {
-      console.error('Error al descargar archivo:', error);
+      // ...
     }
   };
 

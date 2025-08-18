@@ -40,7 +40,6 @@ export const sireGeneralService = {
       const response = await api.get(`${RVIE_BASE_URL}/endpoints`);
       return response.data;
     } catch (error) {
-      console.error('❌ [SIRE] Error obteniendo endpoints RVIE:', error);
       throw error;
     }
   }
@@ -56,22 +55,15 @@ export const sireAuthService = {
    */
   async checkAuth(ruc: string): Promise<SireAuthStatus> {
     const url = `${SIRE_BASE_URL}/status/${ruc}`;  // ✅ ARREGLADO: removido /auth
-    console.log('🔍 [SIRE] Llamando a checkAuth:', url);
-    console.log('🔍 [SIRE] RUC:', ruc);
-    console.log('🔍 [SIRE] SIRE_BASE_URL:', SIRE_BASE_URL);
     
     // Test de conectividad básica primero
     try {
-      console.log('🔍 [SIRE] Probando conectividad básica...');
       const healthResponse = await api.get('/api/v1/companies/');  // ✅ ARREGLADO: agregado /api/v1
-      console.log('✅ [SIRE] Conectividad básica OK:', healthResponse.status);
     } catch (error) {
-      console.error('❌ [SIRE] Problema de conectividad básica:', error);
     }
     
     try {
       const response = await api.get<SireStatusResponse>(url);
-      console.log('✅ [SIRE] Respuesta recibida:', response.data);
       
       // Convertir la respuesta del backend al formato esperado por el frontend
       return {
@@ -83,10 +75,6 @@ export const sireAuthService = {
         session_id: undefined // No disponible en el backend por ahora
       };
     } catch (error: any) {
-      console.error('❌ [SIRE] Error en checkAuth:', error);
-      console.error('❌ [SIRE] URL que falló:', url);
-      console.error('❌ [SIRE] Status:', error.response?.status);
-      console.error('❌ [SIRE] Data:', error.response?.data);
       throw error;
     }
   },
@@ -97,7 +85,6 @@ export const sireAuthService = {
   async authenticate(ruc: string): Promise<SireAuthStatus> {
     try {
       // Primero obtener las credenciales de la empresa
-      console.log('🔍 [SIRE] Obteniendo credenciales para autenticación...', ruc);
       const empresaResponse = await api.get(`/api/v1/companies/${ruc}`);  // ✅ CORREGIDO: agregado /api/v1
       const empresa = empresaResponse.data;
       
@@ -114,17 +101,10 @@ export const sireAuthService = {
         client_secret: empresa.sire_client_secret
       };
       
-      console.log('🔐 [SIRE] Enviando request de autenticación:', {
-        ruc: authRequest.ruc,
-        sunat_usuario: authRequest.sunat_usuario,
-        client_id: authRequest.client_id,
-        // No logear las claves por seguridad
-      });
       
       const response = await api.post(`${SIRE_BASE_URL}/login`, authRequest);  // ✅ ARREGLADO: removido /auth
       return response.data;
     } catch (error: any) {
-      console.error('❌ [SIRE] Error en autenticación:', error);
       throw error;
     }
   },
@@ -273,7 +253,6 @@ export const rvieService = {
     periodo: string
   ): Promise<RvieComprobante[]> {
     try {
-      console.log(`💰 [RVIE-VENTAS] Obteniendo comprobantes para RUC: ${ruc}, período: ${periodo}`);
       
       try {
         const propuesta = await this.consultarPropuestaGuardada(ruc, periodo);
@@ -292,7 +271,6 @@ export const rvieService = {
             observaciones: ''
           }));
           
-          console.log(`✅ [RVIE-VENTAS] Obtenidos ${comprobantes.length} comprobantes`);
           return comprobantes;
         }
       } catch (error: any) {
@@ -303,11 +281,9 @@ export const rvieService = {
       }
       
       // No hay propuesta - informar que se debe descargar primero
-      console.log(`ℹ️ [RVIE-VENTAS] No hay propuesta para período ${periodo}. Debe descargar propuesta RVIE primero.`);
       return [];
       
     } catch (error) {
-      console.error('❌ [RVIE-VENTAS] Error obteniendo comprobantes:', error);
       return [];
     }
   }
@@ -421,15 +397,12 @@ export const rvieTicketService = {
     operacion: 'descargar-propuesta' | 'aceptar-propuesta' | 'reemplazar-propuesta';
   }): Promise<RvieTicketResponse> {
     try {
-      console.log('🎫 [RVIE-TICKET] Generando ticket:', request);
       
       const response = await api.post(`${RVIE_BASE_URL}/generar-ticket`, request);
       
       const ticket = mapTicketResponse(response.data);
-      console.log('✅ [RVIE-TICKET] Ticket generado:', ticket.ticket_id);
       return ticket;
     } catch (error) {
-      console.error('❌ [RVIE-TICKET] Error generando ticket:', error);
       throw error;
     }
   },
@@ -439,16 +412,13 @@ export const rvieTicketService = {
    */
   async listarTickets(ruc: string, incluirTodos: boolean = false): Promise<RvieTicketResponse[]> {
     try {
-      console.log(`📋 [RVIE-TICKETS] Listando tickets para RUC: ${ruc}, incluirTodos: ${incluirTodos}`);
       
       const params = incluirTodos ? '?incluir_todos=true' : '';
       const response = await api.get(`${RVIE_BASE_URL}/tickets/${ruc}${params}`);
       
       const tickets = response.data.map((ticketData: any) => mapTicketResponse(ticketData));
-      console.log(`✅ [RVIE-TICKETS] Encontrados ${tickets.length} tickets`);
       return tickets;
     } catch (error) {
-      console.error('❌ [RVIE-TICKETS] Error listando tickets:', error);
       throw error;
     }
   },
@@ -458,15 +428,12 @@ export const rvieTicketService = {
    */
   async listarTodosTickets(ruc: string): Promise<RvieTicketResponse[]> {
     try {
-      console.log(`📋 [RVIE-TICKETS] Listando TODOS los tickets para RUC: ${ruc}`);
       
       const response = await api.get(`${RVIE_BASE_URL}/tickets/${ruc}?incluir_todos=true`);
       
       const tickets = response.data.map((ticketData: any) => mapTicketResponse(ticketData));
-      console.log(`✅ [RVIE-TICKETS] Encontrados ${tickets.length} tickets (incluyendo SYNC)`);
       return tickets;
     } catch (error) {
-      console.error('❌ [RVIE-TICKETS] Error listando todos los tickets:', error);
       throw error;
     }
   },
@@ -476,19 +443,15 @@ export const rvieTicketService = {
    */
   async consultarTicket(ruc: string, ticketId: string): Promise<RvieTicketResponse> {
     try {
-      console.log(`🔍 [RVIE-TICKET] Consultando ticket ${ticketId}`);
       
       const response = await api.get(`${RVIE_BASE_URL}/ticket/${ruc}/${ticketId}`);
       
       const ticket = mapTicketResponse(response.data);
-      console.log(`📊 [RVIE-TICKET] Estado del ticket: ${ticket.status}`);
       return ticket;
     } catch (error: any) {
-      console.error('❌ [RVIE-TICKET] Error consultando ticket:', error);
       
       // Si el ticket no se encuentra en la BD, intentar consultar directamente a SUNAT
       if (error.response?.status === 404) {
-        console.log('⚠️ [RVIE-TICKET] Ticket no encontrado en BD, consultando SUNAT directamente...');
         return await this.consultarTicketSunat(ruc, ticketId);
       }
       
@@ -501,7 +464,6 @@ export const rvieTicketService = {
    */
   async consultarTicketSunat(ruc: string, ticketId: string): Promise<RvieTicketResponse> {
     try {
-      console.log(`🔍 [RVIE-TICKET] Consultando ticket ${ticketId} directamente en SUNAT`);
       
       // Usar endpoint de consulta directa a SUNAT
       const response = await api.get(`${RVIE_BASE_URL}/consultar-ticket-sunat`, {
@@ -509,18 +471,15 @@ export const rvieTicketService = {
       });
       
       const ticket = mapTicketResponse(response.data);
-      console.log(`📊 [RVIE-TICKET] Estado del ticket desde SUNAT: ${ticket.status}`);
       
       // Opcionalmente, guardar el ticket en la BD para futuras consultas
       try {
         await this.sincronizarTicket(ruc, ticket);
       } catch (syncError) {
-        console.warn('⚠️ No se pudo sincronizar el ticket:', syncError);
       }
       
       return ticket;
     } catch (error) {
-      console.error('❌ [RVIE-TICKET] Error consultando ticket en SUNAT:', error);
       throw error;
     }
   },
@@ -530,16 +489,13 @@ export const rvieTicketService = {
    */
   async sincronizarTicket(ruc: string, ticket: RvieTicketResponse): Promise<void> {
     try {
-      console.log(`🔄 [RVIE-TICKET] Sincronizando ticket ${ticket.ticket_id}`);
       
       await api.post(`${RVIE_BASE_URL}/sincronizar-ticket`, {
         ruc,
         ticket
       });
       
-      console.log(`✅ [RVIE-TICKET] Ticket sincronizado: ${ticket.ticket_id}`);
     } catch (error) {
-      console.error('❌ [RVIE-TICKET] Error sincronizando ticket:', error);
       throw error;
     }
   },
@@ -549,14 +505,11 @@ export const rvieTicketService = {
    */
   async descargarArchivo(ruc: string, ticketId: string): Promise<RvieArchivoResponse> {
     try {
-      console.log(`📥 [RVIE-TICKET] Descargando archivo del ticket ${ticketId}`);
       
       const response = await api.get(`${RVIE_BASE_URL}/archivo/${ruc}/${ticketId}`);
       
-      console.log(`✅ [RVIE-TICKET] Archivo descargado: ${response.data.filename}`);
       return response.data;
     } catch (error) {
-      console.error('❌ [RVIE-TICKET] Error descargando archivo:', error);
       throw error;
     }
   },
@@ -566,7 +519,6 @@ export const rvieTicketService = {
    */
   async descargarArchivoBlob(ruc: string, ticketId: string): Promise<{ filename: string; blob: Blob }> {
     try {
-      console.log(`📥 [RVIE-TICKET] Descargando archivo del ticket ${ticketId}`);
       
       const response = await api.get(`${RVIE_BASE_URL}/archivo/${ruc}/${ticketId}`, {
         responseType: 'blob'  // Importante: recibir como blob
@@ -583,14 +535,12 @@ export const rvieTicketService = {
         }
       }
       
-      console.log(`✅ [RVIE-TICKET] Archivo descargado: ${filename} (${response.data.size} bytes)`);
       
       return {
         filename,
         blob: response.data  // response.data ya es un Blob cuando responseType es 'blob'
       };
     } catch (error) {
-      console.error('❌ [RVIE-TICKET] Error descargando archivo como blob:', error);
       throw error;
     }
   },
@@ -609,7 +559,6 @@ export const rvieTicketService = {
   ): Promise<RvieTicketResponse> {
     const { intervalo = 3000, maxIntentos = 20, onProgress } = options;
     
-    console.log(`👀 [RVIE-TICKET] Iniciando monitoreo del ticket ${ticketId}`);
     
     for (let intento = 1; intento <= maxIntentos; intento++) {
       try {
@@ -622,18 +571,15 @@ export const rvieTicketService = {
         
         // Verificar si está completado
         if (ticket.status === 'TERMINADO') {
-          console.log(`✅ [RVIE-TICKET] Ticket ${ticketId} completado exitosamente`);
           return ticket;
         }
         
         if (ticket.status === 'ERROR') {
-          console.log(`❌ [RVIE-TICKET] Ticket ${ticketId} falló: ${ticket.error_mensaje}`);
           return ticket;
         }
         
         // Si aún está procesando, esperar
         if (ticket.status === 'PENDIENTE' || ticket.status === 'PROCESANDO') {
-          console.log(`⏳ [RVIE-TICKET] Ticket ${ticketId} procesando... (${ticket.progreso_porcentaje}%)`);
           
           if (intento < maxIntentos) {
             await new Promise(resolve => setTimeout(resolve, intervalo));
@@ -641,7 +587,6 @@ export const rvieTicketService = {
         }
         
       } catch (error) {
-        console.error(`❌ [RVIE-TICKET] Error en intento ${intento}:`, error);
         
         if (intento === maxIntentos) {
           throw new Error(`Timeout monitoreando ticket después de ${maxIntentos} intentos`);
@@ -666,16 +611,13 @@ export const rvieVentasService = {
    */
   async consultarResumenSunat(ruc: string, periodo: string, tipoResumen: number = 1) {
     try {
-      console.log(`🔍 [RVIE-VENTAS] Consultando resumen SUNAT - RUC: ${ruc}, Período: ${periodo}, Tipo: ${tipoResumen}`);
       
       const response = await api.get(
         `${RVIE_BASE_URL}/ventas/resumen-sunat/${ruc}/${periodo}?tipo_resumen=${tipoResumen}`
       );
       
-      console.log(`✅ [RVIE-VENTAS] Resumen obtenido:`, response.data);
       return response.data;
     } catch (error: any) {
-      console.error('❌ [RVIE-VENTAS] Error consultando resumen SUNAT:', error);
       
       if (error.response?.status === 404) {
         return {
@@ -701,16 +643,13 @@ export const rvieVentasService = {
    */
   async obtenerComprobantesVentas(ruc: string, periodo: string, tipoResumen: number = 1) {
     try {
-      console.log(`📋 [RVIE-VENTAS] Obteniendo comprobantes - RUC: ${ruc}, Período: ${periodo}`);
       
       const response = await api.get(
         `${RVIE_BASE_URL}/ventas/comprobantes/${ruc}/${periodo}?tipo_resumen=${tipoResumen}`
       );
       
-      console.log(`✅ [RVIE-VENTAS] Comprobantes obtenidos:`, response.data.length);
       return response.data;
     } catch (error: any) {
-      console.error('❌ [RVIE-VENTAS] Error obteniendo comprobantes:', error);
       
       if (error.response?.status === 404) {
         // Retornar array vacío en lugar de lanzar error
@@ -727,7 +666,6 @@ export const rvieVentasService = {
    */
   async actualizarDesdeSunat(ruc: string, periodo: string, _tiposResumen: number[] = [1, 4, 5]) {
     try {
-      console.log(`🔄 [RVIE-VENTAS] Actualizando desde SUNAT - RUC: ${ruc}, Período: ${periodo}`);
       
       // ✅ USAR ENDPOINT QUE SÍ EXISTE: /comprobantes/{ruc}/{periodo}
       const response = await api.get(
@@ -741,11 +679,9 @@ export const rvieVentasService = {
         }
       );
       
-      console.log(`✅ [RVIE-VENTAS] Datos obtenidos desde SUNAT:`, response.data);
       
       // Verificar si hay datos
       if (response.data?.data?.registros && response.data.data.registros.length > 0) {
-        console.log(`📊 [RVIE-VENTAS] Encontrados ${response.data.data.registros.length} comprobantes`);
         return {
           success: true,
           data: response.data.data,
@@ -753,7 +689,6 @@ export const rvieVentasService = {
           periodo: periodo
         };
       } else {
-        console.log(`📭 [RVIE-VENTAS] No se encontraron comprobantes para el período ${periodo}`);
         return {
           success: true,
           data: { registros: [], paginacion: { totalRegistros: 0 } },
@@ -763,7 +698,6 @@ export const rvieVentasService = {
       }
       
     } catch (error) {
-      console.error('❌ [RVIE-VENTAS] Error actualizando desde SUNAT:', error);
       throw error;
     }
   },
@@ -788,7 +722,6 @@ export const rvieVentasService = {
       
       return estadisticas;
     } catch (error) {
-      console.error('❌ [RVIE-VENTAS] Error obteniendo estadísticas:', error);
       throw error;
     }
   }

@@ -69,12 +69,10 @@ const RvieOperacionesPage: React.FC = () => {
 
   // Wrappers para funciones de tickets
   const handleConsultarTicket = async (ticketId: string): Promise<void> => {
-    console.log('Consultando ticket:', ticketId);
     // TODO: Implementar lógica de consulta
   };
 
   const handleDescargarArchivo = async (ticketId: string): Promise<void> => {
-    console.log('Descargando archivo:', ticketId);  
     // TODO: Implementar lógica de descarga
   };
 
@@ -254,11 +252,9 @@ const RvieOperacionesPage: React.FC = () => {
           operacionActiva={null}
           tickets={tickets || []}
           onDescargarPropuesta={async (params) => {
-            console.log('Descargando propuesta:', params);
             // TODO: Implementar descarga de propuesta
           }}
           onAceptarPropuesta={async (params) => {
-            console.log('Aceptando propuesta:', params);
             // TODO: Implementar aceptar propuesta  
           }}
           onConsultarTicket={handleConsultarTicket}

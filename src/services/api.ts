@@ -14,19 +14,13 @@ const apiClient = axios.create({
 apiClient.interceptors.request.use(
   (config) => {
     // Solo log si hay errores (reducir spam en consola)
-    if (config.url?.includes('error') || config.url?.includes('debug')) {
-      console.log('🌐 [API] Request:', {
-        method: config.method?.toUpperCase(),
-        url: config.url,
-        fullURL: `${config.baseURL}${config.url}`
-      });
-    }
+  // ...
     
     // Aquí podríamos agregar tokens de autenticación si fuera necesario
     return config;
   },
   (error) => {
-    console.error('🌐 [API] Request Error:', error);
+  // ...
     return Promise.reject(error);
   }
 );
@@ -35,23 +29,11 @@ apiClient.interceptors.request.use(
 apiClient.interceptors.response.use(
   (response) => {
     // Solo log para errores o endpoints específicos (reducir spam)
-    if (response.config.url?.includes('error') || response.status >= 400) {
-      console.log('✅ [API] Response:', {
-        status: response.status,
-        url: response.config.url,
-        data: response.data
-      });
-    }
+  // ...
     return response;
   },
   (error) => {
-    console.error('❌ [API] Error:', {
-      message: error.message,
-      status: error.response?.status,
-      url: error.config?.url,
-      fullURL: `${error.config?.baseURL}${error.config?.url}`,
-      data: error.response?.data
-    });
+  // ...
     return Promise.reject(error);
   }
 );

@@ -106,7 +106,6 @@ export default function RviePanel({ company, onClose }: RviePanelProps) {
     if (company?.ruc) {
       checkAuth();
       cargarTickets(); // Cargar tickets existentes solo al cambiar RUC
-      console.log('🔄 [RviePanel] Carga inicial de tickets para RUC:', company.ruc);
     }
   }, [company?.ruc]); // Solo depende del RUC, no de las funciones
 
@@ -114,10 +113,8 @@ export default function RviePanel({ company, onClose }: RviePanelProps) {
   useEffect(() => {
     if (company?.ruc) {
       if (vistaActiva === 'operaciones') {
-        console.log('🔧 [RviePanel] Cargando todos los tickets para operaciones');
         cargarTodosTickets();
       } else {
-        console.log('📋 [RviePanel] Cargando tickets con archivos para tickets');
         cargarTickets();
       }
     }
@@ -128,14 +125,11 @@ export default function RviePanel({ company, onClose }: RviePanelProps) {
     const periodoActual = getPeriodoActual();
     if (periodoActual !== periodoSeleccionado && company?.ruc) {
       setPeriodoSeleccionado(periodoActual);
-      console.log(`📅 [RVIE] Período cambiado a: ${formatPeriodo(periodoActual)}`);
       
       // Cargar resumen guardado para el nuevo período
       cargarResumen(periodoActual).then((resumen) => {
         if (resumen) {
-          console.log(`✅ [RVIE] Resumen cargado para ${formatPeriodo(periodoActual)}:`, resumen);
         } else {
-          console.log(`ℹ️ [RVIE] No hay datos guardados para ${formatPeriodo(periodoActual)}`);
         }
       });
     }
@@ -143,9 +137,6 @@ export default function RviePanel({ company, onClose }: RviePanelProps) {
 
   // Debug: Para ver si los tickets están llegando
   useEffect(() => {
-    console.log('🎫 RVIE Debug - Tickets actuales:', tickets);
-    console.log('🎫 RVIE Debug - Total tickets:', tickets?.length || 0);
-    console.log('📊 RVIE Debug - Resumen actual:', resumen);
   }, [tickets, resumen]);
 
   // ========================================
@@ -160,9 +151,7 @@ export default function RviePanel({ company, onClose }: RviePanelProps) {
       const result = await descargarPropuesta(params);
       setResultado(result);
       // No recargar tickets automáticamente - el hook ya maneja la sincronización
-      console.log('🎫 [RviePanel] Propuesta descargada, hook maneja sincronización');
     } catch (err) {
-      console.error('Error al descargar propuesta:', err);
       setError(err instanceof Error ? err.message : 'Error desconocido al descargar propuesta');
     } finally {
       setOperacionActiva(null);
@@ -177,9 +166,7 @@ export default function RviePanel({ company, onClose }: RviePanelProps) {
       const result = await aceptarPropuesta(params);
       setResultado(result);
       // No recargar tickets automáticamente - el hook ya maneja la sincronización
-      console.log('🎫 [RviePanel] Propuesta aceptada, hook maneja sincronización');
     } catch (err) {
-      console.error('Error al aceptar propuesta:', err);
       setError(err instanceof Error ? err.message : 'Error desconocido al aceptar propuesta');
     } finally {
       setOperacionActiva(null);
@@ -190,9 +177,7 @@ export default function RviePanel({ company, onClose }: RviePanelProps) {
     try {
       await consultarTicket(ticketId);
       // No recargar tickets automáticamente para preservar ticket consultado externamente
-      console.log('🎫 [RviePanel] Ticket consultado, manteniendo estado actual');
     } catch (err) {
-      console.error('Error al consultar ticket:', err);
       setError(err instanceof Error ? err.message : 'Error al consultar ticket');
     }
   };
@@ -201,7 +186,6 @@ export default function RviePanel({ company, onClose }: RviePanelProps) {
     try {
       await descargarArchivo(ticketId);
     } catch (err) {
-      console.error('Error al descargar archivo:', err);
       setError(err instanceof Error ? err.message : 'Error al descargar archivo');
     }
   };

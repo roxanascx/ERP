@@ -42,7 +42,6 @@ export default function RvieOperaciones({
   onConsultarTicket,
   onDescargarArchivo
 }: RvieOperacionesProps) {
-  console.log('🔧 [RvieOperaciones] Renderizando con:', { periodo, authStatus, resumen, loading, operacionActiva });
 
   // Estados para opciones avanzadas
   const [mostrarOpcionesAvanzadas, setMostrarOpcionesAvanzadas] = useState(false);
@@ -62,7 +61,6 @@ export default function RvieOperaciones({
     ticket.ticket_id.startsWith('SYNC-')
   );
 
-  console.log('🎫 [RvieOperaciones] Tickets de descarga encontrados:', ticketsDescarga.length);
 
   const handleDescargarPropuesta = async () => {
     await onDescargarPropuesta({

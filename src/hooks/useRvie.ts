@@ -48,7 +48,6 @@ export function useRvie(options: UseRvieOptions) {
   // ========================================
 
   const handleError = useCallback((err: any, operacion: string) => {
-    console.error(`Error en ${operacion}:`, err);
     
     // Detectar errores específicos de SUNAT
     let messageForUser = '';
@@ -94,7 +93,6 @@ export function useRvie(options: UseRvieOptions) {
       setAuthStatus(status);
       return status;
     } catch (error) {
-      console.warn('Error verificando autenticación SIRE:', error);
       setAuthStatus({ authenticated: false });
       return { authenticated: false };
     }
@@ -127,7 +125,6 @@ export function useRvie(options: UseRvieOptions) {
       const endpoints = await sireGeneralService.getRvieEndpoints();
       setEndpointsDisponibles(endpoints);
     } catch (error) {
-      console.error('Error cargando endpoints RVIE:', error);
     }
   }, []);
 
@@ -137,30 +134,24 @@ export function useRvie(options: UseRvieOptions) {
 
   const cargarTickets = useCallback(async () => {
     try {
-      console.log(`🔄 [RVIE] Cargando tickets existentes para RUC: ${ruc}`);
       const ticketsData = await sireService.tickets.listarTickets(ruc, false); // Solo tickets con archivos
       setTickets(ticketsData);
-      console.log(`✅ [RVIE] Cargados ${ticketsData.length} tickets existentes`);
       
       // Nota: El monitoreo automático se configurará después de definir startTicketPolling
       
     } catch (error) {
-      console.error('Error cargando tickets existentes:', error);
       // No lanzar error para no bloquear la inicialización
     }
   }, [ruc]);
 
   const cargarTodosTickets = useCallback(async () => {
     try {
-      console.log(`🔄 [RVIE] Cargando TODOS los tickets para RUC: ${ruc}`);
       const ticketsData = await sireService.tickets.listarTickets(ruc, true); // Incluir tickets SYNC
       setTickets(ticketsData);
-      console.log(`✅ [RVIE] Cargados ${ticketsData.length} tickets completos`);
       
       // Nota: El monitoreo automático se configurará después de definir startTicketPolling
       
     } catch (error) {
-      console.error('Error cargando todos los tickets:', error);
       // No lanzar error para no bloquear la inicialización
     }
   }, [ruc]);
@@ -174,12 +165,6 @@ export function useRvie(options: UseRvieOptions) {
     setOperacionActiva('descargar_propuesta');
     
     try {
-      console.log('🚀 [FRONTEND] Iniciando descarga propuesta RVIE:', {
-        ruc,
-        periodo: request.periodo,
-        forzar_descarga: request.forzar_descarga || false,
-        incluir_detalle: request.incluir_detalle !== false
-      });
 
       // OPCIÓN 1: Llamar directamente (respuesta inmediata)
       if (!request.forzar_descarga) {
@@ -190,7 +175,6 @@ export function useRvie(options: UseRvieOptions) {
             incluir_detalle: request.incluir_detalle !== false
           });
 
-          console.log('✅ [FRONTEND] Respuesta inmediata de descarga propuesta:', response);
 
           // Crear ticket local para mostrar en la UI
           const ticket: RvieTicketResponse = {
@@ -217,12 +201,10 @@ export function useRvie(options: UseRvieOptions) {
           
         } catch (error: any) {
           // Si la respuesta inmediata falla, usar flujo de tickets
-          console.log('⚠️ [FRONTEND] Respuesta inmediata falló, usando flujo de tickets');
         }
       }
 
       // OPCIÓN 2: Generar ticket (operación asíncrona)
-      console.log('🎫 [FRONTEND] Generando ticket para operación asíncrona');
       
       const ticketRequest = {
         ruc,
@@ -232,7 +214,6 @@ export function useRvie(options: UseRvieOptions) {
 
       const ticket = await sireService.tickets.generarTicket(ticketRequest);
       
-      console.log('✅ [FRONTEND] Ticket generado:', ticket);
       
       // Agregar ticket al estado inmediatamente
       setTickets(prev => [ticket, ...prev]);
@@ -333,31 +314,24 @@ export function useRvie(options: UseRvieOptions) {
 
   const consultarTicket = useCallback(async (ticketId: string): Promise<RvieTicketResponse> => {
     try {
-      console.log(`🔍 [useRvie] Consultando ticket ${ticketId}...`);
       const ticket = await sireService.tickets.consultarTicket(ruc, ticketId);
-      console.log(`✅ [useRvie] Ticket consultado exitosamente:`, ticket);
       
       // Actualizar ticket en la lista
       setTickets(prev => {
-        console.log(`📝 [useRvie] Tickets antes de actualizar:`, prev.length);
         const index = prev.findIndex(t => t.ticket_id === ticketId);
-        console.log(`🔍 [useRvie] Índice del ticket existente:`, index);
         
         if (index >= 0) {
           const newTickets = [...prev];
           newTickets[index] = ticket;
-          console.log(`🔄 [useRvie] Ticket actualizado en posición ${index}`);
           return newTickets;
         } else {
           const newTickets = [...prev, ticket];
-          console.log(`➕ [useRvie] Ticket agregado. Total tickets:`, newTickets.length);
           return newTickets;
         }
       });
       
       return ticket;
     } catch (error) {
-      console.warn(`Error consultando ticket ${ticketId}:`, error);
       throw error;
     }
   }, [ruc]);
@@ -379,7 +353,6 @@ export function useRvie(options: UseRvieOptions) {
           stopTicketPolling(ticketId);
         }
       } catch (error) {
-        console.warn(`Error en polling de ticket ${ticketId}:`, error);
         stopTicketPolling(ticketId);
       }
     };
@@ -414,7 +387,6 @@ export function useRvie(options: UseRvieOptions) {
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
       
-      console.log(`✅ Archivo descargado: ${filename}`);
       
       return {
         filename,
@@ -433,20 +405,15 @@ export function useRvie(options: UseRvieOptions) {
 
   const cargarResumen = useCallback(async (periodo: string) => {
     try {
-      console.log(`📊 [RVIE] Cargando resumen guardado para ${ruc}-${periodo}`);
       const resumenData = await sireService.rvie.obtenerResumen(ruc, periodo);
       setResumen(resumenData);
-      console.log(`✅ [RVIE] Resumen cargado:`, resumenData);
       return resumenData;
     } catch (error: any) {
-      console.warn('⚠️ [RVIE] Error cargando resumen:', error);
       
       // Si no existe resumen guardado (404), eso es normal
       if (error.response?.status === 404) {
-        console.log(`ℹ️ [RVIE] No hay propuesta guardada para ${periodo}. Necesita descargar primero.`);
         setResumen(null);
       } else {
-        console.error('❌ [RVIE] Error inesperado cargando resumen:', error);
       }
       
       return null;
@@ -455,18 +422,13 @@ export function useRvie(options: UseRvieOptions) {
 
   const cargarPropuestaGuardada = useCallback(async (periodo: string) => {
     try {
-      console.log(`📄 [RVIE] Consultando propuesta guardada para ${ruc}-${periodo}`);
       const propuesta = await sireService.rvie.consultarPropuestaGuardada(ruc, periodo);
-      console.log(`✅ [RVIE] Propuesta guardada encontrada:`, propuesta);
       return propuesta;
     } catch (error: any) {
-      console.warn('⚠️ [RVIE] Error consultando propuesta guardada:', error);
       
       // Si no existe propuesta guardada (404), eso es normal
       if (error.response?.status === 404) {
-        console.log(`ℹ️ [RVIE] No hay propuesta guardada para ${periodo}. Necesita descargar primero.`);
       } else {
-        console.error('❌ [RVIE] Error inesperado consultando propuesta:', error);
       }
       
       return null;
@@ -479,19 +441,15 @@ export function useRvie(options: UseRvieOptions) {
       setInconsistencias(inconsistenciasData);
       return inconsistenciasData;
     } catch (error) {
-      console.warn('Error cargando inconsistencias:', error);
     }
   }, [ruc]);
 
   const cargarComprobantes = useCallback(async (periodo: string) => {
     try {
-      console.log(`📋 [RVIE] Cargando comprobantes para ${ruc}-${periodo}`);
       setLoading(true);
       const comprobantes = await rvieService.obtenerComprobantes(ruc, periodo);
-      console.log(`✅ [RVIE] Comprobantes cargados:`, comprobantes);
       return comprobantes;
     } catch (error: any) {
-      console.error('❌ [RVIE] Error cargando comprobantes:', error);
       handleError(error, 'cargarComprobantes');
       return [];
     } finally {
@@ -511,12 +469,9 @@ export function useRvie(options: UseRvieOptions) {
         
         // Si no está autenticado, intentar autenticación automática
         if (!status.authenticated) {
-          console.log('🔄 [RVIE] No hay sesión activa, intentando autenticación automática...');
           try {
             await authenticate();
-            console.log('✅ [RVIE] Autenticación automática exitosa');
           } catch (error) {
-            console.warn('⚠️ [RVIE] Autenticación automática falló:', error);
           }
         }
         
@@ -524,7 +479,6 @@ export function useRvie(options: UseRvieOptions) {
         await cargarTodosTickets();
         
       } catch (error) {
-        console.error('❌ [RVIE] Error en inicialización:', error);
       }
     };
 

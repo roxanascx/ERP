@@ -44,14 +44,9 @@ class RvieTicketService {
    */
   async generarTicket(request: GenerarTicketRequest): Promise<TicketResponse> {
     try {
-      console.log('🎫 [TICKETS] Generando ticket:', request);
-      
       const response = await apiClient.post(`${this.baseUrl}/generar-ticket`, request);
-      
-      console.log('✅ [TICKETS] Ticket generado:', response.data);
       return response.data;
     } catch (error: any) {
-      console.error('❌ [TICKETS] Error generando ticket:', error);
       throw new Error(error.response?.data?.detail || 'Error generando ticket');
     }
   }
@@ -61,14 +56,9 @@ class RvieTicketService {
    */
   async consultarTicket(ruc: string, ticketId: string): Promise<TicketResponse> {
     try {
-      console.log(`🔍 [TICKETS] Consultando ticket ${ticketId} para RUC ${ruc}`);
-      
       const response = await apiClient.get(`${this.baseUrl}/ticket/${ruc}/${ticketId}`);
-      
-      console.log('📊 [TICKETS] Estado ticket:', response.data);
       return response.data;
     } catch (error: any) {
-      console.error('❌ [TICKETS] Error consultando ticket:', error);
       throw new Error(error.response?.data?.detail || 'Error consultando ticket');
     }
   }
@@ -78,14 +68,9 @@ class RvieTicketService {
    */
   async descargarArchivo(ruc: string, ticketId: string): Promise<ArchivoResponse> {
     try {
-      console.log(`📥 [TICKETS] Descargando archivo del ticket ${ticketId}`);
-      
       const response = await apiClient.get(`${this.baseUrl}/archivo/${ruc}/${ticketId}`);
-      
-      console.log('✅ [TICKETS] Archivo descargado:', response.data);
       return response.data;
     } catch (error: any) {
-      console.error('❌ [TICKETS] Error descargando archivo:', error);
       throw new Error(error.response?.data?.detail || 'Error descargando archivo');
     }
   }
@@ -153,49 +138,36 @@ class RvieTicketService {
       const poll = async () => {
         try {
           attemptCount++;
-          
           const ticket = await this.consultarTicket(ruc, ticketId);
-          
           // Notificar progreso
           if (onProgress) {
             onProgress(ticket);
           }
-
           // Verificar estados finales
           if (ticket.status === 'TERMINADO') {
-            console.log('✅ [TICKETS] Ticket completado exitosamente');
             resolve(ticket);
             return;
           }
-
           if (ticket.status === 'ERROR') {
             const errorMsg = ticket.error_mensaje || 'Ticket falló';
-            console.error('❌ [TICKETS] Ticket falló:', errorMsg);
             if (onError) onError(errorMsg);
             reject(new Error(errorMsg));
             return;
           }
-
           // Verificar timeout
           if (attemptCount >= maxAttempts) {
             const timeoutMsg = `Timeout: Ticket no completó en ${maxAttempts} intentos`;
-            console.error('⏰ [TICKETS] Timeout:', timeoutMsg);
             if (onError) onError(timeoutMsg);
             reject(new Error(timeoutMsg));
             return;
           }
-
           // Continuar monitoring
-          console.log(`🔄 [TICKETS] Intento ${attemptCount}/${maxAttempts} - Estado: ${ticket.status} (${ticket.progreso_porcentaje}%)`);
           setTimeout(poll, pollInterval);
-
         } catch (error: any) {
-          console.error('❌ [TICKETS] Error en monitoreo:', error);
           if (onError) onError(error.message);
           reject(error);
         }
       };
-
       // Iniciar polling
       poll();
     });
@@ -218,38 +190,30 @@ class RvieTicketService {
     
     try {
       // Paso 1: Generar ticket
-      console.log(`🚀 [TICKETS] Iniciando procesamiento completo: ${operacion}`);
       const ticket = await this.generarTicket({ ruc, periodo, operacion });
-      
       if (callbacks.onTicketCreated) {
         callbacks.onTicketCreated(ticket);
       }
-
       // Paso 2: Monitorear hasta completar
       const ticketFinal = await this.monitorearTicket(ruc, ticket.ticket_id, {
         onProgress: callbacks.onProgress,
         onError: callbacks.onError
       });
-
       // Paso 3: Descargar archivo si está disponible
       let archivo: ArchivoResponse | undefined;
       if (ticketFinal.status === 'TERMINADO' && ticketFinal.archivo_nombre) {
         try {
           archivo = await this.descargarArchivo(ruc, ticket.ticket_id);
         } catch (error) {
-          console.warn('⚠️ [TICKETS] No se pudo descargar archivo, pero ticket completó exitosamente');
+          // ...
         }
       }
-
       // Notificar completado
       if (callbacks.onCompleted) {
         callbacks.onCompleted(ticketFinal, archivo);
       }
-
       return { ticket: ticketFinal, archivo };
-
     } catch (error: any) {
-      console.error('❌ [TICKETS] Error en procesamiento completo:', error);
       if (callbacks.onError) {
         callbacks.onError(error.message);
       }

@@ -56,15 +56,11 @@ const EmpresaPage: React.FC = () => {
   const handleConfigSire = async (empresa: Empresa) => {
     try {
       // Obtener los datos completos de la empresa para el modal SIRE
-      console.log('🔍 Obteniendo detalles completos para:', empresa.ruc);
       const empresaCompleta = await EmpresaApiService.getEmpresaByRuc(empresa.ruc);
-      console.log('📋 Empresa completa obtenida:', empresaCompleta);
-      
       setEmpresaConfigSire(empresaCompleta);
       setShowSireModal(true);
       limpiarError();
     } catch (error) {
-      console.error('❌ Error obteniendo detalles de empresa:', error);
       // El error será mostrado mediante el hook useEmpresa si es necesario
     }
   };
@@ -79,15 +75,12 @@ const EmpresaPage: React.FC = () => {
         }, 400);
       }
     } catch (error) {
-      console.error('Error al seleccionar empresa:', error);
+      // ...
     }
   };
 
   const handleDeleteEmpresa = async (ruc: string) => {
-    const success = await eliminarEmpresa(ruc);
-    if (success) {
-      console.log(`Empresa ${ruc} eliminada`);
-    }
+    await eliminarEmpresa(ruc);
   };
 
   // ============================================
@@ -105,13 +98,11 @@ const EmpresaPage: React.FC = () => {
       }
     } catch (error) {
       // El error ya se maneja en el hook useEmpresa
-      console.error('Error en handleSubmitCreate:', error);
     }
   };
 
   const handleSubmitUpdate = async (data: EmpresaCreate | EmpresaUpdate) => {
     if (!empresaEditando) return;
-    
     try {
       const updateData = data as EmpresaUpdate;
       const empresaActualizada = await actualizarEmpresa(empresaEditando.ruc, updateData);
@@ -121,7 +112,6 @@ const EmpresaPage: React.FC = () => {
       }
     } catch (error) {
       // El error ya se maneja en el hook useEmpresa
-      console.error('Error en handleSubmitUpdate:', error);
     }
   };
 
