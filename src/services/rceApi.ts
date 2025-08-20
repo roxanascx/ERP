@@ -14,6 +14,7 @@ import type {
   RceDescargaMasivaRequest,
   RceEstadisticas,
   RceResumenPeriodo,
+  RceResumenSunat,
   RceApiResponse,
   RceTicket,
   RceFiltros,
@@ -165,8 +166,9 @@ export const rceComprobantesApi = {
     return response.data;
   },
 
-  async obtenerResumenPeriodo(ruc: string, periodo: string): Promise<RceApiResponse<RceResumenPeriodo>> {
-    const response = await api.get(`${RCE_BASE_URL}/comprobantes/resumen`, {
+  async obtenerResumenPeriodo(ruc: string, periodo: string): Promise<RceResumenSunat> {
+    // Usar el endpoint exitoso que funciona correctamente
+    const response = await api.get(`${RCE_BASE_URL}/comprobantes/resumen-sunat`, {
       params: { ruc, periodo }
     });
     return response.data;

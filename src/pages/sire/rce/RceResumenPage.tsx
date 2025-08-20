@@ -7,7 +7,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useEmpresaValidation } from '../../../hooks/useEmpresaValidation';
-import api from '../../../services/api';
+import { rceApi } from '../../../services/rceApi';
 
 interface ResumenData {
   totalRegistros: number;
@@ -59,21 +59,22 @@ const RceResumenPage: React.FC = () => {
     try {
       console.log('📊 Consultando resumen para período:', selectedPeriod);
       
-      const response = await api.get('/api/v1/sire/rce/sunat/resumen', {
-        params: {
-          ruc: empresaActual.ruc,
-          per_tributario: selectedPeriod,
-          opcion: selectedOpcion
-        }
-      });
+      // Usar el servicio rceApi en lugar de llamada directa
+      const response = await rceApi.comprobantes.obtenerResumenPeriodo(empresaActual.ruc, selectedPeriod);
 
-      console.log('✅ Respuesta de resumen:', response.data);
+      console.log('✅ Respuesta de resumen:', response);
+      console.log('🔍 Contenido completo disponible:', !!response.contenido_completo);
+      console.log('📄 Contenido completo:', response.contenido_completo);
       
-      if (response.data.exitoso) {
+      if (response.exitoso) {
         setResumenData({
-          totalRegistros: response.data.datos?.registros?.length || 0,
-          resumenPeriodo: response.data.datos,
-          archivosDisponibles: response.data.datos?.archivos || []
+          totalRegistros: response.datos?.total_documentos || 0,
+          resumenPeriodo: {
+            ...response.datos,
+            contenido_completo: response.contenido_completo,
+            periodo: response.periodo
+          },
+          archivosDisponibles: []
         });
       } else {
         setError('No se encontraron datos de resumen para el período seleccionado');
@@ -394,28 +395,160 @@ const RceResumenPage: React.FC = () => {
                 <div style={{ fontWeight: 'bold', fontSize: '1.2rem' }}>{selectedPeriod}</div>
                 <div style={{ color: '#6b7280', fontSize: '0.9rem' }}>Período</div>
               </div>
+              
+              <div style={{
+                background: '#f0f9ff',
+                padding: '1rem',
+                borderRadius: '8px',
+                textAlign: 'center'
+              }}>
+                <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>💰</div>
+                <div style={{ fontWeight: 'bold', fontSize: '1.2rem' }}>
+                  {resumenData.resumenPeriodo?.total_cp ? `S/ ${resumenData.resumenPeriodo.total_cp}` : 'N/A'}
+                </div>
+                <div style={{ color: '#6b7280', fontSize: '0.9rem' }}>Total CP</div>
+              </div>
             </div>
 
-            {/* Datos del resumen */}
-            {resumenData.resumenPeriodo && (
+            {/* Tabla de Resumen Detallado estilo SUNAT */}
+            {resumenData.resumenPeriodo && resumenData.resumenPeriodo.contenido_completo && (
               <div style={{
                 background: '#f9fafb',
                 padding: '1.5rem',
                 borderRadius: '8px',
                 marginBottom: '2rem'
               }}>
-                <h3 style={{ margin: '0 0 1rem 0', color: '#374151' }}>📄 Datos del Período</h3>
-                <pre style={{
-                  background: 'white',
-                  padding: '1rem',
-                  borderRadius: '6px',
-                  border: '1px solid #e5e7eb',
-                  fontSize: '0.9rem',
-                  overflow: 'auto',
-                  maxHeight: '300px'
-                }}>
-                  {JSON.stringify(resumenData.resumenPeriodo, null, 2)}
-                </pre>
+                <h3 style={{ margin: '0 0 1.5rem 0', color: '#374151', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  � Resumen Detallado por Tipo de Documento
+                </h3>
+                
+                {(() => {
+                  const contenido = resumenData.resumenPeriodo.contenido_completo;
+                  const lineas = contenido.split('\n').filter(linea => linea.trim() !== '');
+                  
+                  if (lineas.length === 0) return null;
+                  
+                  // Primera línea son los headers
+                  const headers = lineas[0].split('|').map(h => h.trim());
+                  
+                  // Separar facturas individuales del total
+                  const todasLasFilas = lineas.slice(1).map(linea => 
+                    linea.split('|').map(celda => celda.trim())
+                  );
+                  
+                  // Filtrar solo las facturas (excluir TOTAL)
+                  const facturas = todasLasFilas.filter(fila => 
+                    !fila[0] || !fila[0].toUpperCase().includes('TOTAL')
+                  );
+                  
+                  // Encontrar la fila TOTAL para el resumen
+                  const filaTotal = todasLasFilas.find(fila => 
+                    fila[0] && fila[0].toUpperCase().includes('TOTAL')
+                  );
+
+                  // Mapeo de headers más legibles
+                  const headersLegibles = headers.map(header => {
+                    const mapa = {
+                      'Tipo de Documento': 'Tipo Doc.',
+                      'Total Documentos': 'Cant.',
+                      'BI Gravado DG': 'BI Gravado',
+                      'IGV / IPM DG': 'IGV',
+                      'BI Gravado DGNG': 'BI Grav. DGNG',
+                      'IGV / IPM DGNG': 'IGV DGNG',
+                      'BI Gravado DNG': 'BI Grav. DNG',
+                      'IGV / IPM DNG': 'IGV DNG',
+                      'Valor Adq. NG': 'Valor No Grav.',
+                      'ISC': 'ISC',
+                      'ICBPER': 'ICBPER',
+                      'Otros Trib/ Cargos': 'Otros Tributos',
+                      'Total CP': 'Total'
+                    };
+                    return mapa[header] || header;
+                  });
+                  
+                  return (
+                    <>
+                      {/* Información sobre los comprobantes encontrados */}
+                      {facturas.length > 0 && (
+                        <div style={{ 
+                          background: '#e0f2fe', 
+                          padding: '12px', 
+                          borderRadius: '8px', 
+                          marginBottom: '1rem',
+                          border: '1px solid #0891b2'
+                        }}>
+                          <p style={{ margin: 0, color: '#0e7490', fontSize: '0.9rem', fontWeight: '500' }}>
+                            📄 Se encontraron <strong>{facturas.length}</strong> comprobante(s) individual(es) para el período {resumenData.resumenPeriodo.periodo}
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Tabla de Facturas Individuales */}
+                      {facturas.length > 0 && (
+                        <div style={{ overflowX: 'auto', marginBottom: '2rem' }}>
+                          <table style={{
+                            width: '100%',
+                            borderCollapse: 'collapse',
+                            background: 'white',
+                            borderRadius: '8px',
+                            overflow: 'hidden',
+                            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
+                          }}>
+                            <thead>
+                              <tr style={{ background: '#1e40af', color: 'white' }}>
+                                {headersLegibles.map((header, index) => (
+                                  <th key={index} style={{
+                                    padding: '12px 8px',
+                                    textAlign: index === 0 ? 'left' : 'center',
+                                    fontSize: '0.85rem',
+                                    fontWeight: '600',
+                                    whiteSpace: 'nowrap',
+                                    borderRight: index < headersLegibles.length - 1 ? '1px solid rgba(255,255,255,0.2)' : 'none'
+                                  }}>
+                                    {header}
+                                  </th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {facturas.map((fila, rowIndex) => (
+                                <tr key={rowIndex} style={{
+                                  background: rowIndex % 2 === 0 ? '#f8fafc' : 'white',
+                                  borderBottom: '1px solid #e2e8f0',
+                                  transition: 'background-color 0.2s',
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.background = '#e0f2fe'}
+                                onMouseLeave={(e) => e.currentTarget.style.background = rowIndex % 2 === 0 ? '#f8fafc' : 'white'}
+                                >
+                                  {fila.map((celda, cellIndex) => (
+                                    <td key={cellIndex} style={{
+                                      padding: '10px 8px',
+                                      fontSize: '0.8rem',
+                                      borderRight: cellIndex < fila.length - 1 ? '1px solid #e2e8f0' : 'none',
+                                      color: '#374151',
+                                      textAlign: cellIndex === 0 ? 'left' : 'right',
+                                      whiteSpace: 'nowrap'
+                                    }}>
+                                      {/* Formatear números monetarios */}
+                                      {cellIndex === 0 
+                                        ? celda // Texto para "Tipo de Documento"
+                                        : cellIndex === 1 
+                                          ? celda // Número entero para "Cantidad"
+                                          : !isNaN(parseFloat(celda))
+                                            ? `S/ ${parseFloat(celda).toFixed(2)}`
+                                            : celda
+                                      }
+                                    </td>
+                                  ))}
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
               </div>
             )}
 

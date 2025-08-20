@@ -366,6 +366,23 @@ export interface RceResumenPeriodo {
   }>;
 }
 
+// Nuevo tipo para la respuesta directa de SUNAT
+export interface RceResumenSunat {
+  exitoso: boolean;
+  mensaje: string;
+  ruc: string;
+  periodo: string;
+  datos: {
+    tipo: string;
+    total_documentos: number;
+    total_cp: number;
+    valor_adq_ng: number;
+    contenido_raw: string;
+  } | null;
+  total_lineas: number;
+  contenido_completo: string;
+}
+
 // ========================================
 // TIPOS DE FILTROS Y BÚSQUEDA
 // ========================================

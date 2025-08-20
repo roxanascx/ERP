@@ -12,6 +12,7 @@ import type {
   RceTicket,
   RceEstadisticas,
   RceResumenPeriodo,
+  RceResumenSunat,
   RceFiltros,
   RceEstadoComprobante,
   RceEstadoPropuesta,
@@ -551,10 +552,32 @@ export const useRce = (options: UseRceOptions): UseRceReturn => {
     try {
       const response = await rceApi.comprobantes.obtenerResumenPeriodo(ruc, periodo);
       if (response.exitoso && response.datos) {
-        setResumenPeriodo(response.datos);
-        return response.datos;
+        // Convertir la respuesta de SUNAT al formato esperado por el frontend
+        const resumenConvertido: RceResumenPeriodo = {
+          periodo: response.periodo,
+          empresa: {
+            ruc: response.ruc,
+            razon_social: '' // TODO: obtener de empresa actual
+          },
+          total_comprobantes: response.datos.total_documentos,
+          total_importe: response.datos.total_cp,
+          total_igv: 0, // TODO: calcular desde datos SUNAT
+          comprobantes_validados: response.datos.total_documentos,
+          comprobantes_observados: 0,
+          comprobantes_anulados: 0,
+          total_propuestas: 0,
+          propuestas_enviadas: 0,
+          propuestas_aceptadas: 0,
+          alertas: response.exitoso ? [] : [{ 
+            tipo: 'error', 
+            mensaje: response.mensaje 
+          }]
+        };
+        
+        setResumenPeriodo(resumenConvertido);
+        return resumenConvertido;
       }
-      throw new Error('Error al obtener resumen de período');
+      throw new Error(response.mensaje || 'Error al obtener resumen de período');
     } catch (error) {
       handleError(error, 'obtener resumen');
       throw error;
