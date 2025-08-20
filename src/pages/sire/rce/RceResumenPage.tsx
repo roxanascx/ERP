@@ -21,8 +21,34 @@ const RceResumenPage: React.FC = () => {
   const [resumenData, setResumenData] = useState<ResumenData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [selectedPeriod, setSelectedPeriod] = useState('202507');
+  
+  // Estados separados para año y mes
+  const [selectedYear, setSelectedYear] = useState('2025');
+  const [selectedMonth, setSelectedMonth] = useState('07');
   const [selectedOpcion, setSelectedOpcion] = useState('1');
+
+  // Generar período de 6 dígitos (YYYYMM)
+  const selectedPeriod = `${selectedYear}${selectedMonth.padStart(2, '0')}`;
+
+  // Lista de meses
+  const months = [
+    { value: '01', label: 'Enero' },
+    { value: '02', label: 'Febrero' },
+    { value: '03', label: 'Marzo' },
+    { value: '04', label: 'Abril' },
+    { value: '05', label: 'Mayo' },
+    { value: '06', label: 'Junio' },
+    { value: '07', label: 'Julio' },
+    { value: '08', label: 'Agosto' },
+    { value: '09', label: 'Septiembre' },
+    { value: '10', label: 'Octubre' },
+    { value: '11', label: 'Noviembre' },
+    { value: '12', label: 'Diciembre' }
+  ];
+
+  // Lista de años (últimos 5 años)
+  const currentYear = new Date().getFullYear();
+  const years = Array.from({ length: 5 }, (_, i) => (currentYear - i).toString());
 
   const consultarResumen = async () => {
     if (!empresaActual) return;
@@ -190,23 +216,66 @@ const RceResumenPage: React.FC = () => {
 
         {/* Controles */}
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          {/* Selector de Año */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <label style={{ fontWeight: 'bold' }}>Período:</label>
+            <label style={{ fontWeight: 'bold' }}>Año:</label>
             <select
-              value={selectedPeriod}
-              onChange={(e) => setSelectedPeriod(e.target.value)}
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(e.target.value)}
               style={{
                 padding: '0.5rem',
                 borderRadius: '6px',
                 border: '1px solid #d1d5db',
-                fontSize: '0.9rem'
+                fontSize: '0.9rem',
+                minWidth: '80px'
               }}
             >
-              <option value="202507">Julio 2025</option>
-              <option value="202506">Junio 2025</option>
-              <option value="202505">Mayo 2025</option>
-              <option value="202504">Abril 2025</option>
+              {years.map(year => (
+                <option key={year} value={year}>{year}</option>
+              ))}
             </select>
+          </div>
+
+          {/* Selector de Mes */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <label style={{ fontWeight: 'bold' }}>Mes:</label>
+            <select
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              style={{
+                padding: '0.5rem',
+                borderRadius: '6px',
+                border: '1px solid #d1d5db',
+                fontSize: '0.9rem',
+                minWidth: '120px'
+              }}
+            >
+              {months.map(month => (
+                <option key={month.value} value={month.value}>
+                  {month.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Mostrar período calculado */}
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '0.5rem',
+            background: '#f3f4f6',
+            padding: '0.5rem 1rem',
+            borderRadius: '6px',
+            border: '1px solid #e5e7eb'
+          }}>
+            <label style={{ fontWeight: 'bold', color: '#374151' }}>Período:</label>
+            <span style={{ 
+              fontWeight: 'bold', 
+              color: '#1f2937',
+              fontFamily: 'monospace'
+            }}>
+              {selectedPeriod}
+            </span>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
