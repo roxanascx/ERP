@@ -77,7 +77,7 @@ const SireHomePage: React.FC = () => {
               fontSize: '2rem', 
               fontWeight: 'bold', 
               color: '#1f2937',
-              margin: '0 0 0.5rem 0'
+              margin: '0 0 8px 0'
             }}>
               🔗 SIRE - Sistema de Información de Reportes Electrónicos
             </h1>
@@ -93,7 +93,7 @@ const SireHomePage: React.FC = () => {
               background: '#6b7280',
               color: 'white',
               border: 'none',
-              padding: '0.5rem 1rem',
+              padding: '8px 1rem',
               borderRadius: '6px',
               cursor: 'pointer'
             }}
@@ -160,36 +160,51 @@ const SireHomePage: React.FC = () => {
           </div>
         </div>
 
-        {/* RCE - Registro de Compras (Futuro) */}
-        <div style={{
-          background: '#f9fafb',
-          padding: '2rem',
-          borderRadius: '12px',
-          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
-          border: '2px dashed #d1d5db'
-        }}>
+        {/* RCE - Registro de Compras Electrónico */}
+        <div
+          onClick={() => navigate('/sire/rce')}
+          style={{
+            background: 'white',
+            padding: '2rem',
+            borderRadius: '12px',
+            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
+            cursor: 'pointer',
+            transition: 'transform 0.3s ease, box-shadow 0.3s ease',
+            border: '2px solid transparent'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = 'translateY(-4px)';
+            e.currentTarget.style.boxShadow = '0 8px 30px rgba(0, 0, 0, 0.15)';
+            e.currentTarget.style.borderColor = '#10b981';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = 'translateY(0)';
+            e.currentTarget.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.1)';
+            e.currentTarget.style.borderColor = 'transparent';
+          }}
+        >
           <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: '3rem', marginBottom: '1rem', opacity: 0.5 }}>📋</div>
+            <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📋</div>
             <h3 style={{ 
-              color: '#9ca3af', 
+              color: '#10b981', 
               fontSize: '1.5rem', 
               margin: '0 0 1rem 0' 
             }}>
               RCE
             </h3>
             <p style={{ 
-              color: '#9ca3af', 
+              color: '#6b7280', 
               fontSize: '1.1rem', 
               margin: '0 0 1.5rem 0' 
             }}>
               Registro de Compras Electrónico
             </p>
-            <div style={{ textAlign: 'left', color: '#9ca3af' }}>
+            <div style={{ textAlign: 'left', color: '#374151' }}>
               <ul style={{ margin: 0, paddingLeft: '1.5rem' }}>
                 <li>Gestión de compras</li>
                 <li>Validación de documentos</li>
                 <li>Reportes de compras</li>
-                <li>Próximamente...</li>
+                <li>Consulta de inconsistencias</li>
               </ul>
             </div>
           </div>

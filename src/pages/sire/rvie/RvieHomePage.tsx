@@ -61,7 +61,7 @@ const RvieHomePage: React.FC = () => {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             {/* Breadcrumbs */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
               <button
                 onClick={() => navigate('/sire')}
                 style={{
@@ -98,12 +98,12 @@ const RvieHomePage: React.FC = () => {
               background: '#6b7280',
               color: 'white',
               border: 'none',
-              padding: '0.5rem 1rem',
+              padding: '8px 1rem',
               borderRadius: '6px',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
-              gap: '0.5rem'
+              gap: '8px'
             }}
           >
             ← Volver a SIRE
@@ -132,7 +132,7 @@ const RvieHomePage: React.FC = () => {
             <span style={{ 
               color: authStatus?.authenticated ? '#059669' : '#dc2626',
               fontWeight: 'bold',
-              marginLeft: '0.5rem'
+              marginLeft: '8px'
             }}>
               {authStatus?.authenticated ? '✅ Autenticado' : '❌ No autenticado'}
             </span>
@@ -157,7 +157,7 @@ const RvieHomePage: React.FC = () => {
           boxShadow: '0 2px 10px rgba(0, 0, 0, 0.1)',
           textAlign: 'center'
         }}>
-          <div style={{ fontSize: '2rem', color: '#059669', marginBottom: '0.5rem' }}>
+          <div style={{ fontSize: '2rem', color: '#059669', marginBottom: '8px' }}>
             {ticketsActivos}
           </div>
           <div style={{ color: '#6b7280', fontSize: '0.9rem' }}>Tickets Completados</div>
@@ -170,7 +170,7 @@ const RvieHomePage: React.FC = () => {
           boxShadow: '0 2px 10px rgba(0, 0, 0, 0.1)',
           textAlign: 'center'
         }}>
-          <div style={{ fontSize: '2rem', color: '#f59e0b', marginBottom: '0.5rem' }}>
+          <div style={{ fontSize: '2rem', color: '#f59e0b', marginBottom: '8px' }}>
             {ticketsPendientes}
           </div>
           <div style={{ color: '#6b7280', fontSize: '0.9rem' }}>Tickets en Proceso</div>
@@ -183,7 +183,7 @@ const RvieHomePage: React.FC = () => {
           boxShadow: '0 2px 10px rgba(0, 0, 0, 0.1)',
           textAlign: 'center'
         }}>
-          <div style={{ fontSize: '2rem', color: '#3b82f6', marginBottom: '0.5rem' }}>
+          <div style={{ fontSize: '2rem', color: '#3b82f6', marginBottom: '8px' }}>
             {loading ? '⏳' : '✅'}
           </div>
           <div style={{ color: '#6b7280', fontSize: '0.9rem' }}>Estado del Sistema</div>

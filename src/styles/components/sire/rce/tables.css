@@ -1,0 +1,568 @@
+/**
+ * Estilos para tablas, grids y layouts de datos en RCE
+ */
+
+/* ========================================
+ * SISTEMA DE TABLAS
+ * ======================================== */
+
+.rce-tabla-container {
+  background: var(--rce-bg-card);
+  border: var(--rce-border-width) solid var(--rce-border-color);
+  border-radius: var(--rce-border-radius-lg);
+  overflow: hidden;
+  box-shadow: var(--rce-shadow-sm);
+}
+
+.rce-tabla {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--rce-font-size-sm);
+}
+
+.rce-tabla thead {
+  background: var(--rce-bg-hover);
+}
+
+.rce-tabla th {
+  padding: var(--rce-spacing-md) var(--rce-spacing-lg);
+  text-align: left;
+  font-weight: var(--rce-font-weight-semibold);
+  color: var(--rce-text-primary);
+  border-bottom: var(--rce-border-width) solid var(--rce-border-color);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.rce-tabla td {
+  padding: var(--rce-spacing-md) var(--rce-spacing-lg);
+  border-bottom: var(--rce-border-width) solid var(--rce-border-color);
+  color: var(--rce-text-primary);
+  vertical-align: middle;
+}
+
+.rce-tabla tbody tr {
+  transition: background-color var(--rce-transition-fast) var(--rce-transition-ease);
+}
+
+.rce-tabla tbody tr:hover {
+  background: var(--rce-bg-hover);
+}
+
+.rce-tabla tbody tr.selected {
+  background: var(--rce-bg-selected);
+}
+
+.rce-tabla tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* Alineaciones de texto */
+.rce-text-left {
+  text-align: left;
+}
+
+.rce-text-center {
+  text-align: center;
+}
+
+.rce-text-right {
+  text-align: right;
+}
+
+.rce-text-truncate {
+  max-width: 200px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Columnas de acciones */
+.rce-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--rce-spacing-xs);
+  justify-content: center;
+}
+
+/* ========================================
+ * PAGINACIÓN
+ * ======================================== */
+
+.rce-paginacion {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--rce-spacing-lg) var(--rce-spacing-xl);
+  background: var(--rce-bg-card);
+  border-top: var(--rce-border-width) solid var(--rce-border-color);
+}
+
+.rce-paginacion-info {
+  font-size: var(--rce-font-size-sm);
+  color: var(--rce-text-secondary);
+}
+
+.rce-paginacion-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--rce-spacing-md);
+}
+
+.rce-btn-page {
+  padding: var(--rce-spacing-sm) var(--rce-spacing-md);
+  border: var(--rce-border-width) solid var(--rce-border-color);
+  border-radius: var(--rce-border-radius-md);
+  background: var(--rce-bg-card);
+  color: var(--rce-text-primary);
+  font-size: var(--rce-font-size-sm);
+  cursor: pointer;
+  transition: all var(--rce-transition-fast) var(--rce-transition-ease);
+}
+
+.rce-btn-page:hover:not(:disabled) {
+  background: var(--rce-bg-hover);
+  border-color: var(--rce-border-color-hover);
+}
+
+.rce-btn-page:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.rce-page-current {
+  padding: var(--rce-spacing-sm) var(--rce-spacing-md);
+  background: var(--rce-primary);
+  color: white;
+  border-radius: var(--rce-border-radius-md);
+  font-weight: var(--rce-font-weight-semibold);
+  min-width: 2.5rem;
+  text-align: center;
+}
+
+/* ========================================
+ * GRID DE CARDS
+ * ======================================== */
+
+.rce-grid {
+  display: grid;
+  gap: var(--rce-spacing-xl);
+}
+
+.rce-grid-2 {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.rce-grid-3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.rce-grid-4 {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.rce-grid-auto {
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+}
+
+/* Cards dentro del grid */
+.rce-card-grid {
+  background: var(--rce-bg-card);
+  border: var(--rce-border-width) solid var(--rce-border-color);
+  border-radius: var(--rce-border-radius-lg);
+  padding: var(--rce-spacing-xl);
+  box-shadow: var(--rce-shadow-sm);
+  transition: all var(--rce-transition-normal) var(--rce-transition-ease);
+}
+
+.rce-card-grid:hover {
+  box-shadow: var(--rce-shadow-md);
+  transform: translateY(-2px);
+}
+
+/* ========================================
+ * COMPONENTES ESPECÍFICOS
+ * ======================================== */
+
+/* Propuestas Grid */
+.rce-propuestas-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: var(--rce-spacing-xl);
+}
+
+.rce-propuesta-card {
+  background: var(--rce-bg-card);
+  border: var(--rce-border-width) solid var(--rce-border-color);
+  border-radius: var(--rce-border-radius-lg);
+  overflow: hidden;
+  box-shadow: var(--rce-shadow-sm);
+  transition: all var(--rce-transition-normal) var(--rce-transition-ease);
+}
+
+.rce-propuesta-card:hover {
+  box-shadow: var(--rce-shadow-md);
+  transform: translateY(-2px);
+}
+
+.rce-propuesta-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--rce-spacing-lg);
+  background: var(--rce-bg-hover);
+  border-bottom: var(--rce-border-width) solid var(--rce-border-color);
+}
+
+.rce-propuesta-info {
+  display: flex;
+  align-items: center;
+  gap: var(--rce-spacing-md);
+}
+
+.rce-propuesta-info h4 {
+  margin: 0;
+  font-size: var(--rce-font-size-lg);
+  font-weight: var(--rce-font-weight-semibold);
+  color: var(--rce-text-primary);
+}
+
+.rce-propuesta-actions {
+  display: flex;
+  gap: var(--rce-spacing-xs);
+}
+
+.rce-propuesta-content {
+  padding: var(--rce-spacing-lg);
+}
+
+.rce-propuesta-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--rce-spacing-md);
+  margin-bottom: var(--rce-spacing-lg);
+}
+
+.rce-propuesta-dates {
+  display: flex;
+  flex-direction: column;
+  gap: var(--rce-spacing-sm);
+  margin-bottom: var(--rce-spacing-lg);
+}
+
+.rce-date-item {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--rce-font-size-sm);
+}
+
+.rce-date-label {
+  color: var(--rce-text-secondary);
+  font-weight: var(--rce-font-weight-medium);
+}
+
+.rce-date-value {
+  color: var(--rce-text-primary);
+}
+
+.rce-propuesta-observaciones {
+  border-top: var(--rce-border-width) solid var(--rce-border-color);
+  padding-top: var(--rce-spacing-lg);
+}
+
+.rce-obs-label {
+  display: block;
+  font-size: var(--rce-font-size-sm);
+  font-weight: var(--rce-font-weight-medium);
+  color: var(--rce-text-secondary);
+  margin-bottom: var(--rce-spacing-sm);
+}
+
+.rce-obs-text {
+  margin: 0;
+  font-size: var(--rce-font-size-sm);
+  color: var(--rce-text-primary);
+  line-height: 1.5;
+}
+
+/* Procesos Grid */
+.rce-procesos-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: var(--rce-spacing-xl);
+}
+
+.rce-proceso-card {
+  background: var(--rce-bg-card);
+  border: var(--rce-border-width) solid var(--rce-border-color);
+  border-radius: var(--rce-border-radius-lg);
+  overflow: hidden;
+  box-shadow: var(--rce-shadow-sm);
+  transition: all var(--rce-transition-normal) var(--rce-transition-ease);
+}
+
+.rce-proceso-card:hover {
+  box-shadow: var(--rce-shadow-md);
+}
+
+.rce-proceso-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--rce-spacing-lg);
+  background: var(--rce-bg-hover);
+  border-bottom: var(--rce-border-width) solid var(--rce-border-color);
+}
+
+.rce-proceso-info {
+  display: flex;
+  align-items: center;
+  gap: var(--rce-spacing-xl);
+}
+
+.rce-proceso-tipo {
+  display: flex;
+  align-items: center;
+  gap: var(--rce-spacing-sm);
+}
+
+.rce-tipo-icon {
+  font-size: var(--rce-font-size-lg);
+}
+
+.rce-tipo-label {
+  font-size: var(--rce-font-size-sm);
+  font-weight: var(--rce-font-weight-semibold);
+  color: var(--rce-text-primary);
+  text-transform: capitalize;
+}
+
+.rce-proceso-estado {
+  display: flex;
+  align-items: center;
+  gap: var(--rce-spacing-sm);
+}
+
+.rce-estado-icon {
+  font-size: var(--rce-font-size-md);
+}
+
+.rce-proceso-actions {
+  display: flex;
+  gap: var(--rce-spacing-xs);
+}
+
+.rce-proceso-content {
+  padding: var(--rce-spacing-lg);
+}
+
+.rce-proceso-periodo {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: var(--rce-spacing-lg);
+  font-size: var(--rce-font-size-sm);
+}
+
+.rce-periodo-label {
+  color: var(--rce-text-secondary);
+  font-weight: var(--rce-font-weight-medium);
+}
+
+.rce-periodo-value {
+  color: var(--rce-text-primary);
+  font-weight: var(--rce-font-weight-semibold);
+}
+
+.rce-proceso-ticket {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: var(--rce-spacing-lg);
+  font-size: var(--rce-font-size-sm);
+}
+
+.rce-ticket-label {
+  color: var(--rce-text-secondary);
+  font-weight: var(--rce-font-weight-medium);
+}
+
+.rce-ticket-value {
+  color: var(--rce-primary);
+  font-weight: var(--rce-font-weight-semibold);
+  font-family: monospace;
+}
+
+/* Barra de progreso */
+.rce-proceso-progreso {
+  margin-bottom: var(--rce-spacing-lg);
+}
+
+.rce-progreso-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: var(--rce-spacing-sm);
+  font-size: var(--rce-font-size-sm);
+}
+
+.rce-progreso-label {
+  color: var(--rce-text-secondary);
+  font-weight: var(--rce-font-weight-medium);
+}
+
+.rce-progreso-porcentaje {
+  color: var(--rce-text-primary);
+  font-weight: var(--rce-font-weight-semibold);
+}
+
+.rce-progreso-bar {
+  height: 8px;
+  background: var(--rce-border-color);
+  border-radius: var(--rce-border-radius-full);
+  overflow: hidden;
+}
+
+.rce-progreso-fill {
+  height: 100%;
+  border-radius: var(--rce-border-radius-full);
+  transition: width var(--rce-transition-normal) var(--rce-transition-ease);
+}
+
+/* Estadísticas del proceso */
+.rce-proceso-stats {
+  margin-bottom: var(--rce-spacing-lg);
+}
+
+.rce-stat-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--rce-spacing-md);
+}
+
+.rce-proceso-tiempos {
+  display: flex;
+  flex-direction: column;
+  gap: var(--rce-spacing-sm);
+  margin-bottom: var(--rce-spacing-lg);
+}
+
+.rce-tiempo-item {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--rce-font-size-sm);
+}
+
+.rce-tiempo-label {
+  color: var(--rce-text-secondary);
+  font-weight: var(--rce-font-weight-medium);
+}
+
+.rce-tiempo-value {
+  color: var(--rce-text-primary);
+}
+
+/* Mensajes de proceso */
+.rce-proceso-mensaje {
+  padding: var(--rce-spacing-md);
+  border-radius: var(--rce-border-radius-md);
+  font-size: var(--rce-font-size-sm);
+  margin-bottom: var(--rce-spacing-lg);
+}
+
+.rce-proceso-mensaje.success {
+  background: rgba(16, 185, 129, 0.1);
+  border: var(--rce-border-width) solid var(--rce-estado-validado);
+  color: var(--rce-estado-validado);
+}
+
+.rce-proceso-mensaje.error {
+  background: rgba(239, 68, 68, 0.1);
+  border: var(--rce-border-width) solid var(--rce-estado-anulado);
+  color: var(--rce-estado-anulado);
+}
+
+.rce-proceso-errores {
+  border-top: var(--rce-border-width) solid var(--rce-border-color);
+  padding-top: var(--rce-spacing-lg);
+}
+
+.rce-proceso-errores h5 {
+  margin: 0 0 var(--rce-spacing-sm) 0;
+  font-size: var(--rce-font-size-sm);
+  font-weight: var(--rce-font-weight-semibold);
+  color: var(--rce-estado-anulado);
+}
+
+.rce-proceso-errores ul {
+  margin: 0;
+  padding-left: var(--rce-spacing-lg);
+  color: var(--rce-text-secondary);
+}
+
+.rce-proceso-errores li {
+  font-size: var(--rce-font-size-sm);
+  line-height: 1.5;
+}
+
+/* ========================================
+ * RESPONSIVE DESIGN
+ * ======================================== */
+
+@media (max-width: 1024px) {
+  .rce-grid-4 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .rce-grid-3 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .rce-tabla-container {
+    overflow-x: auto;
+  }
+  
+  .rce-tabla {
+    min-width: 600px;
+  }
+  
+  .rce-grid-2,
+  .rce-grid-3,
+  .rce-grid-4 {
+    grid-template-columns: 1fr;
+  }
+  
+  .rce-propuestas-grid,
+  .rce-procesos-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .rce-paginacion {
+    flex-direction: column;
+    gap: var(--rce-spacing-md);
+    text-align: center;
+  }
+  
+  .rce-stat-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .rce-propuesta-header,
+  .rce-proceso-header {
+    flex-direction: column;
+    gap: var(--rce-spacing-md);
+    align-items: stretch;
+  }
+  
+  .rce-propuesta-info,
+  .rce-proceso-info {
+    justify-content: space-between;
+  }
+  
+  .rce-propuesta-actions,
+  .rce-proceso-actions {
+    justify-content: center;
+  }
+}

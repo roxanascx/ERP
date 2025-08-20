@@ -68,11 +68,11 @@ const RvieOperacionesPage: React.FC = () => {
   }
 
   // Wrappers para funciones de tickets
-  const handleConsultarTicket = async (ticketId: string): Promise<void> => {
+  const handleConsultarTicket = async (_ticketId: string): Promise<void> => {
     // TODO: Implementar lógica de consulta
   };
 
-  const handleDescargarArchivo = async (ticketId: string): Promise<void> => {
+  const handleDescargarArchivo = async (_ticketId: string): Promise<void> => {
     // TODO: Implementar lógica de descarga
   };
 
@@ -93,7 +93,7 @@ const RvieOperacionesPage: React.FC = () => {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             {/* Breadcrumbs */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
               <button
                 onClick={() => navigate('/sire')}
                 style={{
@@ -143,12 +143,12 @@ const RvieOperacionesPage: React.FC = () => {
               background: '#6b7280',
               color: 'white',
               border: 'none',
-              padding: '0.5rem 1rem',
+              padding: '8px 1rem',
               borderRadius: '6px',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
-              gap: '0.5rem'
+              gap: '8px'
             }}
           >
             ← Volver a RVIE
@@ -167,12 +167,12 @@ const RvieOperacionesPage: React.FC = () => {
         <h3 style={{ margin: '0 0 1rem 0', color: '#374151' }}>📅 Seleccionar Período</h3>
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
           <div>
-            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>Año:</label>
+            <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>Año:</label>
             <select
               value={periodo.año}
               onChange={(e) => setPeriodo(prev => ({ ...prev, año: e.target.value }))}
               style={{
-                padding: '0.5rem',
+                padding: '8px',
                 borderRadius: '6px',
                 border: '1px solid #d1d5db',
                 fontSize: '1rem'
@@ -185,12 +185,12 @@ const RvieOperacionesPage: React.FC = () => {
           </div>
           
           <div>
-            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>Mes:</label>
+            <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>Mes:</label>
             <select
               value={periodo.mes}
               onChange={(e) => setPeriodo(prev => ({ ...prev, mes: e.target.value }))}
               style={{
-                padding: '0.5rem',
+                padding: '8px',
                 borderRadius: '6px',
                 border: '1px solid #d1d5db',
                 fontSize: '1rem'
@@ -229,7 +229,7 @@ const RvieOperacionesPage: React.FC = () => {
           color: authStatus?.authenticated ? '#065f46' : '#92400e',
           display: 'flex',
           alignItems: 'center',
-          gap: '0.5rem'
+          gap: '8px'
         }}>
           {authStatus?.authenticated ? '✅' : '⚠️'}
           <strong>Estado SUNAT:</strong> 
@@ -251,10 +251,10 @@ const RvieOperacionesPage: React.FC = () => {
           loading={loading}
           operacionActiva={null}
           tickets={tickets || []}
-          onDescargarPropuesta={async (params) => {
+          onDescargarPropuesta={async (_params) => {
             // TODO: Implementar descarga de propuesta
           }}
-          onAceptarPropuesta={async (params) => {
+          onAceptarPropuesta={async (_params) => {
             // TODO: Implementar aceptar propuesta  
           }}
           onConsultarTicket={handleConsultarTicket}

@@ -1,6 +1,6 @@
 /**
  * Servicio API para el módulo SIRE
- * Comunicación con endpoints del backend SIRE
+ * Comunicación con endpoints del backend SIRE (RVIE y RCE)
  */
 
 import api from './api';
@@ -17,7 +17,9 @@ import type {
   RvieComprobante,
   RvieInconsistencia,
   SireAuthStatus,
-  SireStatusResponse
+  SireStatusResponse,
+  SireModuloActivo,
+  SireModuloConfig
 } from '../types/sire';
 
 // ========================================
@@ -26,6 +28,7 @@ import type {
 
 const SIRE_BASE_URL = '/api/v1/sire';  // Actualizado para usar /api/v1
 const RVIE_BASE_URL = `${SIRE_BASE_URL}/rvie`;
+const RCE_BASE_URL = `${SIRE_BASE_URL}/rce`;
 
 // ========================================
 // SERVICIOS GENERALES SIRE
@@ -39,6 +42,55 @@ export const sireGeneralService = {
     try {
       const response = await api.get(`${RVIE_BASE_URL}/endpoints`);
       return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  /**
+   * Obtener endpoints RCE disponibles
+   */
+  async getRceEndpoints() {
+    try {
+      const response = await api.get(`${RCE_BASE_URL}/comprobantes/health`);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  /**
+   * Verificar estado de módulos SIRE
+   */
+  async verificarEstadoModulos(ruc: string): Promise<{
+    rvie: SireModuloConfig;
+    rce: SireModuloConfig;
+    modulo_activo: SireModuloActivo;
+  }> {
+    try {
+      const [rvieHealth, rceHealth] = await Promise.allSettled([
+        api.get(`${RVIE_BASE_URL}/health`, { params: { ruc } }),
+        api.get(`${RCE_BASE_URL}/comprobantes/health`, { params: { ruc } })
+      ]);
+
+      const rvieDisponible = rvieHealth.status === 'fulfilled' && rvieHealth.value.data.exitoso;
+      const rceDisponible = rceHealth.status === 'fulfilled' && rceHealth.value.data.exitoso;
+
+      return {
+        rvie: {
+          disponible: rvieDisponible,
+          ultimo_check: new Date().toISOString(),
+          endpoints_activos: rvieDisponible ? ['consultas', 'propuestas', 'tickets'] : [],
+          configuracion: {}
+        },
+        rce: {
+          disponible: rceDisponible,
+          ultimo_check: new Date().toISOString(),
+          endpoints_activos: rceDisponible ? ['comprobantes', 'propuestas', 'procesos'] : [],
+          configuracion: {}
+        },
+        modulo_activo: 'ninguno' // Por defecto, el usuario debe seleccionar
+      };
     } catch (error) {
       throw error;
     }
@@ -58,8 +110,9 @@ export const sireAuthService = {
     
     // Test de conectividad básica primero
     try {
-      const healthResponse = await api.get('/api/v1/companies/');  // ✅ ARREGLADO: agregado /api/v1
+      await api.get('/api/v1/companies/');  // ✅ ARREGLADO: agregado /api/v1
     } catch (error) {
+      // Error de conectividad ignorado para el test básico
     }
     
     try {

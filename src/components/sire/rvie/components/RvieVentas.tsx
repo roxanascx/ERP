@@ -179,7 +179,7 @@ const RvieVentas = ({
     const porEstado: Record<string, number> = {};
     let totalMonto = 0;
 
-    comprobantesData.forEach((comp, index) => {
+    comprobantesData.forEach((comp) => {
       
       // Obtener el tipo de comprobante (puede venir en diferentes campos)
       const tipoComprobante = comp.codTipoCDP || comp.desTipoCDP || 'SIN_TIPO';

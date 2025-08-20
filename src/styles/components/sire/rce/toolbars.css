@@ -1,0 +1,534 @@
+/**
+ * Estilos para toolbars, estadísticas y componentes de navegación RCE
+ */
+
+/* ========================================
+ * TOOLBARS Y BARRAS DE HERRAMIENTAS
+ * ======================================== */
+
+.rce-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--rce-spacing-lg);
+  padding: var(--rce-spacing-lg) var(--rce-spacing-xl);
+  background: var(--rce-bg-card);
+  border: var(--rce-border-width) solid var(--rce-border-color);
+  border-radius: var(--rce-border-radius-lg);
+  margin-bottom: var(--rce-spacing-xl);
+  box-shadow: var(--rce-shadow-sm);
+}
+
+.rce-comprobantes-toolbar,
+.rce-propuestas-toolbar,
+.rce-procesos-toolbar,
+.rce-estadisticas-toolbar {
+  @extend .rce-toolbar;
+}
+
+.rce-toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: var(--rce-spacing-lg);
+  flex: 1;
+}
+
+.rce-toolbar-left h3 {
+  margin: 0;
+  font-size: var(--rce-font-size-lg);
+  font-weight: var(--rce-font-weight-semibold);
+  color: var(--rce-text-primary);
+}
+
+.rce-toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: var(--rce-spacing-md);
+}
+
+/* Filtros en toolbar */
+.rce-filtros {
+  display: flex;
+  align-items: center;
+  gap: var(--rce-spacing-md);
+}
+
+.rce-filtro-quick {
+  display: flex;
+  gap: var(--rce-spacing-xs);
+}
+
+.rce-btn-filter {
+  background: var(--rce-bg-card);
+  border: var(--rce-border-width) solid var(--rce-border-color);
+  color: var(--rce-text-secondary);
+}
+
+.rce-btn-filter.active {
+  background: var(--rce-primary-50);
+  border-color: var(--rce-primary);
+  color: var(--rce-primary);
+}
+
+.rce-btn-refresh {
+  background: var(--rce-bg-card);
+  border: var(--rce-border-width) solid var(--rce-border-color);
+  color: var(--rce-text-secondary);
+}
+
+.rce-btn-refresh:hover {
+  background: var(--rce-bg-hover);
+  border-color: var(--rce-border-color-hover);
+  color: var(--rce-text-primary);
+}
+
+/* Selectores de vista */
+.rce-vista-selector {
+  display: flex;
+  border: var(--rce-border-width) solid var(--rce-border-color);
+  border-radius: var(--rce-border-radius-md);
+  overflow: hidden;
+}
+
+.rce-btn-vista {
+  padding: var(--rce-spacing-sm) var(--rce-spacing-md);
+  background: var(--rce-bg-card);
+  border: none;
+  border-right: var(--rce-border-width) solid var(--rce-border-color);
+  color: var(--rce-text-secondary);
+  font-size: var(--rce-font-size-sm);
+  cursor: pointer;
+  transition: all var(--rce-transition-fast) var(--rce-transition-ease);
+}
+
+.rce-btn-vista:last-child {
+  border-right: none;
+}
+
+.rce-btn-vista:hover {
+  background: var(--rce-bg-hover);
+  color: var(--rce-text-primary);
+}
+
+.rce-btn-vista.active {
+  background: var(--rce-primary);
+  color: white;
+}
+
+/* ========================================
+ * PANELES DE FILTROS
+ * ======================================== */
+
+.rce-filtros-panel {
+  background: var(--rce-bg-card);
+  border: var(--rce-border-width) solid var(--rce-border-color);
+  border-radius: var(--rce-border-radius-lg);
+  margin-bottom: var(--rce-spacing-xl);
+  overflow: hidden;
+  box-shadow: var(--rce-shadow-sm);
+}
+
+.rce-filtros-content {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--rce-spacing-lg);
+  padding: var(--rce-spacing-xl);
+}
+
+.rce-filtro-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--rce-spacing-sm);
+}
+
+.rce-filtro-group label {
+  font-size: var(--rce-font-size-sm);
+  font-weight: var(--rce-font-weight-medium);
+  color: var(--rce-text-secondary);
+}
+
+.rce-filtro-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--rce-spacing-md);
+  padding-top: var(--rce-spacing-lg);
+  border-top: var(--rce-border-width) solid var(--rce-border-color);
+}
+
+.rce-btn-clear {
+  background: transparent;
+  border: var(--rce-border-width) solid var(--rce-border-color);
+  color: var(--rce-text-secondary);
+}
+
+.rce-btn-clear:hover {
+  background: var(--rce-bg-hover);
+  border-color: var(--rce-border-color-hover);
+  color: var(--rce-text-primary);
+}
+
+/* ========================================
+ * ACCIONES MASIVAS
+ * ======================================== */
+
+.rce-acciones-masivas {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--rce-spacing-lg);
+  padding: var(--rce-spacing-md) var(--rce-spacing-xl);
+  background: var(--rce-primary-50);
+  border: var(--rce-border-width) solid var(--rce-primary-100);
+  border-radius: var(--rce-border-radius-lg);
+  margin-bottom: var(--rce-spacing-xl);
+}
+
+.rce-seleccion-info {
+  font-size: var(--rce-font-size-sm);
+  font-weight: var(--rce-font-weight-medium);
+  color: var(--rce-primary-700);
+}
+
+.rce-acciones-buttons {
+  display: flex;
+  gap: var(--rce-spacing-sm);
+}
+
+.rce-btn-validate {
+  background: var(--rce-estado-validado);
+  border-color: var(--rce-estado-validado);
+  color: white;
+}
+
+.rce-btn-validate:hover {
+  background: #059669;
+  border-color: #059669;
+}
+
+.rce-btn-delete {
+  background: var(--rce-estado-anulado);
+  border-color: var(--rce-estado-anulado);
+  color: white;
+}
+
+.rce-btn-delete:hover {
+  background: #dc2626;
+  border-color: #dc2626;
+}
+
+.rce-btn-export {
+  background: var(--rce-primary);
+  border-color: var(--rce-primary);
+  color: white;
+}
+
+.rce-btn-export:hover {
+  background: var(--rce-primary-dark);
+  border-color: var(--rce-primary-dark);
+}
+
+/* ========================================
+ * ESTADÍSTICAS Y MÉTRICAS
+ * ======================================== */
+
+.rce-estadisticas-resumen,
+.rce-propuestas-stats,
+.rce-procesos-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: var(--rce-spacing-lg);
+  margin-bottom: var(--rce-spacing-xl);
+}
+
+.rce-stat-item,
+.rce-stat-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--rce-spacing-lg);
+  background: var(--rce-bg-card);
+  border: var(--rce-border-width) solid var(--rce-border-color);
+  border-radius: var(--rce-border-radius-lg);
+  text-align: center;
+  box-shadow: var(--rce-shadow-sm);
+  transition: all var(--rce-transition-normal) var(--rce-transition-ease);
+}
+
+.rce-stat-item:hover,
+.rce-stat-card:hover {
+  box-shadow: var(--rce-shadow-md);
+  transform: translateY(-2px);
+}
+
+.rce-stat-label {
+  font-size: var(--rce-font-size-sm);
+  font-weight: var(--rce-font-weight-medium);
+  color: var(--rce-text-secondary);
+  margin-bottom: var(--rce-spacing-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.rce-stat-value {
+  font-size: var(--rce-font-size-xl);
+  font-weight: var(--rce-font-weight-bold);
+  color: var(--rce-text-primary);
+}
+
+/* Métricas con iconos */
+.rce-metricas-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: var(--rce-spacing-xl);
+  margin-bottom: var(--rce-spacing-2xl);
+}
+
+.rce-metrica-card {
+  background: var(--rce-bg-card);
+  border: var(--rce-border-width) solid var(--rce-border-color);
+  border-radius: var(--rce-border-radius-lg);
+  padding: var(--rce-spacing-xl);
+  box-shadow: var(--rce-shadow-sm);
+  transition: all var(--rce-transition-normal) var(--rce-transition-ease);
+  border-left-width: 4px;
+}
+
+.rce-metrica-card:hover {
+  box-shadow: var(--rce-shadow-md);
+  transform: translateY(-2px);
+}
+
+.rce-metrica-header {
+  display: flex;
+  align-items: center;
+  gap: var(--rce-spacing-md);
+  margin-bottom: var(--rce-spacing-lg);
+}
+
+.rce-metrica-icono {
+  font-size: var(--rce-font-size-2xl);
+}
+
+.rce-metrica-titulo {
+  margin: 0;
+  font-size: var(--rce-font-size-md);
+  font-weight: var(--rce-font-weight-semibold);
+  color: var(--rce-text-primary);
+}
+
+.rce-metrica-valor {
+  font-size: var(--rce-font-size-3xl);
+  font-weight: var(--rce-font-weight-bold);
+  margin-bottom: var(--rce-spacing-md);
+}
+
+.rce-metrica-tendencia {
+  display: flex;
+  align-items: center;
+  gap: var(--rce-spacing-sm);
+  font-size: var(--rce-font-size-sm);
+  font-weight: var(--rce-font-weight-medium);
+}
+
+.rce-tendencia-icono {
+  font-size: var(--rce-font-size-md);
+}
+
+/* ========================================
+ * GRÁFICOS Y VISUALIZACIONES
+ * ======================================== */
+
+.rce-grafico-barras {
+  background: var(--rce-bg-card);
+  border: var(--rce-border-width) solid var(--rce-border-color);
+  border-radius: var(--rce-border-radius-lg);
+  padding: var(--rce-spacing-xl);
+  box-shadow: var(--rce-shadow-sm);
+  margin-bottom: var(--rce-spacing-xl);
+}
+
+.rce-grafico-barras h4 {
+  margin: 0 0 var(--rce-spacing-xl) 0;
+  font-size: var(--rce-font-size-lg);
+  font-weight: var(--rce-font-weight-semibold);
+  color: var(--rce-text-primary);
+  text-align: center;
+}
+
+.rce-barras-container {
+  display: flex;
+  align-items: end;
+  gap: var(--rce-spacing-lg);
+  height: 200px;
+  padding: var(--rce-spacing-lg) 0;
+}
+
+.rce-barra-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+  gap: var(--rce-spacing-sm);
+}
+
+.rce-barra-wrapper {
+  width: 100%;
+  height: 150px;
+  display: flex;
+  align-items: end;
+  justify-content: center;
+}
+
+.rce-barra {
+  width: 60%;
+  min-height: 4px;
+  border-radius: var(--rce-border-radius-sm) var(--rce-border-radius-sm) 0 0;
+  transition: all var(--rce-transition-normal) var(--rce-transition-ease);
+}
+
+.rce-barra:hover {
+  opacity: 0.8;
+}
+
+.rce-barra-label {
+  font-size: var(--rce-font-size-sm);
+  font-weight: var(--rce-font-weight-medium);
+  color: var(--rce-text-primary);
+}
+
+.rce-barra-valor {
+  font-size: var(--rce-font-size-xs);
+  color: var(--rce-text-secondary);
+}
+
+/* ========================================
+ * TABLA DE RESUMEN
+ * ======================================== */
+
+.rce-tabla-resumen {
+  background: var(--rce-bg-card);
+  border: var(--rce-border-width) solid var(--rce-border-color);
+  border-radius: var(--rce-border-radius-lg);
+  box-shadow: var(--rce-shadow-sm);
+  overflow: hidden;
+}
+
+.rce-tabla-resumen h4 {
+  margin: 0;
+  padding: var(--rce-spacing-xl);
+  font-size: var(--rce-font-size-lg);
+  font-weight: var(--rce-font-weight-semibold);
+  color: var(--rce-text-primary);
+  background: var(--rce-bg-hover);
+  border-bottom: var(--rce-border-width) solid var(--rce-border-color);
+}
+
+/* ========================================
+ * RESPONSIVE DESIGN
+ * ======================================== */
+
+@media (max-width: 1024px) {
+  .rce-metricas-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .rce-estadisticas-resumen,
+  .rce-propuestas-stats,
+  .rce-procesos-stats {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .rce-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--rce-spacing-md);
+  }
+  
+  .rce-toolbar-left,
+  .rce-toolbar-right {
+    justify-content: space-between;
+  }
+  
+  .rce-filtros {
+    flex-wrap: wrap;
+  }
+  
+  .rce-filtros-content {
+    grid-template-columns: 1fr;
+  }
+  
+  .rce-acciones-masivas {
+    flex-direction: column;
+    align-items: stretch;
+    text-align: center;
+  }
+  
+  .rce-acciones-buttons {
+    justify-content: center;
+  }
+  
+  .rce-metricas-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .rce-estadisticas-resumen,
+  .rce-propuestas-stats,
+  .rce-procesos-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .rce-barras-container {
+    flex-direction: column;
+    height: auto;
+    gap: var(--rce-spacing-md);
+  }
+  
+  .rce-barra-item {
+    flex-direction: row;
+    align-items: center;
+  }
+  
+  .rce-barra-wrapper {
+    height: 20px;
+    flex: 1;
+  }
+  
+  .rce-barra {
+    width: 100%;
+    height: 100%;
+    border-radius: var(--rce-border-radius-sm);
+  }
+}
+
+@media (max-width: 480px) {
+  .rce-toolbar {
+    padding: var(--rce-spacing-md);
+  }
+  
+  .rce-filtros-panel {
+    margin-bottom: var(--rce-spacing-lg);
+  }
+  
+  .rce-filtros-content {
+    padding: var(--rce-spacing-lg);
+    gap: var(--rce-spacing-md);
+  }
+  
+  .rce-estadisticas-resumen,
+  .rce-propuestas-stats,
+  .rce-procesos-stats {
+    grid-template-columns: 1fr;
+  }
+  
+  .rce-vista-selector {
+    width: 100%;
+  }
+  
+  .rce-btn-vista {
+    flex: 1;
+    text-align: center;
+  }
+}

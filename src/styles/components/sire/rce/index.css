@@ -1,0 +1,268 @@
+/**
+ * Estilos principales del módulo RCE
+ * Importa todos los archivos de estilos específicos
+ */
+
+/* Importar variables y configuración base */
+@import './variables.css';
+
+/* Importar estilos de componentes */
+@import './components.css';
+
+/* Importar estilos del panel principal */
+@import './panel.css';
+
+/* Importar estilos de tablas y grids */
+@import './tables.css';
+
+/* Importar estilos de toolbars y estadísticas */
+@import './toolbars.css';
+
+/* ========================================
+ * ESTILOS GLOBALES ESPECÍFICOS RCE
+ * ======================================== */
+
+/* Container principal del módulo RCE */
+.rce-module {
+  min-height: 100vh;
+  background: var(--rce-bg-page);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  color: var(--rce-text-primary);
+  line-height: 1.5;
+}
+
+/* Scrollbar personalizado para el módulo RCE */
+.rce-module ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.rce-module ::-webkit-scrollbar-track {
+  background: var(--rce-bg-hover);
+  border-radius: var(--rce-border-radius-sm);
+}
+
+.rce-module ::-webkit-scrollbar-thumb {
+  background: var(--rce-border-color-hover);
+  border-radius: var(--rce-border-radius-sm);
+}
+
+.rce-module ::-webkit-scrollbar-thumb:hover {
+  background: var(--rce-text-tertiary);
+}
+
+/* Firefox scrollbar */
+.rce-module {
+  scrollbar-width: thin;
+  scrollbar-color: var(--rce-border-color-hover) var(--rce-bg-hover);
+}
+
+/* ========================================
+ * UTILIDADES ADICIONALES
+ * ======================================== */
+
+/* Espaciado */
+.rce-mb-0 { margin-bottom: 0; }
+.rce-mb-1 { margin-bottom: var(--rce-spacing-xs); }
+.rce-mb-2 { margin-bottom: var(--rce-spacing-sm); }
+.rce-mb-3 { margin-bottom: var(--rce-spacing-md); }
+.rce-mb-4 { margin-bottom: var(--rce-spacing-lg); }
+.rce-mb-5 { margin-bottom: var(--rce-spacing-xl); }
+.rce-mb-6 { margin-bottom: var(--rce-spacing-2xl); }
+
+.rce-mt-0 { margin-top: 0; }
+.rce-mt-1 { margin-top: var(--rce-spacing-xs); }
+.rce-mt-2 { margin-top: var(--rce-spacing-sm); }
+.rce-mt-3 { margin-top: var(--rce-spacing-md); }
+.rce-mt-4 { margin-top: var(--rce-spacing-lg); }
+.rce-mt-5 { margin-top: var(--rce-spacing-xl); }
+.rce-mt-6 { margin-top: var(--rce-spacing-2xl); }
+
+.rce-p-0 { padding: 0; }
+.rce-p-1 { padding: var(--rce-spacing-xs); }
+.rce-p-2 { padding: var(--rce-spacing-sm); }
+.rce-p-3 { padding: var(--rce-spacing-md); }
+.rce-p-4 { padding: var(--rce-spacing-lg); }
+.rce-p-5 { padding: var(--rce-spacing-xl); }
+.rce-p-6 { padding: var(--rce-spacing-2xl); }
+
+/* Flexbox */
+.rce-flex { display: flex; }
+.rce-flex-col { flex-direction: column; }
+.rce-flex-row { flex-direction: row; }
+.rce-items-center { align-items: center; }
+.rce-items-start { align-items: flex-start; }
+.rce-items-end { align-items: flex-end; }
+.rce-justify-center { justify-content: center; }
+.rce-justify-between { justify-content: space-between; }
+.rce-justify-start { justify-content: flex-start; }
+.rce-justify-end { justify-content: flex-end; }
+.rce-flex-1 { flex: 1; }
+.rce-flex-auto { flex: auto; }
+.rce-flex-none { flex: none; }
+
+/* Grid */
+.rce-grid { display: grid; }
+.rce-grid-cols-1 { grid-template-columns: repeat(1, 1fr); }
+.rce-grid-cols-2 { grid-template-columns: repeat(2, 1fr); }
+.rce-grid-cols-3 { grid-template-columns: repeat(3, 1fr); }
+.rce-grid-cols-4 { grid-template-columns: repeat(4, 1fr); }
+.rce-gap-1 { gap: var(--rce-spacing-xs); }
+.rce-gap-2 { gap: var(--rce-spacing-sm); }
+.rce-gap-3 { gap: var(--rce-spacing-md); }
+.rce-gap-4 { gap: var(--rce-spacing-lg); }
+.rce-gap-5 { gap: var(--rce-spacing-xl); }
+.rce-gap-6 { gap: var(--rce-spacing-2xl); }
+
+/* Texto */
+.rce-text-xs { font-size: var(--rce-font-size-xs); }
+.rce-text-sm { font-size: var(--rce-font-size-sm); }
+.rce-text-md { font-size: var(--rce-font-size-md); }
+.rce-text-lg { font-size: var(--rce-font-size-lg); }
+.rce-text-xl { font-size: var(--rce-font-size-xl); }
+.rce-text-2xl { font-size: var(--rce-font-size-2xl); }
+.rce-text-3xl { font-size: var(--rce-font-size-3xl); }
+
+.rce-font-normal { font-weight: var(--rce-font-weight-normal); }
+.rce-font-medium { font-weight: var(--rce-font-weight-medium); }
+.rce-font-semibold { font-weight: var(--rce-font-weight-semibold); }
+.rce-font-bold { font-weight: var(--rce-font-weight-bold); }
+
+.rce-text-primary { color: var(--rce-text-primary); }
+.rce-text-secondary { color: var(--rce-text-secondary); }
+.rce-text-tertiary { color: var(--rce-text-tertiary); }
+.rce-text-disabled { color: var(--rce-text-disabled); }
+
+/* Bordes */
+.rce-border { border: var(--rce-border-width) solid var(--rce-border-color); }
+.rce-border-t { border-top: var(--rce-border-width) solid var(--rce-border-color); }
+.rce-border-b { border-bottom: var(--rce-border-width) solid var(--rce-border-color); }
+.rce-border-l { border-left: var(--rce-border-width) solid var(--rce-border-color); }
+.rce-border-r { border-right: var(--rce-border-width) solid var(--rce-border-color); }
+
+.rce-rounded { border-radius: var(--rce-border-radius-md); }
+.rce-rounded-sm { border-radius: var(--rce-border-radius-sm); }
+.rce-rounded-lg { border-radius: var(--rce-border-radius-lg); }
+.rce-rounded-xl { border-radius: var(--rce-border-radius-xl); }
+.rce-rounded-full { border-radius: var(--rce-border-radius-full); }
+
+/* Sombras */
+.rce-shadow { box-shadow: var(--rce-shadow-sm); }
+.rce-shadow-sm { box-shadow: var(--rce-shadow-sm); }
+.rce-shadow-md { box-shadow: var(--rce-shadow-md); }
+.rce-shadow-lg { box-shadow: var(--rce-shadow-lg); }
+.rce-shadow-xl { box-shadow: var(--rce-shadow-xl); }
+
+/* Fondos */
+.rce-bg-page { background: var(--rce-bg-page); }
+.rce-bg-card { background: var(--rce-bg-card); }
+.rce-bg-hover { background: var(--rce-bg-hover); }
+.rce-bg-selected { background: var(--rce-bg-selected); }
+.rce-bg-disabled { background: var(--rce-bg-disabled); }
+
+/* Visibilidad */
+.rce-hidden { display: none; }
+.rce-visible { display: block; }
+.rce-invisible { visibility: hidden; }
+
+/* Posicionamiento */
+.rce-relative { position: relative; }
+.rce-absolute { position: absolute; }
+.rce-fixed { position: fixed; }
+.rce-sticky { position: sticky; }
+
+/* Overflow */
+.rce-overflow-hidden { overflow: hidden; }
+.rce-overflow-auto { overflow: auto; }
+.rce-overflow-scroll { overflow: scroll; }
+.rce-overflow-x-auto { overflow-x: auto; }
+.rce-overflow-y-auto { overflow-y: auto; }
+
+/* Interacciones */
+.rce-cursor-pointer { cursor: pointer; }
+.rce-cursor-not-allowed { cursor: not-allowed; }
+.rce-select-none { user-select: none; }
+.rce-select-all { user-select: all; }
+
+/* Transiciones */
+.rce-transition { transition: all var(--rce-transition-normal) var(--rce-transition-ease); }
+.rce-transition-fast { transition: all var(--rce-transition-fast) var(--rce-transition-ease); }
+.rce-transition-slow { transition: all var(--rce-transition-slow) var(--rce-transition-ease); }
+
+/* ========================================
+ * CLASES DE ESTADO
+ * ======================================== */
+
+.rce-loading-state {
+  opacity: 0.6;
+  pointer-events: none;
+  position: relative;
+}
+
+.rce-loading-state::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 20px;
+  height: 20px;
+  margin: -10px 0 0 -10px;
+  border: 2px solid var(--rce-border-color);
+  border-top: 2px solid var(--rce-primary);
+  border-radius: var(--rce-border-radius-full);
+  animation: rce-spin 1s linear infinite;
+}
+
+.rce-error-state {
+  border-color: var(--rce-estado-anulado);
+  background: rgba(239, 68, 68, 0.05);
+}
+
+.rce-success-state {
+  border-color: var(--rce-estado-validado);
+  background: rgba(16, 185, 129, 0.05);
+}
+
+.rce-warning-state {
+  border-color: var(--rce-estado-observado);
+  background: rgba(245, 158, 11, 0.05);
+}
+
+/* ========================================
+ * MODO DE IMPRESIÓN
+ * ======================================== */
+
+@media print {
+  .rce-module {
+    background: white;
+    color: black;
+  }
+  
+  .rce-btn,
+  .rce-toolbar,
+  .rce-filtros-panel,
+  .rce-acciones-masivas,
+  .rce-modal-overlay {
+    display: none !important;
+  }
+  
+  .rce-tabla {
+    border: 1px solid black;
+  }
+  
+  .rce-tabla th,
+  .rce-tabla td {
+    border: 1px solid black;
+    background: white;
+    color: black;
+  }
+  
+  .rce-card,
+  .rce-metrica-card,
+  .rce-propuesta-card,
+  .rce-proceso-card {
+    border: 1px solid black;
+    box-shadow: none;
+    break-inside: avoid;
+  }
+}

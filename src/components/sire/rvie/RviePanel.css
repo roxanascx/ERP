@@ -46,7 +46,7 @@
 }
 
 .header-info h2 {
-  margin: 0 0 0.5rem 0;
+  margin-block-end: 8px;
   font-size: 1.8rem;
   font-weight: 700;
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
@@ -219,8 +219,8 @@
 }
 
 .file-info {
-  margin-top: 0.5rem;
-  padding: 0.5rem;
+  margin-top: 8px;
+  padding: 8px;
   background: #f0fdf4;
   border: 1px solid #bbf7d0;
   border-radius: 4px;
@@ -246,7 +246,7 @@
 }
 
 .empty-state p {
-  margin: 0.5rem 0;
+  margin: 8px 0;
   font-size: 1.1rem;
 }
 
@@ -322,7 +322,7 @@
 }
 
 .ticket-body p {
-  margin: 0.5rem 0;
+  margin: 8px 0;
   color: #6b7280;
 }
 
@@ -332,7 +332,7 @@
   background: #e5e7eb;
   border-radius: 4px;
   overflow: hidden;
-  margin: 0.5rem 0;
+  margin: 8px 0;
 }
 
 .progress-fill {
@@ -354,7 +354,7 @@
 }
 
 .ticket-errors h5 {
-  margin: 0 0 0.5rem 0;
+  margin-block-end: 8px;
   color: #991b1b;
   font-size: 0.9rem;
 }
@@ -466,7 +466,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 0.5rem;
+  margin-block-end: 8px;
 }
 
 .inc-line {
@@ -476,7 +476,7 @@
 }
 
 .inc-severity {
-  padding: 0.25rem 0.5rem;
+  padding: 0.25rem 8px;
   border-radius: 12px;
   font-size: 0.7rem;
   font-weight: 600;
@@ -662,7 +662,7 @@
   color: #991b1b;
   font-weight: bold;
   cursor: pointer;
-  padding: 0.25rem 0.5rem;
+  padding: 0.25rem 8px;
   border-radius: 4px;
   transition: background 0.3s ease;
 }
@@ -853,7 +853,7 @@
 }
 
 .endpoint-requirements ul {
-  margin: 0.5rem 0 0 1rem;
+  margin: 8px 0 0 1rem;
   padding: 0;
 }
 
@@ -877,13 +877,13 @@
 }
 
 .api-details p, .empresa-details p {
-  margin: 0.5rem 0;
+  margin: 8px 0;
   color: #374151;
 }
 
 .api-details code {
   background: #f3f4f6;
-  padding: 0.25rem 0.5rem;
+  padding: 0.25rem 8px;
   border-radius: 4px;
   font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
   color: #dc2626;
@@ -894,7 +894,7 @@
   border-radius: 12px;
   font-size: 0.875rem;
   font-weight: 600;
-  margin-left: 0.5rem;
+  margin-left: 8px;
 }
 
 .status-badge.available {
@@ -912,10 +912,10 @@
    ======================================== */
 
 .auth-status {
-  padding: 0.5rem 1rem;
+  padding: 8px 16px;
   border-radius: 8px;
   font-weight: 600;
-  margin-top: 0.5rem;
+  margin-top: 8px;
   display: inline-block;
 }
 
@@ -969,7 +969,7 @@
   transition: all 0.3s ease;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 8px;
 }
 
 .btn-test:hover {
@@ -1004,6 +1004,7 @@
   .endpoint-header {
     flex-direction: column;
     align-items: flex-start;
-    gap: 0.5rem;
+    gap: 8px;
   }
 }
+

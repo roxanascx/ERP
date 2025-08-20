@@ -1,0 +1,403 @@
+/**
+ * Estilos comunes para componentes RCE
+ * Botones, formularios, tablas y elementos compartidos
+ */
+
+/* ========================================
+ * SISTEMA DE BOTONES RCE
+ * ======================================== */
+
+.rce-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--rce-spacing-sm);
+  padding: var(--rce-spacing-sm) var(--rce-spacing-lg);
+  border: var(--rce-border-width) solid transparent;
+  border-radius: var(--rce-border-radius-md);
+  font-size: var(--rce-font-size-sm);
+  font-weight: var(--rce-font-weight-medium);
+  line-height: 1.5;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all var(--rce-transition-fast) var(--rce-transition-ease);
+  user-select: none;
+  white-space: nowrap;
+}
+
+.rce-btn:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.rce-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* Variantes de botones */
+.rce-btn-primary {
+  background: var(--rce-primary);
+  border-color: var(--rce-primary);
+  color: white;
+}
+
+.rce-btn-primary:hover {
+  background: var(--rce-primary-dark);
+  border-color: var(--rce-primary-dark);
+}
+
+.rce-btn-secondary {
+  background: var(--rce-bg-card);
+  border-color: var(--rce-border-color);
+  color: var(--rce-text-primary);
+}
+
+.rce-btn-secondary:hover {
+  background: var(--rce-bg-hover);
+  border-color: var(--rce-border-color-hover);
+}
+
+.rce-btn-success {
+  background: var(--rce-estado-validado);
+  border-color: var(--rce-estado-validado);
+  color: white;
+}
+
+.rce-btn-success:hover {
+  background: #059669;
+  border-color: #059669;
+}
+
+.rce-btn-warning {
+  background: var(--rce-estado-observado);
+  border-color: var(--rce-estado-observado);
+  color: white;
+}
+
+.rce-btn-warning:hover {
+  background: #d97706;
+  border-color: #d97706;
+}
+
+.rce-btn-danger {
+  background: var(--rce-estado-anulado);
+  border-color: var(--rce-estado-anulado);
+  color: white;
+}
+
+.rce-btn-danger:hover {
+  background: #dc2626;
+  border-color: #dc2626;
+}
+
+.rce-btn-ghost {
+  background: transparent;
+  border-color: transparent;
+  color: var(--rce-text-secondary);
+}
+
+.rce-btn-ghost:hover {
+  background: var(--rce-bg-hover);
+  color: var(--rce-text-primary);
+}
+
+/* Tamaños de botones */
+.rce-btn-sm {
+  padding: var(--rce-spacing-xs) var(--rce-spacing-md);
+  font-size: var(--rce-font-size-xs);
+}
+
+.rce-btn-lg {
+  padding: var(--rce-spacing-md) var(--rce-spacing-xl);
+  font-size: var(--rce-font-size-md);
+}
+
+/* Botones de acción */
+.rce-btn-action {
+  padding: var(--rce-spacing-xs);
+  border-radius: var(--rce-border-radius-sm);
+  background: transparent;
+  border: none;
+  color: var(--rce-text-secondary);
+  cursor: pointer;
+  transition: all var(--rce-transition-fast) var(--rce-transition-ease);
+}
+
+.rce-btn-action:hover {
+  background: var(--rce-bg-hover);
+  color: var(--rce-text-primary);
+}
+
+.rce-btn-view:hover {
+  color: var(--rce-primary);
+}
+
+.rce-btn-edit:hover {
+  color: var(--rce-estado-observado);
+}
+
+.rce-btn-delete:hover {
+  color: var(--rce-estado-anulado);
+}
+
+.rce-btn-send:hover {
+  color: var(--rce-estado-validado);
+}
+
+.rce-btn-download:hover {
+  color: var(--rce-primary);
+}
+
+.rce-btn-cancel:hover {
+  color: var(--rce-estado-anulado);
+}
+
+.rce-btn-restart:hover {
+  color: var(--rce-estado-observado);
+}
+
+/* ========================================
+ * FORMULARIOS Y INPUTS
+ * ======================================== */
+
+.rce-input,
+.rce-select,
+.rce-textarea {
+  width: 100%;
+  padding: var(--rce-spacing-sm) var(--rce-spacing-md);
+  border: var(--rce-border-width) solid var(--rce-border-color);
+  border-radius: var(--rce-border-radius-md);
+  font-size: var(--rce-font-size-sm);
+  background: var(--rce-bg-card);
+  color: var(--rce-text-primary);
+  transition: all var(--rce-transition-normal) var(--rce-transition-ease);
+}
+
+.rce-input:focus,
+.rce-select:focus,
+.rce-textarea:focus {
+  outline: none;
+  border-color: var(--rce-border-color-focus);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.rce-input:hover,
+.rce-select:hover,
+.rce-textarea:hover {
+  border-color: var(--rce-border-color-hover);
+}
+
+.rce-input:disabled,
+.rce-select:disabled,
+.rce-textarea:disabled {
+  background: var(--rce-bg-disabled);
+  color: var(--rce-text-disabled);
+  cursor: not-allowed;
+}
+
+.rce-checkbox {
+  width: auto;
+  margin: 0;
+  cursor: pointer;
+}
+
+/* Búsqueda */
+.rce-search-box {
+  display: flex;
+  position: relative;
+}
+
+.rce-search-input {
+  padding-right: 3rem;
+  border-radius: var(--rce-border-radius-md) 0 0 var(--rce-border-radius-md);
+}
+
+.rce-search-btn {
+  padding: var(--rce-spacing-sm) var(--rce-spacing-md);
+  border: var(--rce-border-width) solid var(--rce-border-color);
+  border-left: none;
+  border-radius: 0 var(--rce-border-radius-md) var(--rce-border-radius-md) 0;
+  background: var(--rce-bg-hover);
+  color: var(--rce-text-secondary);
+  cursor: pointer;
+  transition: all var(--rce-transition-fast) var(--rce-transition-ease);
+}
+
+.rce-search-btn:hover {
+  background: var(--rce-primary-50);
+  color: var(--rce-primary);
+  border-color: var(--rce-primary);
+}
+
+/* ========================================
+ * SISTEMA DE BADGES Y ESTADOS
+ * ======================================== */
+
+.rce-estado-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--rce-spacing-xs) var(--rce-spacing-sm);
+  border-radius: var(--rce-border-radius-full);
+  font-size: var(--rce-font-size-xs);
+  font-weight: var(--rce-font-weight-semibold);
+  text-transform: capitalize;
+  color: white;
+}
+
+.rce-tasa-badge {
+  padding: var(--rce-spacing-xs) var(--rce-spacing-sm);
+  border-radius: var(--rce-border-radius-sm);
+  font-size: var(--rce-font-size-xs);
+  font-weight: var(--rce-font-weight-semibold);
+  color: white;
+}
+
+.rce-tasa-badge.good {
+  background: var(--rce-estado-validado);
+}
+
+.rce-tasa-badge.warning {
+  background: var(--rce-estado-observado);
+}
+
+.rce-tasa-badge.bad {
+  background: var(--rce-estado-anulado);
+}
+
+/* ========================================
+ * TOOLTIPS Y POPOVER
+ * ======================================== */
+
+.rce-tooltip {
+  position: relative;
+  display: inline-block;
+}
+
+.rce-tooltip:hover::after {
+  content: attr(title);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--rce-text-primary);
+  color: white;
+  padding: var(--rce-spacing-xs) var(--rce-spacing-sm);
+  border-radius: var(--rce-border-radius-sm);
+  font-size: var(--rce-font-size-xs);
+  white-space: nowrap;
+  z-index: var(--rce-z-tooltip);
+  margin-bottom: var(--rce-spacing-xs);
+}
+
+/* ========================================
+ * MODALES
+ * ======================================== */
+
+.rce-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: var(--rce-z-modal-backdrop);
+  animation: rce-fade-in var(--rce-transition-normal) var(--rce-transition-ease);
+}
+
+.rce-modal {
+  background: var(--rce-bg-card);
+  border-radius: var(--rce-border-radius-lg);
+  box-shadow: var(--rce-shadow-xl);
+  max-width: 90vw;
+  max-height: 90vh;
+  overflow: hidden;
+  z-index: var(--rce-z-modal);
+  animation: rce-scale-in var(--rce-transition-normal) var(--rce-transition-ease);
+}
+
+.rce-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--rce-spacing-xl);
+  border-bottom: var(--rce-border-width) solid var(--rce-border-color);
+}
+
+.rce-modal-header h3 {
+  margin: 0;
+  font-size: var(--rce-font-size-lg);
+  font-weight: var(--rce-font-weight-semibold);
+  color: var(--rce-text-primary);
+}
+
+.rce-modal-header button {
+  background: none;
+  border: none;
+  font-size: var(--rce-font-size-lg);
+  color: var(--rce-text-secondary);
+  cursor: pointer;
+  padding: var(--rce-spacing-xs);
+  border-radius: var(--rce-border-radius-sm);
+  transition: all var(--rce-transition-fast) var(--rce-transition-ease);
+}
+
+.rce-modal-header button:hover {
+  background: var(--rce-bg-hover);
+  color: var(--rce-text-primary);
+}
+
+.rce-modal-content {
+  padding: var(--rce-spacing-xl);
+  overflow: auto;
+  max-height: 70vh;
+}
+
+/* ========================================
+ * ANIMACIONES PARA MODALES
+ * ======================================== */
+
+@keyframes rce-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes rce-scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* ========================================
+ * RESPONSIVE DESIGN
+ * ======================================== */
+
+@media (max-width: 768px) {
+  .rce-btn {
+    padding: var(--rce-spacing-xs) var(--rce-spacing-md);
+    font-size: var(--rce-font-size-xs);
+  }
+
+  .rce-modal {
+    margin: var(--rce-spacing-lg);
+    max-width: calc(100vw - 2rem);
+  }
+
+  .rce-modal-header,
+  .rce-modal-content {
+    padding: var(--rce-spacing-lg);
+  }
+}

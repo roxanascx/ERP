@@ -282,13 +282,13 @@ const SirePage: React.FC = () => {
             color: '#6b7280',
             lineHeight: '1.5'
           }}>
-            <div style={{ marginBottom: '0.5rem' }}>
+            <div style={{ marginBottom: '8px' }}>
               • Descarga de propuestas SUNAT
             </div>
-            <div style={{ marginBottom: '0.5rem' }}>
+            <div style={{ marginBottom: '8px' }}>
               • Aceptación de propuestas
             </div>
-            <div style={{ marginBottom: '0.5rem' }}>
+            <div style={{ marginBottom: '8px' }}>
               • Reemplazo con archivos personalizados
             </div>
             <div>
@@ -336,13 +336,13 @@ const SirePage: React.FC = () => {
             color: '#9ca3af',
             lineHeight: '1.5'
           }}>
-            <div style={{ marginBottom: '0.5rem' }}>
+            <div style={{ marginBottom: '8px' }}>
               • Gestión de compras
             </div>
-            <div style={{ marginBottom: '0.5rem' }}>
+            <div style={{ marginBottom: '8px' }}>
               • Validación de documentos
             </div>
-            <div style={{ marginBottom: '0.5rem' }}>
+            <div style={{ marginBottom: '8px' }}>
               • Reportes de compras
             </div>
             <div>

@@ -1,0 +1,350 @@
+/**
+ * Estilos para RcePanel - Componente principal del módulo RCE
+ */
+
+/* ========================================
+ * CONTAINER PRINCIPAL
+ * ======================================== */
+
+.rce-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--rce-bg-page);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* ========================================
+ * HEADER DEL PANEL
+ * ======================================== */
+
+.rce-panel-header {
+  background: var(--rce-bg-card);
+  border-bottom: var(--rce-border-width) solid var(--rce-border-color);
+  padding: var(--rce-spacing-xl) var(--rce-spacing-2xl);
+}
+
+.rce-panel-title {
+  display: flex;
+  align-items: center;
+  gap: var(--rce-spacing-md);
+  margin: 0;
+  font-size: var(--rce-font-size-2xl);
+  font-weight: var(--rce-font-weight-bold);
+  color: var(--rce-text-primary);
+}
+
+.rce-panel-title-icon {
+  font-size: var(--rce-font-size-xl);
+}
+
+.rce-panel-subtitle {
+  margin: var(--rce-spacing-sm) 0 0 0;
+  font-size: var(--rce-font-size-sm);
+  color: var(--rce-text-secondary);
+  font-weight: var(--rce-font-weight-normal);
+}
+
+/* ========================================
+ * FILTROS GLOBALES
+ * ======================================== */
+
+.rce-filtros-globales {
+  background: var(--rce-bg-card);
+  border-bottom: var(--rce-border-width) solid var(--rce-border-color);
+  padding: var(--rce-spacing-lg) var(--rce-spacing-2xl);
+}
+
+.rce-filtros-container {
+  display: flex;
+  align-items: center;
+  gap: var(--rce-spacing-lg);
+  flex-wrap: wrap;
+}
+
+.rce-filtro-grupo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--rce-spacing-xs);
+}
+
+.rce-filtro-label {
+  font-size: var(--rce-font-size-xs);
+  font-weight: var(--rce-font-weight-medium);
+  color: var(--rce-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.rce-filtro-input {
+  padding: var(--rce-spacing-sm) var(--rce-spacing-md);
+  border: var(--rce-border-width) solid var(--rce-border-color);
+  border-radius: var(--rce-border-radius-md);
+  font-size: var(--rce-font-size-sm);
+  background: var(--rce-bg-card);
+  color: var(--rce-text-primary);
+  transition: all var(--rce-transition-normal) var(--rce-transition-ease);
+  min-width: 140px;
+}
+
+.rce-filtro-input:focus {
+  outline: none;
+  border-color: var(--rce-border-color-focus);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.rce-filtro-input:hover {
+  border-color: var(--rce-border-color-hover);
+}
+
+.rce-filtros-acciones {
+  display: flex;
+  gap: var(--rce-spacing-sm);
+  margin-left: auto;
+}
+
+/* ========================================
+ * NAVEGACIÓN DE PESTAÑAS
+ * ======================================== */
+
+.rce-tabs {
+  background: var(--rce-bg-card);
+  border-bottom: var(--rce-border-width) solid var(--rce-border-color);
+}
+
+.rce-tabs-list {
+  display: flex;
+  padding: 0 var(--rce-spacing-2xl);
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.rce-tabs-list::-webkit-scrollbar {
+  display: none;
+}
+
+.rce-tab {
+  display: flex;
+  align-items: center;
+  gap: var(--rce-spacing-sm);
+  padding: var(--rce-spacing-lg) var(--rce-spacing-xl);
+  border: none;
+  background: transparent;
+  color: var(--rce-text-secondary);
+  font-size: var(--rce-font-size-sm);
+  font-weight: var(--rce-font-weight-medium);
+  cursor: pointer;
+  white-space: nowrap;
+  border-bottom: 3px solid transparent;
+  transition: all var(--rce-transition-normal) var(--rce-transition-ease);
+  position: relative;
+}
+
+.rce-tab:hover {
+  color: var(--rce-text-primary);
+  background: var(--rce-bg-hover);
+}
+
+.rce-tab.active {
+  color: var(--rce-primary);
+  border-bottom-color: var(--rce-primary);
+}
+
+.rce-tab-icon {
+  font-size: var(--rce-font-size-md);
+}
+
+.rce-tab-badge {
+  background: var(--rce-primary-100);
+  color: var(--rce-primary-700);
+  border-radius: var(--rce-border-radius-full);
+  padding: var(--rce-spacing-xs) var(--rce-spacing-sm);
+  font-size: var(--rce-font-size-xs);
+  font-weight: var(--rce-font-weight-semibold);
+  min-width: 1.5rem;
+  text-align: center;
+}
+
+.rce-tab.active .rce-tab-badge {
+  background: var(--rce-primary);
+  color: white;
+}
+
+/* ========================================
+ * CONTENIDO DE PESTAÑAS
+ * ======================================== */
+
+.rce-tab-content {
+  flex: 1;
+  padding: var(--rce-spacing-2xl);
+  overflow: auto;
+}
+
+/* ========================================
+ * BARRA DE ESTADO
+ * ======================================== */
+
+.rce-status-bar {
+  background: var(--rce-bg-card);
+  border-top: var(--rce-border-width) solid var(--rce-border-color);
+  padding: var(--rce-spacing-lg) var(--rce-spacing-2xl);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--rce-spacing-lg);
+}
+
+.rce-status-info {
+  display: flex;
+  align-items: center;
+  gap: var(--rce-spacing-xl);
+}
+
+.rce-status-item {
+  display: flex;
+  align-items: center;
+  gap: var(--rce-spacing-sm);
+  font-size: var(--rce-font-size-sm);
+  color: var(--rce-text-secondary);
+}
+
+.rce-status-icon {
+  width: var(--rce-spacing-lg);
+  height: var(--rce-spacing-lg);
+  border-radius: var(--rce-border-radius-full);
+}
+
+.rce-status-icon.online {
+  background: var(--rce-estado-validado);
+}
+
+.rce-status-icon.offline {
+  background: var(--rce-estado-anulado);
+}
+
+.rce-status-icon.loading {
+  background: var(--rce-estado-observado);
+  animation: rce-pulse 2s infinite;
+}
+
+.rce-status-actions {
+  display: flex;
+  gap: var(--rce-spacing-sm);
+}
+
+/* ========================================
+ * BOTONES RÁPIDOS
+ * ======================================== */
+
+.rce-quick-actions {
+  display: flex;
+  gap: var(--rce-spacing-sm);
+}
+
+.rce-btn-quick {
+  display: flex;
+  align-items: center;
+  gap: var(--rce-spacing-xs);
+  padding: var(--rce-spacing-sm) var(--rce-spacing-md);
+  border: var(--rce-border-width) solid var(--rce-border-color);
+  border-radius: var(--rce-border-radius-md);
+  background: var(--rce-bg-card);
+  color: var(--rce-text-secondary);
+  font-size: var(--rce-font-size-xs);
+  font-weight: var(--rce-font-weight-medium);
+  cursor: pointer;
+  transition: all var(--rce-transition-fast) var(--rce-transition-ease);
+}
+
+.rce-btn-quick:hover {
+  background: var(--rce-bg-hover);
+  border-color: var(--rce-border-color-hover);
+  color: var(--rce-text-primary);
+}
+
+.rce-btn-quick:active {
+  transform: translateY(1px);
+}
+
+/* ========================================
+ * RESPONSIVE DESIGN
+ * ======================================== */
+
+@media (max-width: 1216px) {
+  .rce-panel-header {
+    padding: var(--rce-spacing-lg);
+  }
+
+  .rce-panel-title {
+    font-size: var(--rce-font-size-xl);
+  }
+
+  .rce-filtros-globales {
+    padding: var(--rce-spacing-md) var(--rce-spacing-lg);
+  }
+
+  .rce-filtros-container {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--rce-spacing-md);
+  }
+
+  .rce-filtros-acciones {
+    margin-left: 0;
+  }
+
+  .rce-tabs-list {
+    padding: 0 var(--rce-spacing-lg);
+  }
+
+  .rce-tab {
+    padding: var(--rce-spacing-md) var(--rce-spacing-lg);
+  }
+
+  .rce-tab-content {
+    padding: var(--rce-spacing-lg);
+  }
+
+  .rce-status-bar {
+    padding: var(--rce-spacing-md) var(--rce-spacing-lg);
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .rce-status-info {
+    justify-content: space-between;
+  }
+
+  .rce-status-actions {
+    justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .rce-panel-header {
+    padding: var(--rce-spacing-md);
+  }
+
+  .rce-filtros-globales {
+    padding: var(--rce-spacing-sm) var(--rce-spacing-md);
+  }
+
+  .rce-tabs-list {
+    padding: 0 var(--rce-spacing-md);
+  }
+
+  .rce-tab {
+    padding: var(--rce-spacing-sm) var(--rce-spacing-md);
+    font-size: var(--rce-font-size-xs);
+  }
+
+  .rce-tab-content {
+    padding: var(--rce-spacing-md);
+  }
+
+  .rce-status-bar {
+    padding: var(--rce-spacing-sm) var(--rce-spacing-md);
+  }
+}

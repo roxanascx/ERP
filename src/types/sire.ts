@@ -240,3 +240,39 @@ export interface RvieContextValue {
   refreshEstado: () => Promise<void>;
   clearError: () => void;
 }
+
+// ========================================
+// INTEGRACIÓN RCE CON SIRE EXISTENTE
+// ========================================
+
+// Extender el tipo de módulo activo para incluir RCE
+export type SireModuloActivo = 'home' | 'rvie' | 'rce' | 'ninguno';
+
+// Configuración de empresa para RCE
+export interface EmpresaConfigRce {
+  rce_activo: boolean;
+  rce_periodo_actual?: string;
+  rce_modo_importacion?: 'automatico' | 'manual';
+  rce_validacion_estricta?: boolean;
+  rce_auto_incluir_nuevos?: boolean;
+  rce_notificar_errores?: boolean;
+}
+
+// Respuesta de API unificada SIRE
+export interface SireApiResponse<T = any> {
+  exitoso: boolean;
+  mensaje: string;
+  datos?: T;
+  codigo?: string;
+  timestamp?: string;
+  modulo: 'rvie' | 'rce';
+  errores?: string[];
+}
+
+// Configuración de módulos SIRE individual
+export interface SireModuloConfig {
+  disponible: boolean;
+  ultimo_check: string;
+  endpoints_activos: string[];
+  configuracion: Record<string, any>;
+}

@@ -61,8 +61,8 @@
 .info-badge {
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
+  gap: 8px;
+  padding: 8px 1rem;
   background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
   border: 1px solid #cbd5e1;
   border-radius: 12px;
@@ -92,7 +92,7 @@
 .compact-button {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 8px;
   padding: 0.75rem 1.25rem;
   border-radius: 12px;
   font-size: 0.9rem;
@@ -242,7 +242,7 @@
   margin: 0 0 1rem 0;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 8px;
 }
 
 .tipo-breakdown-compact {
@@ -305,7 +305,7 @@
   margin: 0 0 1rem 0;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 8px;
 }
 
 .filtros-grid-compact {
@@ -317,7 +317,7 @@
 .filtro-compact {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 8px;
 }
 
 .filtro-compact label {
@@ -328,7 +328,7 @@
 
 .filtro-compact select,
 .filtro-compact input {
-  padding: 0.5rem 0.75rem;
+  padding: 8px 0.75rem;
   border: 1px solid #d1d5db;
   border-radius: 8px;
   font-size: 0.85rem;
@@ -355,7 +355,7 @@
   margin: 0 0 1rem 0;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 8px;
 }
 
 .estados-list-compact {
@@ -454,7 +454,7 @@
 .action-button {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 8px;
   padding: 0.75rem 1.25rem;
   border-radius: 10px;
   font-size: 0.9rem;
@@ -503,7 +503,7 @@
 
 .luxury-table th {
   background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
-  padding: 0.75rem 0.5rem;
+  padding: 0.75rem 8px;
   text-align: left;
   font-weight: 600;
   font-size: 0.8rem;
@@ -516,7 +516,7 @@
 }
 
 .luxury-table td {
-  padding: 0.75rem 0.5rem;
+  padding: 0.75rem 8px;
   border-bottom: 1px solid #f1f5f9;
   font-size: 0.8rem;
   color: #374151;
@@ -528,7 +528,7 @@
 }
 
 .table-badge {
-  padding: 0.25rem 0.5rem;
+  padding: 0.25rem 8px;
   border-radius: 6px;
   font-size: 0.7rem;
   font-weight: 600;
@@ -671,7 +671,7 @@
     font-size: 0.8rem;
   }
 }
-  margin: 0 0 0.5rem 0;
+  margin-block-end: 8px;
   background: linear-gradient(135deg, #1e293b, #3b82f6);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -687,7 +687,7 @@
 .meta-item {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 8px;
   color: #64748b;
   font-size: 0.9rem;
 }
@@ -717,7 +717,7 @@
   font-size: 0.9rem;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 8px;
 }
 
 .luxury-button:hover {
@@ -748,7 +748,7 @@
   color: #1e293b;
   font-size: 1.5rem;
   font-weight: 700;
-  margin: 0 0 0.5rem 0;
+  margin-block-end: 8px;
 }
 
 .stats-subtitle {
@@ -879,7 +879,7 @@
   margin: 0 0 1rem 0;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 8px;
 }
 
 /* Tipos de comprobante */
@@ -906,7 +906,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 0.5rem;
+  margin-block-end: 8px;
 }
 
 .tipo-badge-luxury {
@@ -962,13 +962,13 @@
   font-size: 0.85rem;
   font-weight: 600;
   color: #374151;
-  margin-bottom: 0.5rem;
+  margin-block-end: 8px;
 }
 
 .filtro-luxury select,
 .filtro-luxury input {
   width: 100%;
-  padding: 0.5rem;
+  padding: 8px;
   border: 1px solid #d1d5db;
   border-radius: 8px;
   font-size: 0.85rem;
@@ -1063,7 +1063,7 @@
   background: linear-gradient(135deg, #10b981 0%, #059669 100%);
   color: white;
   border: none;
-  padding: 0.5rem 1rem;
+  padding: 8px 1rem;
   border-radius: 10px;
   font-weight: 600;
   cursor: pointer;
@@ -1071,7 +1071,7 @@
   font-size: 0.85rem;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 8px;
 }
 
 .action-button.export {
@@ -1140,7 +1140,7 @@
 }
 
 .table-badge {
-  padding: 0.25rem 0.5rem;
+  padding: 0.25rem 8px;
   border-radius: 6px;
   font-size: 0.7rem;
   font-weight: 600;
@@ -1189,7 +1189,7 @@
   color: #1e293b;
   font-size: 1.25rem;
   font-weight: 600;
-  margin: 0 0 0.5rem 0;
+  margin-block-end: 8px;
 }
 
 .empty-description {
@@ -1255,7 +1255,7 @@
   background: #e5e7eb;
   border-radius: 2px;
   overflow: hidden;
-  margin: 0.5rem 0;
+  margin: 8px 0;
 }
 
 .progress-fill {
@@ -1333,3 +1333,4 @@
 .luxury-table-wrapper::-webkit-scrollbar-thumb:hover {
   background: linear-gradient(135deg, #94a3b8, #64748b);
 }
+

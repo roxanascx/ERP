@@ -1,6 +1,11 @@
 /**
  * Hook personalizado para gestionar el estado RVIE
- * Maneja autenticación, tickets, y operaciones RVIE
+ * 
+ * IMPORTANTE: Este hook NO realiza autenticación automática.
+ * Solo verifica el estado de autenticación y requiere acción explícita
+ * del usuario para autenticarse mediante la función authenticate().
+ * 
+ * Maneja autenticación manual, tickets, y operaciones RVIE
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -47,7 +52,7 @@ export function useRvie(options: UseRvieOptions) {
   // UTILIDADES DE ERROR
   // ========================================
 
-  const handleError = useCallback((err: any, operacion: string) => {
+  const handleError = useCallback((err: any, _operacion: string) => {
     
     // Detectar errores específicos de SUNAT
     let messageForUser = '';
@@ -461,30 +466,32 @@ export function useRvie(options: UseRvieOptions) {
   // EFECTOS Y LIMPIEZA
   // ========================================
 
-  // Verificar autenticación al montar y auto-autenticarse
+  // Verificar autenticación al montar (SIN auto-autenticarse)
   useEffect(() => {
-    const initializeAuth = async () => {
+    const initializeStatus = async () => {
       try {
-        const status = await checkAuth();
+        // ✅ SOLO verificar estado, NO auto-autenticar
+        await checkAuth();
         
-        // Si no está autenticado, intentar autenticación automática
-        if (!status.authenticated) {
-          try {
-            await authenticate();
-          } catch (error) {
-          }
+        // Cargar endpoints disponibles siempre
+        await cargarEndpoints();
+        
+        // Solo cargar tickets si está autenticado
+        const currentStatus = await checkAuth();
+        if (currentStatus.authenticated) {
+          await cargarTodosTickets();
         }
         
-        // Cargar TODOS los tickets existentes por defecto (incluyendo consultas)
-        await cargarTodosTickets();
-        
       } catch (error) {
+        console.log('Error inicializando RVIE:', error);
       }
     };
 
-    initializeAuth();
-    cargarEndpoints(); // Cargar endpoints disponibles
-  }, [ruc, cargarTodosTickets]); // ✅ CAMBIADO: Dependencia corregida
+    // Solo inicializar si tenemos un RUC válido
+    if (ruc && ruc.trim() !== '') {
+      initializeStatus();
+    }
+  }, [ruc]); // ✅ Dependencias simplificadas
 
   // Auto-refresh si está habilitado
   useEffect(() => {

@@ -1,0 +1,296 @@
+/**
+ * Estilos para el módulo RCE (Registro de Compras Electrónico)
+ * Variables CSS personalizadas y tokens de diseño
+ */
+
+:root {
+  /* ========================================
+   * VARIABLES DE COLOR RCE
+   * ======================================== */
+  
+  /* Colores primarios RCE */
+  --rce-primary: #1e40af;
+  --rce-primary-light: #3b82f6;
+  --rce-primary-dark: #1e3a8a;
+  --rce-primary-50: #eff6ff;
+  --rce-primary-100: #dbeafe;
+  --rce-primary-500: #3b82f6;
+  --rce-primary-600: #2563eb;
+  --rce-primary-700: #1d4ed8;
+
+  /* Estados de comprobantes */
+  --rce-estado-registrado: #3b82f6;
+  --rce-estado-validado: #10b981;
+  --rce-estado-observado: #f59e0b;
+  --rce-estado-anulado: #ef4444;
+  --rce-estado-incluido: #10b981;
+  --rce-estado-excluido: #ef4444;
+  --rce-estado-pendiente: #6b7280;
+  --rce-estado-procesado: #8b5cf6;
+
+  /* Estados de propuestas */
+  --rce-propuesta-borrador: #6b7280;
+  --rce-propuesta-generada: #3b82f6;
+  --rce-propuesta-validada: #8b5cf6;
+  --rce-propuesta-enviada: #f59e0b;
+  --rce-propuesta-aceptada: #10b981;
+  --rce-propuesta-observada: #f59e0b;
+  --rce-propuesta-rechazada: #ef4444;
+
+  /* Estados de procesos */
+  --rce-proceso-iniciado: #3b82f6;
+  --rce-proceso-en-proceso: #f59e0b;
+  --rce-proceso-completado: #10b981;
+  --rce-proceso-cancelado: #6b7280;
+  --rce-proceso-error: #ef4444;
+  --rce-proceso-pendiente: #8b5cf6;
+
+  /* ========================================
+   * VARIABLES DE ESPACIADO
+   * ======================================== */
+  
+  --rce-spacing-xs: 0.25rem;    /* 4px */
+  --rce-spacing-sm: 8px;     /* 8px */
+  --rce-spacing-md: 0.75rem;    /* 12px */
+  --rce-spacing-lg: 1rem;       /* 16px */
+  --rce-spacing-xl: 1.5rem;     /* 24px */
+  --rce-spacing-2xl: 2rem;      /* 32px */
+  --rce-spacing-3xl: 3rem;      /* 48px */
+
+  /* ========================================
+   * VARIABLES DE TIPOGRAFÍA
+   * ======================================== */
+  
+  --rce-font-size-xs: 0.75rem;    /* 12px */
+  --rce-font-size-sm: 0.875rem;   /* 14px */
+  --rce-font-size-md: 1rem;       /* 16px */
+  --rce-font-size-lg: 1.125rem;   /* 18px */
+  --rce-font-size-xl: 1.25rem;    /* 20px */
+  --rce-font-size-2xl: 1.5rem;    /* 24px */
+  --rce-font-size-3xl: 1.875rem;  /* 30px */
+
+  --rce-font-weight-normal: 400;
+  --rce-font-weight-medium: 500;
+  --rce-font-weight-semibold: 600;
+  --rce-font-weight-bold: 700;
+
+  /* ========================================
+   * VARIABLES DE SOMBRAS
+   * ======================================== */
+  
+  --rce-shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --rce-shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --rce-shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --rce-shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+
+  /* ========================================
+   * VARIABLES DE BORDES
+   * ======================================== */
+  
+  --rce-border-radius-sm: 0.25rem;  /* 4px */
+  --rce-border-radius-md: 0.375rem; /* 6px */
+  --rce-border-radius-lg: 8px;   /* 8px */
+  --rce-border-radius-xl: 0.75rem;  /* 12px */
+  --rce-border-radius-full: 9999px;
+
+  --rce-border-width: 1px;
+  --rce-border-width-2: 2px;
+  --rce-border-width-4: 4px;
+
+  /* ========================================
+   * VARIABLES DE BREAKPOINTS
+   * ======================================== */
+  
+  --rce-breakpoint-sm: 640px;
+  --rce-breakpoint-md: 768px;
+  --rce-breakpoint-lg: 1024px;
+  --rce-breakpoint-xl: 1280px;
+  --rce-breakpoint-2xl: 1536px;
+
+  /* ========================================
+   * VARIABLES DE TRANSICIONES
+   * ======================================== */
+  
+  --rce-transition-fast: 150ms;
+  --rce-transition-normal: 200ms;
+  --rce-transition-slow: 300ms;
+  --rce-transition-ease: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* ========================================
+   * VARIABLES DE Z-INDEX
+   * ======================================== */
+  
+  --rce-z-dropdown: 1000;
+  --rce-z-sticky: 1010;
+  --rce-z-fixed: 1020;
+  --rce-z-modal-backdrop: 1030;
+  --rce-z-modal: 1040;
+  --rce-z-popover: 1050;
+  --rce-z-tooltip: 1060;
+
+  /* ========================================
+   * VARIABLES DE FONDO
+   * ======================================== */
+  
+  --rce-bg-page: #f8fafc;
+  --rce-bg-card: #ffffff;
+  --rce-bg-hover: #f1f5f9;
+  --rce-bg-selected: #e0f2fe;
+  --rce-bg-disabled: #f1f5f9;
+
+  /* ========================================
+   * VARIABLES DE TEXTO
+   * ======================================== */
+  
+  --rce-text-primary: #0f172a;
+  --rce-text-secondary: #475569;
+  --rce-text-tertiary: #64748b;
+  --rce-text-disabled: #94a3b8;
+  --rce-text-inverse: #ffffff;
+
+  /* ========================================
+   * VARIABLES DE BORDE
+   * ======================================== */
+  
+  --rce-border-color: #e2e8f0;
+  --rce-border-color-hover: #cbd5e1;
+  --rce-border-color-focus: #3b82f6;
+}
+
+/* ========================================
+ * MODO OSCURO (OPCIONAL)
+ * ======================================== */
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --rce-bg-page: #0f172a;
+    --rce-bg-card: #1e293b;
+    --rce-bg-hover: #334155;
+    --rce-bg-selected: #1e3a8a;
+    --rce-bg-disabled: #334155;
+
+    --rce-text-primary: #f8fafc;
+    --rce-text-secondary: #cbd5e1;
+    --rce-text-tertiary: #94a3b8;
+    --rce-text-disabled: #64748b;
+
+    --rce-border-color: #334155;
+    --rce-border-color-hover: #475569;
+  }
+}
+
+/* ========================================
+ * UTILIDADES BASE RCE
+ * ======================================== */
+
+.rce-container {
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 var(--rce-spacing-lg);
+}
+
+.rce-card {
+  background: var(--rce-bg-card);
+  border: var(--rce-border-width) solid var(--rce-border-color);
+  border-radius: var(--rce-border-radius-lg);
+  box-shadow: var(--rce-shadow-sm);
+  padding: var(--rce-spacing-xl);
+}
+
+.rce-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--rce-spacing-3xl);
+  color: var(--rce-text-secondary);
+}
+
+.rce-loading-spinner {
+  width: 2rem;
+  height: 2rem;
+  border: 3px solid var(--rce-border-color);
+  border-top: 3px solid var(--rce-primary);
+  border-radius: var(--rce-border-radius-full);
+  animation: rce-spin 1s linear infinite;
+  margin-bottom: var(--rce-spacing-lg);
+}
+
+.rce-error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--rce-spacing-3xl);
+}
+
+.rce-error-content {
+  text-align: center;
+  max-width: 400px;
+}
+
+.rce-error-content h3 {
+  color: var(--rce-estado-anulado);
+  margin-bottom: var(--rce-spacing-lg);
+  font-size: var(--rce-font-size-lg);
+  font-weight: var(--rce-font-weight-semibold);
+}
+
+.rce-error-content p {
+  color: var(--rce-text-secondary);
+  margin-bottom: var(--rce-spacing-xl);
+}
+
+.rce-empty-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--rce-spacing-3xl);
+}
+
+.rce-empty-content {
+  text-align: center;
+  max-width: 400px;
+}
+
+.rce-empty-content h4 {
+  color: var(--rce-text-primary);
+  margin-bottom: var(--rce-spacing-md);
+  font-size: var(--rce-font-size-lg);
+  font-weight: var(--rce-font-weight-semibold);
+}
+
+.rce-empty-content p {
+  color: var(--rce-text-secondary);
+  margin-bottom: var(--rce-spacing-xl);
+}
+
+/* ========================================
+ * ANIMACIONES
+ * ======================================== */
+
+@keyframes rce-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes rce-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes rce-bounce {
+  0%, 100% {
+    transform: translateY(-25%);
+    animation-timing-function: cubic-bezier(0.8, 0, 1, 1);
+  }
+  50% {
+    transform: none;
+    animation-timing-function: cubic-bezier(0, 0, 0.2, 1);
+  }
+}

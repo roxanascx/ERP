@@ -92,7 +92,7 @@ const RvieTicketsPage: React.FC = () => {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             {/* Breadcrumbs */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
               <button
                 onClick={() => navigate('/sire')}
                 style={{
@@ -142,12 +142,12 @@ const RvieTicketsPage: React.FC = () => {
               background: '#6b7280',
               color: 'white',
               border: 'none',
-              padding: '0.5rem 1rem',
+              padding: '8px 1rem',
               borderRadius: '6px',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
-              gap: '0.5rem'
+              gap: '8px'
             }}
           >
             ← Volver a RVIE
@@ -165,7 +165,7 @@ const RvieTicketsPage: React.FC = () => {
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
-            <h3 style={{ margin: '0 0 0.5rem 0', color: '#374151' }}>📋 Tickets Disponibles</h3>
+            <h3 style={{ margin: '0 0 8px 0', color: '#374151' }}>📋 Tickets Disponibles</h3>
             <p style={{ margin: 0, color: '#6b7280' }}>
               Total: {tickets?.length || 0} tickets
             </p>
@@ -173,7 +173,7 @@ const RvieTicketsPage: React.FC = () => {
           
           <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
             {/* Toggle para filtrar tickets */}
-            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
               <input
                 type="checkbox"
                 checked={!mostrarTodos}
@@ -193,13 +193,13 @@ const RvieTicketsPage: React.FC = () => {
                 background: '#3b82f6',
                 color: 'white',
                 border: 'none',
-                padding: '0.5rem 1rem',
+                padding: '8px 1rem',
                 borderRadius: '6px',
                 cursor: loading ? 'not-allowed' : 'pointer',
                 opacity: loading ? 0.7 : 1,
                 display: 'flex',
                 alignItems: 'center',
-                gap: '0.5rem'
+                gap: '8px'
               }}
             >
               🔄 {loading ? 'Cargando...' : 'Refrescar'}

@@ -125,7 +125,7 @@ export default function RvieTickets({
         }}>
           <h4>🔍 Consultar Ticket Externo</h4>
           <p>Si generaste un ticket desde scripts externos o Postman, consúltalo aquí:</p>
-          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
             <input
               type="text"
               value={ticketIdManual}
@@ -133,7 +133,7 @@ export default function RvieTickets({
               placeholder="Ejemplo: 20240300000018"
               style={{
                 flex: 1,
-                padding: '0.5rem',
+                padding: '8px',
                 border: '1px solid #ccc',
                 borderRadius: '4px',
                 fontSize: '14px'
@@ -144,7 +144,7 @@ export default function RvieTickets({
               onClick={handleConsultarTicketManual}
               disabled={consultandoManual || !ticketIdManual.trim()}
               style={{
-                padding: '0.5rem 1rem',
+                padding: '8px 1rem',
                 backgroundColor: consultandoManual ? '#6c757d' : '#007bff',
                 color: 'white',
                 border: 'none',
@@ -156,7 +156,7 @@ export default function RvieTickets({
               {consultandoManual ? '🔄 Consultando...' : '🔍 Consultar'}
             </button>
           </div>
-          <small style={{ color: '#6c757d', marginTop: '0.5rem', display: 'block' }}>
+          <small style={{ color: '#6c757d', marginTop: '8px', display: 'block' }}>
             💡 Tip: Puedes consultar tickets generados externamente que no aparecen en el historial
           </small>
         </div>
@@ -190,10 +190,10 @@ export default function RvieTickets({
         border: '1px solid #dee2e6'
       }}>
         <h4>🔍 Consultar Ticket Externo</h4>
-        <p style={{ margin: '0.5rem 0', fontSize: '14px' }}>
+        <p style={{ margin: '8px 0', fontSize: '14px' }}>
           Busca tickets generados desde scripts externos o Postman:
         </p>
-        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
           <input
             type="text"
             value={ticketIdManual}
@@ -201,7 +201,7 @@ export default function RvieTickets({
             placeholder="Ejemplo: 20240300000018"
             style={{
               flex: 1,
-              padding: '0.5rem',
+              padding: '8px',
               border: '1px solid #ccc',
               borderRadius: '4px',
               fontSize: '14px'
@@ -212,7 +212,7 @@ export default function RvieTickets({
             onClick={handleConsultarTicketManual}
             disabled={consultandoManual || !ticketIdManual.trim()}
             style={{
-              padding: '0.5rem 1rem',
+              padding: '8px 1rem',
               backgroundColor: consultandoManual ? '#6c757d' : '#007bff',
               color: 'white',
               border: 'none',
@@ -224,7 +224,7 @@ export default function RvieTickets({
             {consultandoManual ? '🔄 Consultando...' : '🔍 Consultar'}
           </button>
         </div>
-        <small style={{ color: '#6c757d', marginTop: '0.5rem', display: 'block' }}>
+        <small style={{ color: '#6c757d', marginTop: '8px', display: 'block' }}>
           💡 Tip: Esto sincronizará automáticamente el ticket con la base de datos
         </small>
       </div>

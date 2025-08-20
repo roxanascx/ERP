@@ -10,9 +10,14 @@ import {
   RvieHomePage,
   RvieVentasPage,
   RvieTicketsPage,
-  RvieOperacionesPage
+  RvieOperacionesPage,
+  RceHomePage,
+  RceOperacionesPage,
+  RceTicketsPage,
+  RceResumenPage
 } from './pages';
 import TestLogoutPage from './pages/TestLogoutPage';
+import RceTestPage from './pages/RceTestPage';
 import EmpresaProtectedRoute from './components/EmpresaProtectedRoute';
 
 const AppRouter: React.FC = () => {
@@ -161,6 +166,74 @@ const AppRouter: React.FC = () => {
               <EmpresaProtectedRoute>
                 <RvieVentasPage />
               </EmpresaProtectedRoute>
+            ) : (
+              <Navigate to="/" replace />
+            )
+          } 
+        />
+
+        {/* RCE Dashboard */}
+        <Route 
+          path="/sire/rce" 
+          element={
+            isSignedIn ? (
+              <EmpresaProtectedRoute>
+                <RceHomePage />
+              </EmpresaProtectedRoute>
+            ) : (
+              <Navigate to="/" replace />
+            )
+          } 
+        />
+
+        {/* RCE Operaciones */}
+        <Route 
+          path="/sire/rce/operaciones" 
+          element={
+            isSignedIn ? (
+              <EmpresaProtectedRoute>
+                <RceOperacionesPage />
+              </EmpresaProtectedRoute>
+            ) : (
+              <Navigate to="/" replace />
+            )
+          } 
+        />
+
+        {/* RCE Tickets */}
+        <Route 
+          path="/sire/rce/tickets" 
+          element={
+            isSignedIn ? (
+              <EmpresaProtectedRoute>
+                <RceTicketsPage />
+              </EmpresaProtectedRoute>
+            ) : (
+              <Navigate to="/" replace />
+            )
+          } 
+        />
+
+        {/* RCE Resumen */}
+        <Route 
+          path="/sire/rce/resumen" 
+          element={
+            isSignedIn ? (
+              <EmpresaProtectedRoute>
+                <RceResumenPage />
+              </EmpresaProtectedRoute>
+            ) : (
+              <Navigate to="/" replace />
+            )
+          } 
+        />
+
+        {/* RCE Test Page - Simple para debugging */}
+        <Route 
+          path="/rce-test" 
+          element={
+            isSignedIn ? (
+              <RceTestPage />
             ) : (
               <Navigate to="/" replace />
             )
