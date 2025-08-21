@@ -7,8 +7,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useEmpresaValidation } from '../../../hooks/useEmpresaValidation';
+import { useRceData } from '../../../contexts/RceDataContext';
 import { rceDataService } from '../../../services/rceDataService';
-import RceDataManagementDashboard from '../../../components/sire/rce/RceDataManagementDashboard';
+import { rceComprobantesService } from '../../../services/rceComprobantesService';
+import RceComprobantesTable from '../../../components/sire/rce/RceComprobantesTable';
 import type { RceComprobantesDetalladosResponse } from '../../../types/rce';
 
 interface ResumenData {
@@ -17,18 +19,26 @@ interface ResumenData {
   archivosDisponibles: any[];
 }
 
-type VistaActiva = 'resumen' | 'detallado';
+type VistaActiva = 'resumen' | 'detallado' | 'base_datos';
 
 const RceResumenPage: React.FC = () => {
   const navigate = useNavigate();
   const { empresaActual } = useEmpresaValidation();
+  
+  // 🚀 Contexto para cache de datos
+  const { 
+    setComprobantesDetallados: setComprobantesEnCache,
+    setRucActual,
+    setPeriodoActual,
+    setUltimaConsultaSunat
+  } = useRceData();
+  
   const [resumenData, setResumenData] = useState<ResumenData | null>(null);
   const [comprobantesDetallados, setComprobantesDetallados] = useState<RceComprobantesDetalladosResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadingDetallados, setLoadingDetallados] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [vistaActiva, setVistaActiva] = useState<VistaActiva>('resumen');
-  const [showDataDashboard, setShowDataDashboard] = useState(false);
   
   // Estados separados para año y mes
   const [selectedYear, setSelectedYear] = useState('2025');
@@ -97,6 +107,8 @@ const RceResumenPage: React.FC = () => {
     setError(null);
 
     try {
+      console.log('🔄 Consultando comprobantes detallados desde SUNAT...');
+      
       // Usar el servicio normal (ahora con cache deshabilitado por defecto)
       const response = await rceDataService.obtenerComprobantesDetallados(
         empresaActual.ruc, 
@@ -105,6 +117,57 @@ const RceResumenPage: React.FC = () => {
       
       if (response.exitoso) {
         setComprobantesDetallados(response);
+        
+        // 🚀 GUARDAR EN CONTEXTO para evitar consultas futuras
+        if (response.comprobantes && response.comprobantes.length > 0) {
+          console.log(`📊 Guardando ${response.comprobantes.length} comprobantes en cache`);
+          setComprobantesEnCache(response.comprobantes as any); // TODO: Arreglar tipos
+          setRucActual(empresaActual.ruc);
+          setPeriodoActual(selectedPeriod);
+          setUltimaConsultaSunat(new Date());
+          
+          // 💾 AUTO-GUARDAR EN BASE DE DATOS (con verificación de duplicados)
+          console.log('💾 Auto-guardando en base de datos...');
+          console.log('🔍 DEBUG: Datos a enviar al backend:', {
+            ruc: empresaActual.ruc,
+            periodo: selectedPeriod,
+            comprobantes_count: response.comprobantes?.length || 0,
+            primer_comprobante_completo: JSON.stringify(response.comprobantes?.[0] || null, null, 2)
+          });
+          
+          try {
+            // Primero verificar si ya existen datos
+            const estadisticasExistentes = await rceComprobantesService.obtenerEstadisticas(
+              empresaActual.ruc,
+              selectedPeriod
+            );
+            
+            if (estadisticasExistentes.total_comprobantes > 0) {
+              console.log(`⚠️ Ya existen ${estadisticasExistentes.total_comprobantes} comprobantes. Actualizando...`);
+            } else {
+              console.log('🆕 No hay datos existentes. Guardando por primera vez...');
+            }
+            
+            const resultadoBD = await rceComprobantesService.guardarDesdeSupat(
+              empresaActual.ruc,
+              selectedPeriod,
+              { comprobantes: response.comprobantes }
+            );
+            
+            if (resultadoBD.exitoso) {
+              console.log('✅ Auto-guardado exitoso en BD:', {
+                nuevos: resultadoBD.total_nuevos,
+                actualizados: resultadoBD.total_actualizados
+              });
+              
+              // Disparar evento para refrescar la tabla de BD
+              window.dispatchEvent(new CustomEvent('rce-data-updated'));
+            }
+          } catch (errorBD) {
+            console.warn('⚠️ Error en auto-guardado BD (no crítico):', errorBD);
+            // No interrumpimos el flujo del usuario
+          }
+        }
       } else {
         setError('No se encontraron comprobantes detallados para el período seleccionado');
         setComprobantesDetallados(null);
@@ -206,24 +269,6 @@ const RceResumenPage: React.FC = () => {
           
           <div style={{ display: 'flex', gap: '1rem' }}>
             <button
-              onClick={() => setShowDataDashboard(true)}
-              style={{
-                background: '#10b981',
-                border: 'none',
-                padding: '0.5rem 1rem',
-                borderRadius: '8px',
-                color: 'white',
-                cursor: 'pointer',
-                fontSize: '0.9rem',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem'
-              }}
-            >
-              🚀 Gestión Avanzada
-            </button>
-            
-            <button
               onClick={() => navigate('/sire/rce')}
               style={{
                 background: '#f3f4f6',
@@ -249,18 +294,17 @@ const RceResumenPage: React.FC = () => {
         marginBottom: '2rem',
         boxShadow: '0 2px 10px rgba(0, 0, 0, 0.1)'
       }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
-          <div>
-            <strong>RUC:</strong> {empresaActual.ruc}
-          </div>
-          <div>
-            <strong>Empresa:</strong> {empresaActual.razon_social}
-          </div>
-          {resumenData && (
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+          <div style={{ display: 'flex', gap: '2rem', alignItems: 'center' }}>
             <div>
-              <strong>Total Registros:</strong> <span style={{ color: '#f59e0b', fontWeight: 'bold' }}>{resumenData.totalRegistros}</span>
+              <strong>{empresaActual.ruc}</strong> - {empresaActual.razon_social}
             </div>
-          )}
+            {resumenData && (
+              <div>
+                <span style={{ color: '#f59e0b', fontWeight: 'bold' }}>{resumenData.totalRegistros}</span> registros
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Controles */}
@@ -409,6 +453,22 @@ const RceResumenPage: React.FC = () => {
             >
               📋 Vista Detallada
             </button>
+            
+            <button
+              onClick={() => setVistaActiva('base_datos')}
+              style={{
+                background: vistaActiva === 'base_datos' ? '#10b981' : '#e5e7eb',
+                color: vistaActiva === 'base_datos' ? 'white' : '#374151',
+                border: 'none',
+                padding: '0.5rem 1rem',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '0.9rem',
+                fontWeight: vistaActiva === 'base_datos' ? 'bold' : 'normal'
+              }}
+            >
+              💾 Base de Datos
+            </button>
           </div>
         </div>
       </div>
@@ -424,19 +484,20 @@ const RceResumenPage: React.FC = () => {
           <div style={{
             background: '#fef2f2',
             border: '1px solid #fecaca',
-            padding: '1rem',
-            borderRadius: '8px',
-            marginBottom: '1.5rem',
-            color: '#dc2626'
+            padding: '0.75rem',
+            borderRadius: '6px',
+            marginBottom: '1rem',
+            color: '#dc2626',
+            fontSize: '0.9rem'
           }}>
-            <strong>❌ Error:</strong> {error}
+            ❌ {error}
           </div>
         )}
 
         {loading && (
-          <div style={{ textAlign: 'center', padding: '3rem' }}>
-            <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>⏳</div>
-            <p>Consultando resumen de período...</p>
+          <div style={{ textAlign: 'center', padding: '2rem' }}>
+            <div style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>⏳</div>
+            <p style={{ color: '#6b7280', fontSize: '0.9rem' }}>Cargando...</p>
           </div>
         )}
 
@@ -458,54 +519,54 @@ const RceResumenPage: React.FC = () => {
             {/* Estadísticas generales */}
             <div style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-              gap: '1rem',
-              marginBottom: '2rem'
+              gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+              gap: '0.75rem',
+              marginBottom: '1.5rem'
             }}>
               <div style={{
                 background: '#f0fdf4',
-                padding: '1rem',
-                borderRadius: '8px',
+                padding: '0.75rem',
+                borderRadius: '6px',
                 textAlign: 'center'
               }}>
-                <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>📋</div>
-                <div style={{ fontWeight: 'bold', fontSize: '1.2rem' }}>{resumenData.totalRegistros}</div>
-                <div style={{ color: '#6b7280', fontSize: '0.9rem' }}>Total Registros</div>
+                <div style={{ fontSize: '1.2rem', marginBottom: '0.2rem' }}>📋</div>
+                <div style={{ fontWeight: 'bold', fontSize: '1rem' }}>{resumenData.totalRegistros}</div>
+                <div style={{ color: '#6b7280', fontSize: '0.8rem' }}>Registros</div>
               </div>
               
               <div style={{
                 background: '#fef3c7',
-                padding: '1rem',
-                borderRadius: '8px',
+                padding: '0.75rem',
+                borderRadius: '6px',
                 textAlign: 'center'
               }}>
-                <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>📁</div>
-                <div style={{ fontWeight: 'bold', fontSize: '1.2rem' }}>{resumenData.archivosDisponibles.length}</div>
-                <div style={{ color: '#6b7280', fontSize: '0.9rem' }}>Archivos</div>
+                <div style={{ fontSize: '1.2rem', marginBottom: '0.2rem' }}>📁</div>
+                <div style={{ fontWeight: 'bold', fontSize: '1rem' }}>{resumenData.archivosDisponibles.length}</div>
+                <div style={{ color: '#6b7280', fontSize: '0.8rem' }}>Archivos</div>
               </div>
               
               <div style={{
                 background: '#dbeafe',
-                padding: '1rem',
-                borderRadius: '8px',
+                padding: '0.75rem',
+                borderRadius: '6px',
                 textAlign: 'center'
               }}>
-                <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>📅</div>
-                <div style={{ fontWeight: 'bold', fontSize: '1.2rem' }}>{selectedPeriod}</div>
-                <div style={{ color: '#6b7280', fontSize: '0.9rem' }}>Período</div>
+                <div style={{ fontSize: '1.2rem', marginBottom: '0.2rem' }}>📅</div>
+                <div style={{ fontWeight: 'bold', fontSize: '1rem' }}>{selectedPeriod}</div>
+                <div style={{ color: '#6b7280', fontSize: '0.8rem' }}>Período</div>
               </div>
               
               <div style={{
                 background: '#f0f9ff',
-                padding: '1rem',
-                borderRadius: '8px',
+                padding: '0.75rem',
+                borderRadius: '6px',
                 textAlign: 'center'
               }}>
-                <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>💰</div>
-                <div style={{ fontWeight: 'bold', fontSize: '1.2rem' }}>
+                <div style={{ fontSize: '1.2rem', marginBottom: '0.2rem' }}>💰</div>
+                <div style={{ fontWeight: 'bold', fontSize: '1rem' }}>
                   {resumenData.resumenPeriodo?.total_cp ? `S/ ${resumenData.resumenPeriodo.total_cp}` : 'N/A'}
                 </div>
-                <div style={{ color: '#6b7280', fontSize: '0.9rem' }}>Total CP</div>
+                <div style={{ color: '#6b7280', fontSize: '0.8rem' }}>Total CP</div>
               </div>
             </div>
 
@@ -686,57 +747,35 @@ const RceResumenPage: React.FC = () => {
             </h2>
 
             {loadingDetallados && (
-              <div style={{ textAlign: 'center', padding: '3rem' }}>
-                <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>⏳</div>
-                <p>Descargando comprobantes detallados de SUNAT...</p>
-                <p style={{ fontSize: '0.9rem', color: '#6b7280' }}>
-                  Este proceso puede tomar unos minutos...
-                </p>
+              <div style={{ textAlign: 'center', padding: '2rem' }}>
+                <div style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>⏳</div>
+                <p style={{ color: '#6b7280', fontSize: '0.9rem' }}>Descargando datos...</p>
               </div>
             )}
 
             {!loadingDetallados && !comprobantesDetallados && (
-              <div style={{ textAlign: 'center', padding: '3rem', color: '#6b7280' }}>
-                <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📋</div>
-                <h3>No hay comprobantes detallados</h3>
-                <p>Haz clic en "Vista Detallada" para cargar los comprobantes</p>
+              <div style={{ textAlign: 'center', padding: '2rem', color: '#6b7280' }}>
+                <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>📋</div>
+                <p>Sin datos disponibles</p>
                 <button
                   onClick={consultarComprobantesDetallados}
                   style={{
                     background: '#3b82f6',
                     color: 'white',
                     border: 'none',
-                    padding: '0.75rem 1.5rem',
-                    borderRadius: '8px',
+                    padding: '0.5rem 1rem',
+                    borderRadius: '6px',
                     cursor: 'pointer',
-                    marginTop: '1rem'
+                    fontSize: '0.9rem'
                   }}
                 >
-                  🔄 Cargar Comprobantes Detallados
+                  Cargar Datos
                 </button>
               </div>
             )}
 
             {!loadingDetallados && comprobantesDetallados && comprobantesDetallados.exitoso && (
               <div>
-                {/* Información del resultado */}
-                <div style={{
-                  background: '#f0f9ff',
-                  border: '1px solid #0ea5e9',
-                  padding: '1rem',
-                  borderRadius: '8px',
-                  marginBottom: '1.5rem'
-                }}>
-                  <p style={{ margin: 0, color: '#0c4a6e', fontSize: '0.9rem' }}>
-                    ✅ <strong>{comprobantesDetallados.total_comprobantes}</strong> comprobantes encontrados
-                    {comprobantesDetallados.ticket && (
-                      <span style={{ marginLeft: '1rem' }}>
-                        🎫 Ticket: {comprobantesDetallados.ticket}
-                      </span>
-                    )}
-                  </p>
-                </div>
-
                 {/* Tabla de comprobantes detallados */}
                 <div style={{ overflowX: 'auto' }}>
                   <table style={{
@@ -830,34 +869,34 @@ const RceResumenPage: React.FC = () => {
                 {comprobantesDetallados.totales && (
                   <div style={{
                     background: '#f8fafc',
-                    padding: '1.5rem',
-                    borderRadius: '8px',
-                    marginTop: '1.5rem',
+                    padding: '1rem',
+                    borderRadius: '6px',
+                    marginTop: '1rem',
                     border: '1px solid #e2e8f0'
                   }}>
-                    <h3 style={{ margin: '0 0 1rem 0', color: '#374151' }}>
-                      🧮 Totales del Período
-                    </h3>
+                    <h4 style={{ margin: '0 0 0.5rem 0', color: '#374151', fontSize: '0.95rem' }}>
+                      💰 Totales
+                    </h4>
                     <div style={{
                       display: 'grid',
-                      gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-                      gap: '1rem'
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+                      gap: '0.75rem'
                     }}>
                       <div>
-                        <strong>Base Imponible:</strong>
-                        <div style={{ fontSize: '1.2rem', color: '#059669', fontWeight: 'bold' }}>
+                        <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>Base Imponible</div>
+                        <div style={{ fontSize: '1rem', color: '#059669', fontWeight: 'bold' }}>
                           S/ {comprobantesDetallados.totales.total_base_imponible.toFixed(2)}
                         </div>
                       </div>
                       <div>
-                        <strong>IGV:</strong>
-                        <div style={{ fontSize: '1.2rem', color: '#dc2626', fontWeight: 'bold' }}>
+                        <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>IGV</div>
+                        <div style={{ fontSize: '1rem', color: '#dc2626', fontWeight: 'bold' }}>
                           S/ {comprobantesDetallados.totales.total_igv.toFixed(2)}
                         </div>
                       </div>
                       <div>
-                        <strong>Total General:</strong>
-                        <div style={{ fontSize: '1.2rem', color: '#1f2937', fontWeight: 'bold' }}>
+                        <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>Total</div>
+                        <div style={{ fontSize: '1rem', color: '#1f2937', fontWeight: 'bold' }}>
                           S/ {comprobantesDetallados.totales.total_general.toFixed(2)}
                         </div>
                       </div>
@@ -871,25 +910,36 @@ const RceResumenPage: React.FC = () => {
               <div style={{
                 background: '#fef2f2',
                 border: '1px solid #fecaca',
-                padding: '1rem',
-                borderRadius: '8px',
-                color: '#dc2626'
+                padding: '0.75rem',
+                borderRadius: '6px',
+                color: '#dc2626',
+                fontSize: '0.9rem',
+                marginBottom: '1rem'
               }}>
-                <strong>❌ Error:</strong> {comprobantesDetallados.mensaje}
+                ❌ {comprobantesDetallados.mensaje}
               </div>
             )}
           </div>
         )}
-      </div>
 
-      {/* Dashboard de Gestión Avanzada de Datos */}
-      {showDataDashboard && empresaActual && (
-        <RceDataManagementDashboard
-          ruc={empresaActual.ruc}
-          periodo={selectedPeriod}
-          onClose={() => setShowDataDashboard(false)}
-        />
-      )}
+        {/* Vista de Base de Datos */}
+        {vistaActiva === 'base_datos' && (
+          <div>
+            <h2 style={{ margin: '0 0 1.5rem 0', color: '#374151' }}>
+              💾 Gestión de Comprobantes en Base de Datos
+            </h2>
+
+            <RceComprobantesTable
+              ruc={empresaActual!.ruc}
+              periodo={selectedPeriod}
+              onDataChange={() => {
+                // Opcional: refrescar otros datos cuando cambien los comprobantes
+                console.log('Datos de comprobantes actualizados');
+              }}
+            />
+          </div>
+        )}
+      </div>
     </div>
   );
 };

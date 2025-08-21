@@ -17,8 +17,9 @@ import {
   RceResumenPage
 } from './pages';
 import TestLogoutPage from './pages/TestLogoutPage';
-import RceTestPage from './pages/RceTestPage';
 import EmpresaProtectedRoute from './components/EmpresaProtectedRoute';
+import { RceDataProvider } from './contexts/RceDataContext';
+import RceIntegrationTest from './pages/test/RceIntegrationTest';
 
 const AppRouter: React.FC = () => {
   const { isLoaded, isSignedIn } = useUser();
@@ -178,7 +179,9 @@ const AppRouter: React.FC = () => {
           element={
             isSignedIn ? (
               <EmpresaProtectedRoute>
-                <RceHomePage />
+                <RceDataProvider>
+                  <RceHomePage />
+                </RceDataProvider>
               </EmpresaProtectedRoute>
             ) : (
               <Navigate to="/" replace />
@@ -192,7 +195,9 @@ const AppRouter: React.FC = () => {
           element={
             isSignedIn ? (
               <EmpresaProtectedRoute>
-                <RceOperacionesPage />
+                <RceDataProvider>
+                  <RceOperacionesPage />
+                </RceDataProvider>
               </EmpresaProtectedRoute>
             ) : (
               <Navigate to="/" replace />
@@ -206,7 +211,9 @@ const AppRouter: React.FC = () => {
           element={
             isSignedIn ? (
               <EmpresaProtectedRoute>
-                <RceTicketsPage />
+                <RceDataProvider>
+                  <RceTicketsPage />
+                </RceDataProvider>
               </EmpresaProtectedRoute>
             ) : (
               <Navigate to="/" replace />
@@ -220,20 +227,10 @@ const AppRouter: React.FC = () => {
           element={
             isSignedIn ? (
               <EmpresaProtectedRoute>
-                <RceResumenPage />
+                <RceDataProvider>
+                  <RceResumenPage />
+                </RceDataProvider>
               </EmpresaProtectedRoute>
-            ) : (
-              <Navigate to="/" replace />
-            )
-          } 
-        />
-
-        {/* RCE Test Page - Simple para debugging */}
-        <Route 
-          path="/rce-test" 
-          element={
-            isSignedIn ? (
-              <RceTestPage />
             ) : (
               <Navigate to="/" replace />
             )
@@ -259,6 +256,20 @@ const AppRouter: React.FC = () => {
           path="/test-logout" 
           element={
             isSignedIn ? <TestLogoutPage /> : <Navigate to="/" replace />
+          } 
+        />
+
+        {/* 🧪 Página de prueba integración RCE */}
+        <Route 
+          path="/test-rce" 
+          element={
+            isSignedIn ? (
+              <RceDataProvider>
+                <RceIntegrationTest />
+              </RceDataProvider>
+            ) : (
+              <Navigate to="/" replace />
+            )
           } 
         />
         
