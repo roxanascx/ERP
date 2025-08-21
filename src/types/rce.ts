@@ -608,3 +608,57 @@ export interface EmpresaConfigRce {
 export interface SireApiResponse<T = any> extends RceApiResponse<T> {
   modulo: 'rvie' | 'rce';
 }
+
+// ========================================
+// TIPOS PARA COMPROBANTES DETALLADOS
+// ========================================
+
+export interface RceComprobanteDetallado {
+  // Información del proveedor
+  ruc_proveedor: string;
+  razon_social_proveedor: string;
+  
+  // Información del comprobante
+  tipo_documento: string;
+  serie_comprobante: string;
+  numero_comprobante: string;
+  fecha_emision: string;
+  fecha_vencimiento?: string;
+  
+  // Montos
+  moneda: string;
+  tipo_cambio?: number;
+  base_imponible_gravada: number;
+  igv: number;
+  valor_adquisicion_no_gravada: number;
+  isc: number;
+  icbper: number;
+  otros_tributos: number;
+  importe_total: number;
+  
+  // Información adicional
+  periodo: string;
+  car_sunat?: string;
+  numero_dua?: string;
+}
+
+export interface RceComprobantesDetalladosResponse {
+  exitoso: boolean;
+  mensaje: string;
+  total_comprobantes: number;
+  periodo: string;
+  ruc: string;
+  comprobantes: RceComprobanteDetallado[];
+  
+  // Totales agregados
+  totales: {
+    total_base_imponible: number;
+    total_igv: number;
+    total_general: number;
+  };
+  
+  // Info de procesamiento
+  ticket?: string;
+  archivo?: string;
+  debug?: any;
+}

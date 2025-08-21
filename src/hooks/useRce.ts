@@ -12,7 +12,6 @@ import type {
   RceTicket,
   RceEstadisticas,
   RceResumenPeriodo,
-  RceResumenSunat,
   RceFiltros,
   RceEstadoComprobante,
   RceEstadoPropuesta,

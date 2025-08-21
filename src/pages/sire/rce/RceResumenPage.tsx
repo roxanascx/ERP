@@ -7,7 +7,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useEmpresaValidation } from '../../../hooks/useEmpresaValidation';
-import { rceApi } from '../../../services/rceApi';
+import { rceDataService } from '../../../services/rceDataService';
+import RceDataManagementDashboard from '../../../components/sire/rce/RceDataManagementDashboard';
+import type { RceComprobantesDetalladosResponse } from '../../../types/rce';
 
 interface ResumenData {
   totalRegistros: number;
@@ -15,12 +17,18 @@ interface ResumenData {
   archivosDisponibles: any[];
 }
 
+type VistaActiva = 'resumen' | 'detallado';
+
 const RceResumenPage: React.FC = () => {
   const navigate = useNavigate();
   const { empresaActual } = useEmpresaValidation();
   const [resumenData, setResumenData] = useState<ResumenData | null>(null);
+  const [comprobantesDetallados, setComprobantesDetallados] = useState<RceComprobantesDetalladosResponse | null>(null);
   const [loading, setLoading] = useState(false);
+  const [loadingDetallados, setLoadingDetallados] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [vistaActiva, setVistaActiva] = useState<VistaActiva>('resumen');
+  const [showDataDashboard, setShowDataDashboard] = useState(false);
   
   // Estados separados para año y mes
   const [selectedYear, setSelectedYear] = useState('2025');
@@ -57,14 +65,8 @@ const RceResumenPage: React.FC = () => {
     setError(null);
 
     try {
-      console.log('📊 Consultando resumen para período:', selectedPeriod);
-      
-      // Usar el servicio rceApi en lugar de llamada directa
-      const response = await rceApi.comprobantes.obtenerResumenPeriodo(empresaActual.ruc, selectedPeriod);
-
-      console.log('✅ Respuesta de resumen:', response);
-      console.log('🔍 Contenido completo disponible:', !!response.contenido_completo);
-      console.log('📄 Contenido completo:', response.contenido_completo);
+      // Usar el nuevo servicio de datos con cache inteligente
+      const response = await rceDataService.obtenerResumen(empresaActual.ruc, selectedPeriod);
       
       if (response.exitoso) {
         setResumenData({
@@ -81,11 +83,37 @@ const RceResumenPage: React.FC = () => {
         setResumenData(null);
       }
     } catch (err: any) {
-      console.error('❌ Error consultando resumen:', err);
       setError(err.response?.data?.detail || 'Error consultando resumen');
       setResumenData(null);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const consultarComprobantesDetallados = async () => {
+    if (!empresaActual) return;
+
+    setLoadingDetallados(true);
+    setError(null);
+
+    try {
+      // Usar el servicio normal (ahora con cache deshabilitado por defecto)
+      const response = await rceDataService.obtenerComprobantesDetallados(
+        empresaActual.ruc, 
+        selectedPeriod
+      );
+      
+      if (response.exitoso) {
+        setComprobantesDetallados(response);
+      } else {
+        setError('No se encontraron comprobantes detallados para el período seleccionado');
+        setComprobantesDetallados(null);
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Error consultando comprobantes detallados');
+      setComprobantesDetallados(null);
+    } finally {
+      setLoadingDetallados(false);
     }
   };
 
@@ -176,20 +204,40 @@ const RceResumenPage: React.FC = () => {
             </h1>
           </div>
           
-          <button
-            onClick={() => navigate('/sire/rce')}
-            style={{
-              background: '#f3f4f6',
-              border: 'none',
-              padding: '0.5rem 1rem',
-              borderRadius: '8px',
-              color: '#374151',
-              cursor: 'pointer',
-              fontSize: '0.9rem'
-            }}
-          >
-            ← Volver a RCE
-          </button>
+          <div style={{ display: 'flex', gap: '1rem' }}>
+            <button
+              onClick={() => setShowDataDashboard(true)}
+              style={{
+                background: '#10b981',
+                border: 'none',
+                padding: '0.5rem 1rem',
+                borderRadius: '8px',
+                color: 'white',
+                cursor: 'pointer',
+                fontSize: '0.9rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem'
+              }}
+            >
+              🚀 Gestión Avanzada
+            </button>
+            
+            <button
+              onClick={() => navigate('/sire/rce')}
+              style={{
+                background: '#f3f4f6',
+                border: 'none',
+                padding: '0.5rem 1rem',
+                borderRadius: '8px',
+                color: '#374151',
+                cursor: 'pointer',
+                fontSize: '0.9rem'
+              }}
+            >
+              ← Volver a RCE
+            </button>
+          </div>
         </div>
       </div>
 
@@ -313,6 +361,56 @@ const RceResumenPage: React.FC = () => {
             {loading ? '⏳ Consultando...' : '🔄 Consultar'}
           </button>
         </div>
+
+        {/* Toggle de Vistas */}
+        <div style={{ 
+          marginTop: '1.5rem', 
+          padding: '1rem',
+          background: '#f8fafc',
+          borderRadius: '8px',
+          border: '1px solid #e2e8f0'
+        }}>
+          <div style={{ marginBottom: '0.5rem' }}>
+            <strong>Vista:</strong>
+          </div>
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <button
+              onClick={() => setVistaActiva('resumen')}
+              style={{
+                background: vistaActiva === 'resumen' ? '#3b82f6' : '#e5e7eb',
+                color: vistaActiva === 'resumen' ? 'white' : '#374151',
+                border: 'none',
+                padding: '0.5rem 1rem',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '0.9rem',
+                fontWeight: vistaActiva === 'resumen' ? 'bold' : 'normal'
+              }}
+            >
+              📊 Vista Resumen
+            </button>
+            <button
+              onClick={() => {
+                setVistaActiva('detallado');
+                if (!comprobantesDetallados && !loadingDetallados) {
+                  consultarComprobantesDetallados();
+                }
+              }}
+              style={{
+                background: vistaActiva === 'detallado' ? '#3b82f6' : '#e5e7eb',
+                color: vistaActiva === 'detallado' ? 'white' : '#374151',
+                border: 'none',
+                padding: '0.5rem 1rem',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '0.9rem',
+                fontWeight: vistaActiva === 'detallado' ? 'bold' : 'normal'
+              }}
+            >
+              📋 Vista Detallada
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Contenido principal */}
@@ -342,7 +440,7 @@ const RceResumenPage: React.FC = () => {
           </div>
         )}
 
-        {!loading && !resumenData && !error && (
+        {!loading && !resumenData && !error && vistaActiva === 'resumen' && (
           <div style={{ textAlign: 'center', padding: '3rem', color: '#6b7280' }}>
             <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📊</div>
             <h3>No hay datos de resumen</h3>
@@ -350,7 +448,8 @@ const RceResumenPage: React.FC = () => {
           </div>
         )}
 
-        {!loading && resumenData && (
+        {/* Vista Resumen */}
+        {!loading && resumenData && vistaActiva === 'resumen' && (
           <div>
             <h2 style={{ margin: '0 0 1.5rem 0', color: '#374151' }}>
               📊 Resumen del Período {selectedPeriod}
@@ -424,31 +523,26 @@ const RceResumenPage: React.FC = () => {
                 
                 {(() => {
                   const contenido = resumenData.resumenPeriodo.contenido_completo;
-                  const lineas = contenido.split('\n').filter(linea => linea.trim() !== '');
+                  const lineas = contenido.split('\n').filter((linea: string) => linea.trim() !== '');
                   
                   if (lineas.length === 0) return null;
                   
                   // Primera línea son los headers
-                  const headers = lineas[0].split('|').map(h => h.trim());
+                  const headers = lineas[0].split('|').map((h: string) => h.trim());
                   
                   // Separar facturas individuales del total
-                  const todasLasFilas = lineas.slice(1).map(linea => 
-                    linea.split('|').map(celda => celda.trim())
+                  const todasLasFilas = lineas.slice(1).map((linea: string) => 
+                    linea.split('|').map((celda: string) => celda.trim())
                   );
                   
                   // Filtrar solo las facturas (excluir TOTAL)
-                  const facturas = todasLasFilas.filter(fila => 
+                  const facturas = todasLasFilas.filter((fila: string[]) => 
                     !fila[0] || !fila[0].toUpperCase().includes('TOTAL')
-                  );
-                  
-                  // Encontrar la fila TOTAL para el resumen
-                  const filaTotal = todasLasFilas.find(fila => 
-                    fila[0] && fila[0].toUpperCase().includes('TOTAL')
                   );
 
                   // Mapeo de headers más legibles
-                  const headersLegibles = headers.map(header => {
-                    const mapa = {
+                  const headersLegibles = headers.map((header: string) => {
+                    const mapa: { [key: string]: string } = {
                       'Tipo de Documento': 'Tipo Doc.',
                       'Total Documentos': 'Cant.',
                       'BI Gravado DG': 'BI Gravado',
@@ -496,7 +590,7 @@ const RceResumenPage: React.FC = () => {
                           }}>
                             <thead>
                               <tr style={{ background: '#1e40af', color: 'white' }}>
-                                {headersLegibles.map((header, index) => (
+                                {headersLegibles.map((header: string, index: number) => (
                                   <th key={index} style={{
                                     padding: '12px 8px',
                                     textAlign: index === 0 ? 'left' : 'center',
@@ -511,7 +605,7 @@ const RceResumenPage: React.FC = () => {
                               </tr>
                             </thead>
                             <tbody>
-                              {facturas.map((fila, rowIndex) => (
+                              {facturas.map((fila: string[], rowIndex: number) => (
                                 <tr key={rowIndex} style={{
                                   background: rowIndex % 2 === 0 ? '#f8fafc' : 'white',
                                   borderBottom: '1px solid #e2e8f0',
@@ -520,7 +614,7 @@ const RceResumenPage: React.FC = () => {
                                 onMouseEnter={(e) => e.currentTarget.style.background = '#e0f2fe'}
                                 onMouseLeave={(e) => e.currentTarget.style.background = rowIndex % 2 === 0 ? '#f8fafc' : 'white'}
                                 >
-                                  {fila.map((celda, cellIndex) => (
+                                  {fila.map((celda: string, cellIndex: number) => (
                                     <td key={cellIndex} style={{
                                       padding: '10px 8px',
                                       fontSize: '0.8rem',
@@ -583,7 +677,219 @@ const RceResumenPage: React.FC = () => {
             )}
           </div>
         )}
+
+        {/* Vista Detallada */}
+        {vistaActiva === 'detallado' && (
+          <div>
+            <h2 style={{ margin: '0 0 1.5rem 0', color: '#374151' }}>
+              📋 Comprobantes Detallados - Período {selectedPeriod}
+            </h2>
+
+            {loadingDetallados && (
+              <div style={{ textAlign: 'center', padding: '3rem' }}>
+                <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>⏳</div>
+                <p>Descargando comprobantes detallados de SUNAT...</p>
+                <p style={{ fontSize: '0.9rem', color: '#6b7280' }}>
+                  Este proceso puede tomar unos minutos...
+                </p>
+              </div>
+            )}
+
+            {!loadingDetallados && !comprobantesDetallados && (
+              <div style={{ textAlign: 'center', padding: '3rem', color: '#6b7280' }}>
+                <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📋</div>
+                <h3>No hay comprobantes detallados</h3>
+                <p>Haz clic en "Vista Detallada" para cargar los comprobantes</p>
+                <button
+                  onClick={consultarComprobantesDetallados}
+                  style={{
+                    background: '#3b82f6',
+                    color: 'white',
+                    border: 'none',
+                    padding: '0.75rem 1.5rem',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    marginTop: '1rem'
+                  }}
+                >
+                  🔄 Cargar Comprobantes Detallados
+                </button>
+              </div>
+            )}
+
+            {!loadingDetallados && comprobantesDetallados && comprobantesDetallados.exitoso && (
+              <div>
+                {/* Información del resultado */}
+                <div style={{
+                  background: '#f0f9ff',
+                  border: '1px solid #0ea5e9',
+                  padding: '1rem',
+                  borderRadius: '8px',
+                  marginBottom: '1.5rem'
+                }}>
+                  <p style={{ margin: 0, color: '#0c4a6e', fontSize: '0.9rem' }}>
+                    ✅ <strong>{comprobantesDetallados.total_comprobantes}</strong> comprobantes encontrados
+                    {comprobantesDetallados.ticket && (
+                      <span style={{ marginLeft: '1rem' }}>
+                        🎫 Ticket: {comprobantesDetallados.ticket}
+                      </span>
+                    )}
+                  </p>
+                </div>
+
+                {/* Tabla de comprobantes detallados */}
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{
+                    width: '100%',
+                    borderCollapse: 'collapse',
+                    background: 'white',
+                    borderRadius: '8px',
+                    overflow: 'hidden',
+                    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
+                  }}>
+                    <thead>
+                      <tr style={{ background: '#1e40af', color: 'white' }}>
+                        <th style={{ padding: '12px 8px', textAlign: 'left', fontSize: '0.85rem', fontWeight: '600' }}>
+                          RUC Proveedor
+                        </th>
+                        <th style={{ padding: '12px 8px', textAlign: 'left', fontSize: '0.85rem', fontWeight: '600' }}>
+                          Razón Social
+                        </th>
+                        <th style={{ padding: '12px 8px', textAlign: 'center', fontSize: '0.85rem', fontWeight: '600' }}>
+                          Tipo Doc.
+                        </th>
+                        <th style={{ padding: '12px 8px', textAlign: 'center', fontSize: '0.85rem', fontWeight: '600' }}>
+                          Serie
+                        </th>
+                        <th style={{ padding: '12px 8px', textAlign: 'center', fontSize: '0.85rem', fontWeight: '600' }}>
+                          Número
+                        </th>
+                        <th style={{ padding: '12px 8px', textAlign: 'center', fontSize: '0.85rem', fontWeight: '600' }}>
+                          Fecha Emisión
+                        </th>
+                        <th style={{ padding: '12px 8px', textAlign: 'right', fontSize: '0.85rem', fontWeight: '600' }}>
+                          Base Imponible
+                        </th>
+                        <th style={{ padding: '12px 8px', textAlign: 'right', fontSize: '0.85rem', fontWeight: '600' }}>
+                          IGV
+                        </th>
+                        <th style={{ padding: '12px 8px', textAlign: 'right', fontSize: '0.85rem', fontWeight: '600' }}>
+                          Valor No Gravado
+                        </th>
+                        <th style={{ padding: '12px 8px', textAlign: 'right', fontSize: '0.85rem', fontWeight: '600' }}>
+                          Total
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {comprobantesDetallados.comprobantes.map((comprobante, index) => (
+                        <tr 
+                          key={index}
+                          style={{
+                            background: index % 2 === 0 ? '#f8fafc' : 'white',
+                            borderBottom: '1px solid #e2e8f0'
+                          }}
+                        >
+                          <td style={{ padding: '10px 8px', fontSize: '0.8rem', color: '#374151' }}>
+                            {comprobante.ruc_proveedor}
+                          </td>
+                          <td style={{ padding: '10px 8px', fontSize: '0.8rem', color: '#374151' }}>
+                            {comprobante.razon_social_proveedor}
+                          </td>
+                          <td style={{ padding: '10px 8px', fontSize: '0.8rem', color: '#374151', textAlign: 'center' }}>
+                            {comprobante.tipo_documento}
+                          </td>
+                          <td style={{ padding: '10px 8px', fontSize: '0.8rem', color: '#374151', textAlign: 'center' }}>
+                            {comprobante.serie_comprobante}
+                          </td>
+                          <td style={{ padding: '10px 8px', fontSize: '0.8rem', color: '#374151', textAlign: 'center' }}>
+                            {comprobante.numero_comprobante}
+                          </td>
+                          <td style={{ padding: '10px 8px', fontSize: '0.8rem', color: '#374151', textAlign: 'center' }}>
+                            {comprobante.fecha_emision}
+                          </td>
+                          <td style={{ padding: '10px 8px', fontSize: '0.8rem', color: '#374151', textAlign: 'right' }}>
+                            S/ {comprobante.base_imponible_gravada.toFixed(2)}
+                          </td>
+                          <td style={{ padding: '10px 8px', fontSize: '0.8rem', color: '#374151', textAlign: 'right' }}>
+                            S/ {comprobante.igv.toFixed(2)}
+                          </td>
+                          <td style={{ padding: '10px 8px', fontSize: '0.8rem', color: '#374151', textAlign: 'right' }}>
+                            S/ {comprobante.valor_adquisicion_no_gravada.toFixed(2)}
+                          </td>
+                          <td style={{ padding: '10px 8px', fontSize: '0.8rem', color: '#374151', textAlign: 'right', fontWeight: 'bold' }}>
+                            S/ {comprobante.importe_total.toFixed(2)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Totales */}
+                {comprobantesDetallados.totales && (
+                  <div style={{
+                    background: '#f8fafc',
+                    padding: '1.5rem',
+                    borderRadius: '8px',
+                    marginTop: '1.5rem',
+                    border: '1px solid #e2e8f0'
+                  }}>
+                    <h3 style={{ margin: '0 0 1rem 0', color: '#374151' }}>
+                      🧮 Totales del Período
+                    </h3>
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                      gap: '1rem'
+                    }}>
+                      <div>
+                        <strong>Base Imponible:</strong>
+                        <div style={{ fontSize: '1.2rem', color: '#059669', fontWeight: 'bold' }}>
+                          S/ {comprobantesDetallados.totales.total_base_imponible.toFixed(2)}
+                        </div>
+                      </div>
+                      <div>
+                        <strong>IGV:</strong>
+                        <div style={{ fontSize: '1.2rem', color: '#dc2626', fontWeight: 'bold' }}>
+                          S/ {comprobantesDetallados.totales.total_igv.toFixed(2)}
+                        </div>
+                      </div>
+                      <div>
+                        <strong>Total General:</strong>
+                        <div style={{ fontSize: '1.2rem', color: '#1f2937', fontWeight: 'bold' }}>
+                          S/ {comprobantesDetallados.totales.total_general.toFixed(2)}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {!loadingDetallados && comprobantesDetallados && !comprobantesDetallados.exitoso && (
+              <div style={{
+                background: '#fef2f2',
+                border: '1px solid #fecaca',
+                padding: '1rem',
+                borderRadius: '8px',
+                color: '#dc2626'
+              }}>
+                <strong>❌ Error:</strong> {comprobantesDetallados.mensaje}
+              </div>
+            )}
+          </div>
+        )}
       </div>
+
+      {/* Dashboard de Gestión Avanzada de Datos */}
+      {showDataDashboard && empresaActual && (
+        <RceDataManagementDashboard
+          ruc={empresaActual.ruc}
+          periodo={selectedPeriod}
+          onClose={() => setShowDataDashboard(false)}
+        />
+      )}
     </div>
   );
 };

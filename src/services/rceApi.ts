@@ -18,7 +18,8 @@ import type {
   RceApiResponse,
   RceTicket,
   RceFiltros,
-  RceResultadoValidacion
+  RceResultadoValidacion,
+  RceComprobantesDetalladosResponse
 } from '../types/rce';
 
 // ========================================
@@ -169,6 +170,14 @@ export const rceComprobantesApi = {
   async obtenerResumenPeriodo(ruc: string, periodo: string): Promise<RceResumenSunat> {
     // Usar el endpoint exitoso que funciona correctamente
     const response = await api.get(`${RCE_BASE_URL}/comprobantes/resumen-sunat`, {
+      params: { ruc, periodo }
+    });
+    return response.data;
+  },
+
+  async obtenerComprobantesDetallados(ruc: string, periodo: string): Promise<RceComprobantesDetalladosResponse> {
+    // Nuevo endpoint para obtener comprobantes individuales con datos de proveedor
+    const response = await api.get(`${RCE_BASE_URL}/comprobantes/comprobantes-detallados`, {
       params: { ruc, periodo }
     });
     return response.data;
