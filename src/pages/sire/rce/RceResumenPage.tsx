@@ -38,7 +38,7 @@ const RceResumenPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [loadingDetallados, setLoadingDetallados] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [vistaActiva, setVistaActiva] = useState<VistaActiva>('resumen');
+  const [vistaActiva, setVistaActiva] = useState<VistaActiva>('base_datos'); // 🔄 Cambio: BD como vista por defecto
   
   // Estados separados para año y mes
   const [selectedYear, setSelectedYear] = useState('2025');
@@ -418,21 +418,25 @@ const RceResumenPage: React.FC = () => {
             <strong>Vista:</strong>
           </div>
           <div style={{ display: 'flex', gap: '0.5rem' }}>
+            {/* 💾 Base de Datos - PRINCIPAL */}
             <button
-              onClick={() => setVistaActiva('resumen')}
+              onClick={() => setVistaActiva('base_datos')}
               style={{
-                background: vistaActiva === 'resumen' ? '#3b82f6' : '#e5e7eb',
-                color: vistaActiva === 'resumen' ? 'white' : '#374151',
-                border: 'none',
-                padding: '0.5rem 1rem',
-                borderRadius: '6px',
+                background: vistaActiva === 'base_datos' ? '#10b981' : '#e5e7eb',
+                color: vistaActiva === 'base_datos' ? 'white' : '#374151',
+                border: vistaActiva === 'base_datos' ? '2px solid #059669' : '1px solid #d1d5db',
+                padding: '0.75rem 1.25rem',
+                borderRadius: '8px',
                 cursor: 'pointer',
-                fontSize: '0.9rem',
-                fontWeight: vistaActiva === 'resumen' ? 'bold' : 'normal'
+                fontSize: '0.95rem',
+                fontWeight: vistaActiva === 'base_datos' ? 'bold' : 'normal',
+                boxShadow: vistaActiva === 'base_datos' ? '0 2px 4px rgba(16, 185, 129, 0.3)' : 'none'
               }}
             >
-              📊 Vista Resumen
+              � Gestión Local
             </button>
+            
+            {/* 📋 Vista Detallada - SECUNDARIO */}
             <button
               onClick={() => {
                 setVistaActiva('detallado');
@@ -451,23 +455,24 @@ const RceResumenPage: React.FC = () => {
                 fontWeight: vistaActiva === 'detallado' ? 'bold' : 'normal'
               }}
             >
-              📋 Vista Detallada
+              📋 Consultar SUNAT
             </button>
-            
+
+            {/* 📊 Vista Resumen - TERCIARIO */}
             <button
-              onClick={() => setVistaActiva('base_datos')}
+              onClick={() => setVistaActiva('resumen')}
               style={{
-                background: vistaActiva === 'base_datos' ? '#10b981' : '#e5e7eb',
-                color: vistaActiva === 'base_datos' ? 'white' : '#374151',
+                background: vistaActiva === 'resumen' ? '#3b82f6' : '#e5e7eb',
+                color: vistaActiva === 'resumen' ? 'white' : '#374151',
                 border: 'none',
                 padding: '0.5rem 1rem',
                 borderRadius: '6px',
                 cursor: 'pointer',
                 fontSize: '0.9rem',
-                fontWeight: vistaActiva === 'base_datos' ? 'bold' : 'normal'
+                fontWeight: vistaActiva === 'resumen' ? 'bold' : 'normal'
               }}
             >
-              💾 Base de Datos
+              � Reportes
             </button>
           </div>
         </div>
@@ -512,9 +517,52 @@ const RceResumenPage: React.FC = () => {
         {/* Vista Resumen */}
         {!loading && resumenData && vistaActiva === 'resumen' && (
           <div>
-            <h2 style={{ margin: '0 0 1.5rem 0', color: '#374151' }}>
-              📊 Resumen del Período {selectedPeriod}
-            </h2>
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center', 
+              marginBottom: '1.5rem' 
+            }}>
+              <h2 style={{ margin: 0, color: '#374151' }}>
+                📊 Reportes y Análisis - Período {selectedPeriod}
+              </h2>
+              
+              <button
+                onClick={() => setVistaActiva('base_datos')}
+                style={{
+                  background: '#10b981',
+                  color: 'white',
+                  border: 'none',
+                  padding: '0.5rem 1rem',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontSize: '0.85rem',
+                  fontWeight: '500'
+                }}
+              >
+                ← Volver a Gestión Local
+              </button>
+            </div>
+
+            {/* Descripción de propósito */}
+            <div style={{
+              padding: '1rem',
+              background: '#fef3c7',
+              border: '1px solid #f59e0b',
+              borderRadius: '8px',
+              marginBottom: '1.5rem',
+              fontSize: '0.9rem',
+              color: '#92400e'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                <span style={{ fontSize: '1.1rem' }}>📊</span>
+                <strong>Reportes y Estadísticas</strong>
+              </div>
+              <p style={{ margin: 0, lineHeight: '1.4' }}>
+                Aquí puede ver resúmenes consolidados y reportes estadísticos de sus comprobantes. 
+                Ideal para análisis de períodos y generación de informes gerenciales.
+              </p>
+            </div>
             
             {/* Estadísticas generales */}
             <div style={{
@@ -742,9 +790,52 @@ const RceResumenPage: React.FC = () => {
         {/* Vista Detallada */}
         {vistaActiva === 'detallado' && (
           <div>
-            <h2 style={{ margin: '0 0 1.5rem 0', color: '#374151' }}>
-              📋 Comprobantes Detallados - Período {selectedPeriod}
-            </h2>
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center', 
+              marginBottom: '1.5rem' 
+            }}>
+              <h2 style={{ margin: 0, color: '#374151' }}>
+                � Consulta desde SUNAT - Período {selectedPeriod}
+              </h2>
+              
+              <button
+                onClick={() => setVistaActiva('base_datos')}
+                style={{
+                  background: '#10b981',
+                  color: 'white',
+                  border: 'none',
+                  padding: '0.5rem 1rem',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontSize: '0.85rem',
+                  fontWeight: '500'
+                }}
+              >
+                ← Volver a Gestión Local
+              </button>
+            </div>
+
+            {/* Descripción de propósito */}
+            <div style={{
+              padding: '1rem',
+              background: '#e0f2fe',
+              border: '1px solid #0891b2',
+              borderRadius: '8px',
+              marginBottom: '1.5rem',
+              fontSize: '0.9rem',
+              color: '#0e7490'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                <span style={{ fontSize: '1.1rem' }}>🔄</span>
+                <strong>Consulta Directa SUNAT</strong>
+              </div>
+              <p style={{ margin: 0, lineHeight: '1.4' }}>
+                Aquí puede consultar y obtener los comprobantes más recientes directamente desde SUNAT. 
+                Los datos se guardarán automáticamente en su base de datos local para futuras consultas.
+              </p>
+            </div>
 
             {loadingDetallados && (
               <div style={{ textAlign: 'center', padding: '2rem' }}>
@@ -925,16 +1016,19 @@ const RceResumenPage: React.FC = () => {
         {/* Vista de Base de Datos */}
         {vistaActiva === 'base_datos' && (
           <div>
-            <h2 style={{ margin: '0 0 1.5rem 0', color: '#374151' }}>
-              💾 Gestión de Comprobantes en Base de Datos
-            </h2>
-
             <RceComprobantesTable
               ruc={empresaActual!.ruc}
               periodo={selectedPeriod}
               onDataChange={() => {
                 // Opcional: refrescar otros datos cuando cambien los comprobantes
                 console.log('Datos de comprobantes actualizados');
+              }}
+              onConsultarSunat={() => {
+                // 🆕 Cambiar a vista detallada y consultar SUNAT
+                setVistaActiva('detallado');
+                if (!comprobantesDetallados && !loadingDetallados) {
+                  consultarComprobantesDetallados();
+                }
               }}
             />
           </div>

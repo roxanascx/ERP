@@ -8,13 +8,15 @@ interface Props {
   ruc: string;
   periodo?: string;
   onDataChange?: () => void;
+  onConsultarSunat?: () => void; // 🆕 Callback para navegar a consulta SUNAT
 }
 
-function RceComprobantesTable({ ruc, periodo }: Props) {
+function RceComprobantesTable({ ruc, periodo, onConsultarSunat }: Props) {
   const [comprobantes, setComprobantes] = useState<RceComprobanteBD[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [stats, setStats] = useState<any>(null);
+  const [sinDatos, setSinDatos] = useState(false); // 🆕 Estado para detectar BD vacía
   
   // 🚀 Contexto de datos compartido para cache (COMENTADO TEMPORALMENTE)
   // const { 
@@ -48,10 +50,17 @@ function RceComprobantesTable({ ruc, periodo }: Props) {
       setError(null);
       
       const response = await rceComprobantesService.consultarComprobantes(ruc, {
-        periodo: periodo
+        periodo: periodo,
+        por_pagina: 2000 // 🆕 Nuevo límite para mostrar más registros
       });
       
+      console.log('🔍 DEBUG: Datos de comprobantes de BD:', response.comprobantes);
+      if (response.comprobantes.length > 0) {
+        console.log('📅 Primer comprobante fecha_emision:', response.comprobantes[0].fecha_emision);
+      }
+      
       setComprobantes(response.comprobantes || []);
+      setSinDatos(response.comprobantes.length === 0); // 🆕 Detectar si BD está vacía
     } catch (err: any) {
       setError(err.message || 'Error al cargar comprobantes');
     } finally {
@@ -76,7 +85,36 @@ function RceComprobantesTable({ ruc, periodo }: Props) {
   };
 
   const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString('es-PE');
+    try {
+      // Validar que la fecha no esté vacía o sea inválida
+      if (!dateStr || dateStr === 'Invalid Date' || dateStr.trim() === '') {
+        return 'Fecha no válida';
+      }
+      
+      // Si viene en formato ISO (YYYY-MM-DD) o similar, crear fecha válida
+      const fecha = new Date(dateStr);
+      
+      // Verificar si la fecha es válida
+      if (isNaN(fecha.getTime())) {
+        // Intentar parsear formatos alternativos
+        if (dateStr.includes('/')) {
+          // Formato DD/MM/YYYY
+          const partes = dateStr.split('/');
+          if (partes.length === 3) {
+            const fechaFormateada = new Date(`${partes[2]}-${partes[1]}-${partes[0]}`);
+            if (!isNaN(fechaFormateada.getTime())) {
+              return fechaFormateada.toLocaleDateString('es-PE');
+            }
+          }
+        }
+        return 'Fecha inválida';
+      }
+      
+      return fecha.toLocaleDateString('es-PE');
+    } catch (error) {
+      console.warn('Error formateando fecha:', dateStr, error);
+      return 'Error en fecha';
+    }
   };
 
   return (
@@ -117,34 +155,6 @@ function RceComprobantesTable({ ruc, periodo }: Props) {
             </div>
           </div>
         )}
-      </div>
-
-      {/* Descripción del sistema */}
-      <div style={{
-        padding: '1rem',
-        background: '#e0f2fe',
-        border: '1px solid #0ea5e9',
-        borderRadius: '6px',
-        marginBottom: '1rem',
-        fontSize: '0.9rem',
-        color: '#0369a1'
-      }}>
-        💾 <strong>Gestión Local de Comprobantes:</strong> Aquí puede consultar, guardar y gestionar comprobantes 
-        almacenados en la base de datos local. Los datos se sincronizan con SUNAT para mantener la consistencia.
-      </div>
-
-      {/* Botones de acción */}
-      {/* Información sobre auto-guardado */}
-      <div style={{ 
-        background: '#f0f9ff',
-        border: '1px solid #bae6fd',
-        borderRadius: '6px',
-        padding: '0.75rem',
-        marginBottom: '1rem',
-        fontSize: '0.9rem',
-        color: '#0c4a6e'
-      }}>
-        � <strong>Auto-guardado:</strong> Los comprobantes se guardan automáticamente cuando consultas la vista detallada desde el resumen.
       </div>
 
       {/* Alertas de estado */}
@@ -196,22 +206,59 @@ function RceComprobantesTable({ ruc, periodo }: Props) {
         <div style={{
           textAlign: 'center',
           padding: '3rem',
-          background: '#f9fafb',
-          border: '2px dashed #d1d5db',
+          background: sinDatos ? '#fef3c7' : '#f9fafb',
+          border: sinDatos ? '2px solid #f59e0b' : '2px dashed #d1d5db',
           borderRadius: '8px',
-          color: '#6b7280'
+          color: sinDatos ? '#92400e' : '#6b7280'
         }}>
-          <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>📄</div>
-          <h4 style={{ margin: '0 0 0.5rem 0' }}>No hay comprobantes en la base de datos</h4>
+          <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>
+            {sinDatos ? '�' : '�📄'}
+          </div>
+          <h4 style={{ margin: '0 0 0.5rem 0' }}>
+            {sinDatos ? 'Base de datos lista para usar' : 'No hay comprobantes en la base de datos'}
+          </h4>
           <p style={{ margin: 0, fontSize: '0.9rem' }}>
-            {periodo 
-              ? `No se encontraron comprobantes para el período ${periodo}`
-              : 'No hay comprobantes almacenados'
+            {sinDatos 
+              ? 'Esta es su gestión local de comprobantes. Para comenzar, consulte datos desde SUNAT.'
+              : periodo 
+                ? `No se encontraron comprobantes para el período ${periodo}`
+                : 'No hay comprobantes almacenados'
             }
           </p>
           <p style={{ margin: '1rem 0 0 0', fontSize: '0.85rem', color: '#9ca3af' }}>
-            Ve a <strong>Vista Detallada</strong> en el resumen para consultar y auto-guardar comprobantes desde SUNAT
+            💡 Ve a <strong>"Consultar SUNAT"</strong> para obtener y auto-guardar comprobantes desde SUNAT
           </p>
+          
+          {/* 🆕 Botón de acción rápida */}
+          {sinDatos && onConsultarSunat && (
+            <div style={{ marginTop: '1.5rem' }}>
+              <button
+                onClick={onConsultarSunat}
+                style={{
+                  background: '#3b82f6',
+                  color: 'white',
+                  border: 'none',
+                  padding: '0.75rem 1.5rem',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontSize: '0.9rem',
+                  fontWeight: '600',
+                  boxShadow: '0 2px 4px rgba(59, 130, 246, 0.3)',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = '#2563eb';
+                  e.currentTarget.style.transform = 'translateY(-1px)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = '#3b82f6';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                }}
+              >
+                🔄 Consultar SUNAT Ahora
+              </button>
+            </div>
+          )}
         </div>
       ) : comprobantes.length > 0 ? (
         <div style={{ 
@@ -228,7 +275,7 @@ function RceComprobantesTable({ ruc, periodo }: Props) {
               width: '100%', 
               borderCollapse: 'collapse',
               fontSize: '0.9rem',
-              minWidth: '1200px' // Asegurar que la tabla tenga ancho mínimo para todas las columnas
+              minWidth: '1260px' // Aumentado para acomodar la columna #
             }}>
               <thead>
                 <tr style={{ 
@@ -238,6 +285,9 @@ function RceComprobantesTable({ ruc, periodo }: Props) {
                   position: 'sticky',
                   top: 0
                 }}>
+                  <th style={{ padding: '0.75rem', textAlign: 'center', fontWeight: '600', color: 'white', width: '60px' }}>
+                    #
+                  </th>
                   <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: '600', color: 'white' }}>
                     RUC Proveedor
                   </th>
@@ -279,6 +329,17 @@ function RceComprobantesTable({ ruc, periodo }: Props) {
                       background: index % 2 === 0 ? 'white' : '#f9fafb'
                     }}
                   >
+                    {/* Número de fila */}
+                    <td style={{ 
+                      padding: '0.75rem', 
+                      textAlign: 'center',
+                      fontWeight: '600',
+                      color: '#6b7280',
+                      background: index % 2 === 0 ? '#f8fafc' : '#f1f5f9'
+                    }}>
+                      {index + 1}
+                    </td>
+                    
                     {/* RUC Proveedor */}
                     <td style={{ padding: '0.75rem', textAlign: 'left' }}>
                       {comp.ruc_proveedor}
@@ -339,20 +400,6 @@ function RceComprobantesTable({ ruc, periodo }: Props) {
           </div>
         </div>
       ) : null}
-
-      {/* Footer con información */}
-      <div style={{
-        marginTop: '1rem',
-        padding: '0.75rem',
-        background: '#f8fafc',
-        borderRadius: '6px',
-        fontSize: '0.8rem',
-        color: '#6b7280',
-        textAlign: 'center'
-      }}>
-        💡 Esta tabla gestiona los comprobantes almacenados en la base de datos local. 
-        Los datos se sincronizan con SUNAT para mantener la consistencia.
-      </div>
     </div>
   );
 }

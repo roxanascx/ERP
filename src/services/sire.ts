@@ -715,7 +715,7 @@ export const rvieVentasService = {
 
   /**
    * Actualizar datos desde SUNAT y guardar localmente
-   * ✅ CORREGIDO: Usar endpoint que existe y funciona
+   * ✅ CORREGIDO: Usar endpoint que existe y funciona + auto-guardado en BD
    */
   async actualizarDesdeSunat(ruc: string, periodo: string, _tiposResumen: number[] = [1, 4, 5]) {
     try {
@@ -735,6 +735,22 @@ export const rvieVentasService = {
       
       // Verificar si hay datos
       if (response.data?.data?.registros && response.data.data.registros.length > 0) {
+        
+        // 🆕 AUTO-GUARDADO: Guardar automáticamente en BD local
+        try {
+          const { rvieComprobantesService } = await import('./rvieComprobantesService');
+          
+          const resultadoGuardado = await rvieComprobantesService.guardarDesdeSunat(
+            ruc, 
+            periodo, 
+            response.data.data.registros
+          );
+          
+        } catch (guardarError) {
+          console.warn('⚠️ Error en auto-guardado (datos de SUNAT disponibles):', guardarError);
+          // No fallar la operación principal si falla el guardado
+        }
+        
         return {
           success: true,
           data: response.data.data,

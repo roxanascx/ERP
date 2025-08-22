@@ -6,6 +6,7 @@
 
 import { useState, useEffect } from 'react';
 import { rvieVentasService } from '../../../../services/sire';
+import { rvieComprobantesService } from '../../../../services/rvieComprobantesService';
 import './rvie-luxury.css';
 
 interface RvieVentasProps {
@@ -61,6 +62,12 @@ const RvieVentas = ({
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [ultimaActualizacion, setUltimaActualizacion] = useState<Date | null>(null);
   
+  // 🆕 Estados para gestión de BD
+  const [vistaBD, setVistaBD] = useState(false); // false = SUNAT, true = BD
+  const [datosBD, setDatosBD] = useState<ComprobanteVenta[]>([]);
+  const [estadoBD, setEstadoBD] = useState<any>(null);
+  const [loadingBD, setLoadingBD] = useState(false);
+  
   const [filtros, setFiltros] = useState({
     tipo_comprobante: '',
     estado: '',
@@ -68,58 +75,105 @@ const RvieVentas = ({
     monto_max: ''
   });
 
-  // 📦 SISTEMA DE CACHE LOCAL INTELIGENTE
-  // ====================================
-  // El cache permite:
-  // 1. Evitar consultas innecesarias a SUNAT
-  // 2. Mejorar la velocidad de carga
-  // 3. Funcionar offline con datos previos
-  // 4. Reducir la carga en los servidores de SUNAT
-  
+  // 🆕 Recalcular estadísticas cuando cambie la vista o los datos
+  useEffect(() => {
+    const datosActuales = vistaBD ? datosBD : comprobantes;
+    if (datosActuales && datosActuales.length > 0) {
+      calcularEstadisticas(datosActuales);
+    } else {
+      setStats(null);
+    }
+  }, [vistaBD, datosBD, comprobantes]);
+
   useEffect(() => {
     const cargarDatos = async () => {
       try {
-        // 🔍 VERIFICAR CACHE LOCAL
-        // Creamos una clave única por RUC y período
-        const cacheKey = `rvie_ventas_${ruc}_${periodo.año}${periodo.mes}`;
-        const datosCache = localStorage.getItem(cacheKey);
+        // Verificar estado de BD al cargar
+        await verificarEstadoBD();
         
-        if (datosCache) {
-          
-          try {
-            const { comprobantes: comprobantesCache, timestamp } = JSON.parse(datosCache);
-            const tiempoCache = new Date(timestamp);
-            const ahora = new Date();
-            const diferencia = ahora.getTime() - tiempoCache.getTime();
-            const horasCache = diferencia / (1000 * 60 * 60);
-            
-            
-            // ✅ CACHE VÁLIDO (menos de 24 horas)
-            if (horasCache < 24) {
-              setComprobantes(comprobantesCache);
-              calcularEstadisticas(comprobantesCache);
-              setUltimaActualizacion(tiempoCache);
-              return; // No consultar SUNAT
-            } else {
-              localStorage.removeItem(cacheKey); // Limpiar cache viejo
-            }
-          } catch (parseError) {
-            localStorage.removeItem(cacheKey);
-          }
-        } else {
-        }
-        
-        // 🔄 Si no hay cache válido Y está autenticado, consultar SUNAT
+        // Si está autenticado, consultar SUNAT directamente
         if (authStatus?.authenticated) {
           await actualizarDesdeSunat();
-        } else {
         }
       } catch (error) {
+        setError('Error al cargar los datos');
       }
     };
 
     cargarDatos();
   }, [ruc, periodo, authStatus?.authenticated]);
+
+  // 🆕 Verificar estado de BD
+  const verificarEstadoBD = async () => {
+    try {
+      const periodoFormateado = `${periodo.año}${periodo.mes.padStart(2, '0')}`;
+      const estado = await rvieComprobantesService.verificarEstadoBD(ruc, periodoFormateado);
+      setEstadoBD(estado);
+    } catch (error) {
+      console.warn('Error verificando estado BD:', error);
+    }
+  };
+
+  // 🆕 Cargar datos desde BD
+  const cargarDesdeBD = async () => {
+    try {
+      setLoadingBD(true);
+      setError(null);
+      
+      const periodoFormateado = `${periodo.año}${periodo.mes.padStart(2, '0')}`;
+      const resultado = await rvieComprobantesService.consultarComprobantes(ruc, {
+        periodo: periodoFormateado,
+        por_pagina: 2000 // Obtener todos los registros
+      });
+      
+      if (resultado.success) {
+        // Mapear datos de BD a formato esperado por el componente
+        const comprobantesDB = resultado.comprobantes.map((comp: any) => ({
+          // Mapear campos de BD a campos esperados por el componente
+          codTipoCDP: comp.tipo_documento,
+          desTipoCDP: comp.tipo_documento_desc || getTipoDocumentoDesc(comp.tipo_documento),
+          numSerieCDP: comp.serie_comprobante,
+          numCDP: comp.numero_comprobante,
+          fecEmisionCDP: comp.fecha_emision,
+          apeNomRznSocReceptor: comp.cliente_nombre,
+          codTipoDocIdentidad: comp.cliente_tipo_documento,
+          numDocReceptor: comp.cliente_numero_documento,
+          numRuc: comp.cliente_ruc,
+          mtoOperGravadas: comp.base_gravada,
+          mtoIGV: comp.igv,
+          mtoOperExoneradas: comp.exonerado,
+          mtoOperInafectas: comp.inafecto,
+          mtoTotalCP: comp.total,
+          codMoneda: comp.moneda,
+          desEstadoComprobante: comp.estado,
+          indTipoOperacion: comp.tipo_operacion,
+          // Mantener campos originales también
+          ...comp
+        }));
+        
+        setDatosBD(comprobantesDB);
+        setUltimaActualizacion(new Date(resultado.comprobantes[0]?.fecha_registro || new Date()));
+        
+        setSuccessMessage(`✅ Cargados ${comprobantesDB.length} comprobantes desde BD local`);
+        setTimeout(() => setSuccessMessage(null), 3000);
+      }
+    } catch (error: any) {
+      setError('Error cargando datos desde BD: ' + error.message);
+    } finally {
+      setLoadingBD(false);
+    }
+  };
+
+  // Función auxiliar para obtener descripción de tipo de documento
+  const getTipoDocumentoDesc = (codigo: string) => {
+    const tipos: Record<string, string> = {
+      '01': 'Factura',
+      '03': 'Boleta de Venta',
+      '07': 'Nota de Crédito',
+      '08': 'Nota de Débito'
+    };
+    return tipos[codigo] || codigo;
+  };
 
   const actualizarDesdeSunat = async () => {
     try {
@@ -138,24 +192,6 @@ const RvieVentas = ({
         calcularEstadisticas(comprobantesData);
         setUltimaActualizacion(new Date());
         
-        // 💾 GUARDAR EN CACHE LOCAL
-        // =========================
-        // Estructura del cache:
-        // {
-        //   comprobantes: [...], // Array de comprobantes de SUNAT
-        //   timestamp: "2025-08-18T10:30:00.000Z" // Cuándo se guardó
-        // }
-        const cacheKey = `rvie_ventas_${ruc}_${periodo.año}${periodo.mes}`;
-        const datosCache = {
-          comprobantes: comprobantesData,
-          timestamp: new Date().toISOString()
-        };
-        
-        try {
-          localStorage.setItem(cacheKey, JSON.stringify(datosCache));
-        } catch (storageError) {
-        }
-        
         setSuccessMessage(`✅ Datos actualizados exitosamente. ${comprobantesData.length} comprobantes encontrados.`);
         setTimeout(() => setSuccessMessage(null), 5000);
       } else {
@@ -169,7 +205,6 @@ const RvieVentas = ({
   };
 
   const calcularEstadisticas = (comprobantesData: ComprobanteVenta[]) => {
-    
     if (!comprobantesData || comprobantesData.length === 0) {
       setStats(null);
       return;
@@ -180,8 +215,7 @@ const RvieVentas = ({
     let totalMonto = 0;
 
     comprobantesData.forEach((comp) => {
-      
-      // Obtener el tipo de comprobante (puede venir en diferentes campos)
+      // Obtener el tipo de comprobante
       const tipoComprobante = comp.codTipoCDP || comp.desTipoCDP || 'SIN_TIPO';
       
       // Por tipo
@@ -190,7 +224,7 @@ const RvieVentas = ({
       }
       porTipo[tipoComprobante].cantidad++;
       
-      // Monto total - puede venir en diferentes campos
+      // Monto total
       const monto = comp.mtoTotalCP || comp.total || comp.monto || 0;
       porTipo[tipoComprobante].monto += monto;
 
@@ -211,7 +245,14 @@ const RvieVentas = ({
   };
 
   const filtrarComprobantes = () => {
-    return comprobantes.filter(comp => {
+    // 🆕 Usar datos según la vista actual
+    const datosOriginales = vistaBD ? datosBD : comprobantes;
+    
+    if (!datosOriginales || datosOriginales.length === 0) {
+      return [];
+    }
+
+    return datosOriginales.filter(comp => {
       // Función helper para obtener valores de campos
       const getFieldValue = (comp: any, ...fieldNames: string[]) => {
         for (const fieldName of fieldNames) {
@@ -355,30 +396,11 @@ const RvieVentas = ({
     }
   };
 
-  // 🧹 FUNCIÓN PARA LIMPIAR CACHE (DEBUG)
-  const limpiarCache = () => {
-    const cacheKey = `rvie_ventas_${ruc}_${periodo.año}${periodo.mes}`;
-    localStorage.removeItem(cacheKey);
-    setSuccessMessage('🧹 Cache limpiado. La próxima consulta será desde SUNAT.');
-    setTimeout(() => setSuccessMessage(null), 3000);
-  };
-
-  // 🔍 FUNCIÓN PARA DEBUG DE DATOS (NUEVA)
-  const debugDatos = () => {
-    // Analizar estructura detallada del primer comprobante
-    if (comprobantes.length > 0) {
-      // ...
-    }
-    // Mostrar en pantalla también
-    setSuccessMessage(`🔍 Debug: ${comprobantes.length} comprobantes totales, ${comprobantesFiltrados.length} filtrados. Ver consola para detalles completos.`);
-    setTimeout(() => setSuccessMessage(null), 8000);
-  };
-
   const comprobantesFiltrados = filtrarComprobantes();
 
   return (
     <div className="rvie-ventas-luxury">
-      {/* FILA 1: HEADER COMPACTO CON INFO DEL PERÍODO */}
+      {/* FILA 1: HEADER COMPACTO CON INFO DEL PERÍODO Y TOGGLE DE VISTAS */}
       <div className="compact-header-row">
         <div className="header-info-compact">
           <h2>📊 Ventas e Ingresos</h2>
@@ -388,6 +410,12 @@ const RvieVentas = ({
             <span className={`info-badge ${authStatus?.authenticated ? 'success' : 'error'}`}>
               {authStatus?.authenticated ? '✅ Autenticado' : '❌ No autenticado'}
             </span>
+            {/* 🆕 Indicador de estado BD */}
+            {estadoBD?.tiene_datos && (
+              <span className="info-badge success">
+                💾 BD: {estadoBD.total_comprobantes} registros
+              </span>
+            )}
             {ultimaActualizacion && (
               <span className="info-badge">🕒 {ultimaActualizacion.toLocaleString('es-PE', { 
                 day: '2-digit', 
@@ -400,6 +428,33 @@ const RvieVentas = ({
         </div>
         
         <div className="header-actions">
+          {/* 🆕 Toggle de vistas */}
+          <div className="vista-toggle">
+            <button
+              className={`compact-button ${!vistaBD ? 'primary' : 'secondary'}`}
+              onClick={() => {
+                setVistaBD(false);
+                if (!vistaBD && authStatus?.authenticated) {
+                  actualizarDesdeSunat(); // Refrescar datos SUNAT
+                }
+              }}
+              disabled={loading || loadingComprobantes}
+            >
+              🌐 SUNAT
+            </button>
+            <button
+              className={`compact-button ${vistaBD ? 'primary' : 'secondary'}`}
+              onClick={() => {
+                setVistaBD(true);
+                cargarDesdeBD(); // Cargar datos de BD
+              }}
+              disabled={loadingBD || (!estadoBD?.tiene_datos)}
+              title={!estadoBD?.tiene_datos ? 'No hay datos guardados en BD' : 'Ver datos guardados localmente'}
+            >
+              💾 BD Local {estadoBD?.tiene_datos ? `(${estadoBD.total_comprobantes})` : ''}
+            </button>
+          </div>
+          
           <button
             className="compact-button primary"
             onClick={actualizarDesdeSunat}
@@ -414,23 +469,37 @@ const RvieVentas = ({
               <>🔄 Actualizar SUNAT</>
             )}
           </button>
-          
-          <button
-            onClick={limpiarCache}
-            className="compact-button secondary"
-            title="Limpiar cache local"
-          >
-            🧹 Cache
-          </button>
-
-          <button
-            onClick={debugDatos}
-            className="compact-button debug"
-            title="Debug - Ver datos en consola"
-          >
-            🔍 Debug
-          </button>
         </div>
+        
+        {/* 🆕 Badges informativos */}
+        <div className="info-badges">
+          {vistaBD ? (
+            <div className="badge badge-bd">
+              💾 Vista BD Local - {datosBD?.length || 0} registros
+              {estadoBD?.ultima_actualizacion && (
+                <span className="badge-detail">
+                  (última actualización: {new Date(estadoBD.ultima_actualizacion).toLocaleDateString()})
+                </span>
+              )}
+            </div>
+          ) : (
+            <div className="badge badge-sunat">
+              🌐 Vista SUNAT - {comprobantes?.length || 0} registros
+              {estadoBD?.tiene_datos && (
+                <span className="badge-detail">
+                  💡 Datos también guardados en BD Local
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+
+        {loadingBD && (
+          <div className="loading-message">
+            <div className="loading-spinner"></div>
+            Cargando datos desde BD local...
+          </div>
+        )}
         
         {(loading || loadingComprobantes) && (
           <div className="compact-loading">
@@ -604,7 +673,6 @@ const RvieVentas = ({
               </thead>
               <tbody>
                 {comprobantesFiltrados.slice(0, 50).map((comp, index) => {
-                  console.log(`[Tabla] Comprobante ${index + 1}:`, comp);
                   
                   // Mapeo inteligente de campos - detecta la estructura real
                   const getFieldValue = (comp: any, ...fieldNames: string[]) => {
@@ -634,7 +702,6 @@ const RvieVentas = ({
                       if (key.toLowerCase().includes(pattern.toLowerCase())) {
                         const value = comp[key];
                         if (value !== undefined && value !== null && value !== '') {
-                          console.log(`🔍 [Pattern] Encontrado ${pattern} en campo '${key}':`, value);
                           return value;
                         }
                       }
@@ -680,43 +747,6 @@ const RvieVentas = ({
                   const tipoOperacion = getFieldValue(comp, 'indTipoOperacion', 'tipoOperacion', 'operacion', 'codOperacion', 'indicadorOperacion') ||
                                        findFieldByPattern(comp, 'operacion') ||
                                        findFieldByPattern(comp, 'tipo');
-
-                  // DEBUG: Log detallado de cada comprobante
-                  console.log(`🔬 [Fila ${index + 1}] Valores extraídos:`, {
-                    id: typeof id === 'string' ? id.slice(-8) : id,
-                    tipoComprobante,
-                    serie,
-                    numero,
-                    fecha,
-                    cliente: `"${cliente}" (debería ser ${index === 0 ? 'CASTRO ALBORNOZ...' : 'TORRES GUILLERMO...'})`,
-                    tipoDocumento,
-                    numeroDocumento,
-                    ruc,
-                    baseGravada,
-                    igv,
-                    exonerado: `${exonerado} (debería ser ${index === 0 ? '660' : '640'} para comp ${index + 1})`,
-                    inafecto,
-                    total,
-                    moneda,
-                    estado,
-                    tipoOperacion: `${tipoOperacion} (debería ser 0101)`
-                  });
-                  
-                  // DEBUG ESPECÍFICO PARA CLIENTE: Mostrar todos los campos que podrían ser el cliente
-                  console.log(`🏷️ [Fila ${index + 1}] CAMPOS DE CLIENTE CANDIDATOS:`, {
-                    apeNomRznSocReceptor: comp.apeNomRznSocReceptor,
-                    nombreReceptor: comp.nombreReceptor,
-                    clienteNombre: comp.clienteNombre,
-                    receptor: comp.receptor,
-                    nomRazonSocial: comp.nomRazonSocial,
-                    razonSocial: comp.razonSocial,
-                    // Buscar campos que contengan los nombres esperados
-                    camposConCASTRO: Object.keys(comp).filter(k => typeof comp[k] === 'string' && comp[k].includes('CASTRO')).map(k => ({[k]: comp[k]})),
-                    camposConTORRES: Object.keys(comp).filter(k => typeof comp[k] === 'string' && comp[k].includes('TORRES')).map(k => ({[k]: comp[k]}))
-                  });
-                  
-                  console.log(`🔬 [Fila ${index + 1}] Objeto original:`, comp);
-
                   return (
                     <tr key={id}>
                       <td>
