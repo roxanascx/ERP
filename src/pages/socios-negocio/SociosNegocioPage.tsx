@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { useSociosNegocio } from '../../hooks';
+import { useSociosNegocio, useEmpresa } from '../../hooks';
 import SociosNegocioTable from '../../components/socios-negocio/SociosNegocioTable';
 import SocioFormModal from '../../components/socios-negocio/SocioFormModal';
+import MainLayout from '../../components/MainLayout';
 import type { SocioNegocio } from '../../services/sociosNegocioApi';
 
 // Componente de estadísticas
@@ -219,6 +220,8 @@ const SociosNegocioPage: React.FC = () => {
     loadStats
   } = useSociosNegocio();
 
+  const { empresaActual, cargarEmpresaActual } = useEmpresa();
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingSocio, setEditingSocio] = useState<SocioNegocio | null>(null);
   const [filteredSocios, setFilteredSocios] = useState<SocioNegocio[]>([]);
@@ -232,9 +235,27 @@ const SociosNegocioPage: React.FC = () => {
   });
 
   useEffect(() => {
-    loadSocios();
-    loadStats();
+    cargarEmpresaActual(); // Asegurar que la empresa esté cargada
   }, []);
+
+  // Cargar socios cuando la empresa esté disponible
+  useEffect(() => {
+    if (empresaActual?.ruc) {
+      loadSocios();
+      loadStats();
+    }
+  }, [empresaActual?.ruc, loadSocios, loadStats]);
+
+  // Función para validar empresa antes de abrir modal
+  const handleOpenModal = () => {
+    if (!empresaActual) {
+      alert('⚠️ Debe seleccionar una empresa antes de crear un socio de negocio.');
+      return;
+    }
+    
+    setEditingSocio(null);
+    setIsModalOpen(true);
+  };
 
   useEffect(() => {
     let filtered = socios;
@@ -270,28 +291,13 @@ const SociosNegocioPage: React.FC = () => {
 
   const pageStyles = {
     container: {
-      padding: '24px',
-      maxWidth: '1200px',
-      margin: '0 auto'
-    },
-    header: {
-      marginBottom: '32px'
-    },
-    title: {
-      fontSize: '32px',
-      fontWeight: 'bold',
-      color: '#1f2937',
-      margin: '0 0 8px 0'
-    },
-    subtitle: {
-      fontSize: '16px',
-      color: '#6b7280',
-      margin: '0 0 24px 0'
+      maxWidth: '100%'
     },
     actions: {
       display: 'flex',
       gap: '12px',
-      flexWrap: 'wrap' as const
+      flexWrap: 'wrap' as const,
+      marginBottom: '24px'
     },
     button: {
       padding: '12px 24px',
@@ -367,12 +373,11 @@ const SociosNegocioPage: React.FC = () => {
   };
 
   return (
-    <div style={pageStyles.container}>
-      <div style={pageStyles.header}>
-        <h1 style={pageStyles.title}>Socios de Negocio</h1>
-        <p style={pageStyles.subtitle}>
-          Gestiona proveedores, clientes y socios comerciales
-        </p>
+    <MainLayout
+      title="Socios de Negocio"
+      subtitle="Gestiona proveedores, clientes y socios comerciales"
+    >
+      <div style={pageStyles.container}>
         
         <div style={pageStyles.actions}>
           <button
@@ -380,10 +385,7 @@ const SociosNegocioPage: React.FC = () => {
               ...pageStyles.button,
               ...pageStyles.buttonSecondary
             }}
-            onClick={() => {
-              setEditingSocio(null);
-              setIsModalOpen(true);
-            }}
+            onClick={handleOpenModal}
             onMouseEnter={(e) => {
               e.currentTarget.style.backgroundColor = '#059669';
               e.currentTarget.style.transform = 'translateY(-1px)';
@@ -401,10 +403,7 @@ const SociosNegocioPage: React.FC = () => {
               ...pageStyles.button,
               ...pageStyles.buttonPrimary
             }}
-            onClick={() => {
-              setEditingSocio(null);
-              setIsModalOpen(true);
-            }}
+            onClick={handleOpenModal}
             onMouseEnter={(e) => {
               e.currentTarget.style.backgroundColor = '#2563eb';
               e.currentTarget.style.transform = 'translateY(-1px)';
@@ -470,7 +469,7 @@ const SociosNegocioPage: React.FC = () => {
         onSubmit={handleModalSubmit}
         socio={editingSocio}
       />
-    </div>
+    </MainLayout>
   );
 };
 

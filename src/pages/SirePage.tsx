@@ -7,6 +7,7 @@ import React, { useState } from 'react';
 import { RviePanel } from '../components/sire';
 import { useEmpresaValidation } from '../hooks/useEmpresaValidation';
 import { tieneSire } from '../types/empresa';
+import MainLayout from '../components/MainLayout';
 import BackendStatus from '../components/BackendStatus';
 
 const SirePage: React.FC = () => {
@@ -95,18 +96,18 @@ const SirePage: React.FC = () => {
 
   // Página principal SIRE
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: 'linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)',
-      padding: '20px'
-    }}>
-      {/* Header */}
-      <header style={{
-        background: 'white',
-        borderRadius: '12px',
-        padding: '2rem',
-        marginBottom: '2rem',
-        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)'
+    <MainLayout
+      title="SIRE - Sistema de Reportes SUNAT"
+      subtitle="Gestión de reportes de compras y ventas electrónicas"
+    >
+      <div style={{ maxWidth: '100%' }}>
+        {/* Header Information */}
+        <div style={{
+          background: 'white',
+          borderRadius: '12px',
+          padding: '2rem',
+          marginBottom: '2rem',
+          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)'
       }}>
         <div style={{
           display: 'flex',
@@ -171,7 +172,7 @@ const SirePage: React.FC = () => {
             🔄 Cambiar Empresa
           </button>
         </div>
-      </header>
+      </div>
 
       {/* Verificación de credenciales SIRE */}
       {!tieneSire(empresaActual) && (
@@ -372,8 +373,9 @@ const SirePage: React.FC = () => {
           🔧 Estado del Sistema
         </h2>
         <BackendStatus />
+        </div>
       </div>
-    </div>
+    </MainLayout>
   );
 };
 

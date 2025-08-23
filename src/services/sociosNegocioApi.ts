@@ -100,7 +100,7 @@ export interface DatosSunat {
   tipo_contribuyente: string;
   estado_contribuyente: string;
   condicion_contribuyente: string;
-  domicilio_fiscal: string;
+  domicilio_fiscal: string;  // ✅ Cambiado para coincidir con el backend
   actividad_economica: string;
   fecha_inscripcion: string;
   ubigeo?: string;

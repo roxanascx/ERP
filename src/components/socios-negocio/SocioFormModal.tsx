@@ -26,6 +26,12 @@ const SocioFormModal: React.FC<SocioFormModalProps> = ({
     email: '',
     telefono: '',
     direccion: '',
+    // Nuevos campos de SUNAT
+    estado_contribuyente: '',
+    condicion_contribuyente: '',
+    domicilio_fiscal: '',
+    actividad_economica: '',
+    tipo_contribuyente: '',
     activo: true
   });
 
@@ -48,6 +54,12 @@ const SocioFormModal: React.FC<SocioFormModalProps> = ({
         email: socio.email || '',
         telefono: socio.telefono || '',
         direccion: socio.direccion || '',
+        // Campos SUNAT - en edición mantener valores existentes
+        estado_contribuyente: '',
+        condicion_contribuyente: '',
+        domicilio_fiscal: socio.direccion || '',
+        actividad_economica: '',
+        tipo_contribuyente: '',
         activo: socio.activo
       });
     } else {
@@ -60,6 +72,12 @@ const SocioFormModal: React.FC<SocioFormModalProps> = ({
         email: '',
         telefono: '',
         direccion: '',
+        // Campos SUNAT
+        estado_contribuyente: '',
+        condicion_contribuyente: '',
+        domicilio_fiscal: '',
+        actividad_economica: '',
+        tipo_contribuyente: '',
         activo: true
       });
     }
@@ -241,6 +259,22 @@ const SocioFormModal: React.FC<SocioFormModalProps> = ({
 
     if (!formData.numero_documento.trim()) {
       newErrors.numero_documento = 'El número de documento es requerido';
+    } else if (formData.tipo_documento === 'RUC') {
+      // Validación específica para RUC
+      if (formData.numero_documento.length !== 11) {
+        newErrors.numero_documento = 'El RUC debe tener exactamente 11 dígitos';
+      } else if (!/^\d{11}$/.test(formData.numero_documento)) {
+        newErrors.numero_documento = 'El RUC debe contener solo números';
+      } else if (!['10', '15', '17', '20'].includes(formData.numero_documento.substring(0, 2))) {
+        newErrors.numero_documento = 'El RUC debe empezar con 10, 15, 17 o 20';
+      }
+    } else if (formData.tipo_documento === 'DNI') {
+      // Validación específica para DNI
+      if (formData.numero_documento.length !== 8) {
+        newErrors.numero_documento = 'El DNI debe tener exactamente 8 dígitos';
+      } else if (!/^\d{8}$/.test(formData.numero_documento)) {
+        newErrors.numero_documento = 'El DNI debe contener solo números';
+      }
     }
 
     if (!formData.razon_social.trim()) {
@@ -266,8 +300,49 @@ const SocioFormModal: React.FC<SocioFormModalProps> = ({
     try {
       await onSubmit(formData);
       onClose();
-    } catch (error) {
-      console.error('Error al guardar socio:', error);
+    } catch (error: any) {
+      console.error('❌ Error al guardar socio:', error);
+      
+      // Manejar errores específicos del backend
+      let errorMessage = 'Error al guardar el socio';
+      
+      if (error.response?.data?.detail) {
+        if (typeof error.response.data.detail === 'string') {
+          errorMessage = error.response.data.detail;
+        } else if (error.response.data.detail.message) {
+          errorMessage = error.response.data.detail.message;
+        }
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      // Manejar error específico de empresa no seleccionada
+      if (errorMessage.includes('No hay empresa seleccionada')) {
+        setRucConsultaMessage({
+          type: 'error',
+          message: `❌ Error: No hay empresa seleccionada. Por favor, seleccione una empresa antes de crear el socio.`
+        });
+        return;
+      }
+      
+      // Mostrar error específico si es de validación de documento
+      if (errorMessage.includes('Dígito verificador')) {
+        setErrors(prev => ({
+          ...prev,
+          numero_documento: errorMessage
+        }));
+      } else if (errorMessage.includes('ya existe')) {
+        setErrors(prev => ({
+          ...prev,
+          numero_documento: 'Este documento ya está registrado'
+        }));
+      } else {
+        // Error general
+        setRucConsultaMessage({
+          type: 'error',
+          message: `❌ ${errorMessage}`
+        });
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -308,22 +383,25 @@ const SocioFormModal: React.FC<SocioFormModalProps> = ({
     setRucConsultaMessage({ type: null, message: '' });
 
     try {
-      console.log('🔍 Consultando RUC en SUNAT:', formData.numero_documento);
-      
       // Llamada real a la API de consulta RUC
       const response = await consultarRuc(formData.numero_documento);
       
       if (response.success && response.data) {
-        console.log('✅ Datos obtenidos de SUNAT:', response.data);
-        
         // Autocompletar formulario con datos de SUNAT
-        setFormData(prev => ({
-          ...prev,
-          razon_social: response.data?.razon_social || prev.razon_social,
-          nombre_comercial: response.data?.nombre_comercial || prev.nombre_comercial,
-          direccion: response.data?.domicilio_fiscal || prev.direccion,
-          // Mantener otros campos como están si no vienen en la respuesta
-        }));
+        const newFormData = {
+          ...formData,
+          razon_social: response.data?.razon_social || formData.razon_social,
+          nombre_comercial: response.data?.nombre_comercial || formData.nombre_comercial,
+          direccion: response.data?.domicilio_fiscal || formData.direccion,
+          // Nuevos campos de SUNAT
+          estado_contribuyente: response.data?.estado_contribuyente || '',
+          condicion_contribuyente: response.data?.condicion_contribuyente || '',
+          domicilio_fiscal: response.data?.domicilio_fiscal || '',
+          actividad_economica: response.data?.actividad_economica || '',
+          tipo_contribuyente: response.data?.tipo_contribuyente || '',
+        };
+        
+        setFormData(newFormData);
 
         // Mostrar mensaje de éxito
         setRucConsultaMessage({
@@ -535,6 +613,122 @@ const SocioFormModal: React.FC<SocioFormModalProps> = ({
                 placeholder="Dirección completa"
               />
             </div>
+
+            {/* Campos SUNAT - Solo se muestran si hay datos */}
+            {(formData.estado_contribuyente || formData.condicion_contribuyente || formData.domicilio_fiscal || formData.actividad_economica || formData.tipo_contribuyente) && (
+              <>
+                <div style={{
+                  padding: '12px',
+                  backgroundColor: '#f0f9ff',
+                  borderRadius: '6px',
+                  border: '1px solid #0ea5e9',
+                  marginBottom: '16px'
+                }}>
+                  <h4 style={{
+                    margin: '0 0 12px 0',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    color: '#0c4a6e',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}>
+                    🏛️ Información SUNAT
+                  </h4>
+                  
+                  {/* Estado y Condición */}
+                  <div style={modalStyles.formRow}>
+                    <div style={modalStyles.formGroup}>
+                      <label style={modalStyles.label}>Estado Contribuyente</label>
+                      <input
+                        type="text"
+                        name="estado_contribuyente"
+                        value={formData.estado_contribuyente}
+                        onChange={handleInputChange}
+                        style={{
+                          ...modalStyles.input,
+                          backgroundColor: '#f8fafc',
+                          color: formData.estado_contribuyente === 'ACTIVO' ? '#059669' : '#dc2626',
+                          fontWeight: '500'
+                        }}
+                        placeholder="Estado en SUNAT"
+                        readOnly
+                      />
+                    </div>
+
+                    <div style={modalStyles.formGroup}>
+                      <label style={modalStyles.label}>Condición Contribuyente</label>
+                      <input
+                        type="text"
+                        name="condicion_contribuyente"
+                        value={formData.condicion_contribuyente}
+                        onChange={handleInputChange}
+                        style={{
+                          ...modalStyles.input,
+                          backgroundColor: '#f8fafc',
+                          color: formData.condicion_contribuyente === 'HABIDO' ? '#059669' : '#dc2626',
+                          fontWeight: '500'
+                        }}
+                        placeholder="Condición en SUNAT"
+                        readOnly
+                      />
+                    </div>
+                  </div>
+
+                  {/* Domicilio Fiscal */}
+                  <div style={modalStyles.formGroup}>
+                    <label style={modalStyles.label}>Domicilio Fiscal (SUNAT)</label>
+                    <input
+                      type="text"
+                      name="domicilio_fiscal"
+                      value={formData.domicilio_fiscal}
+                      onChange={handleInputChange}
+                      style={{
+                        ...modalStyles.input,
+                        backgroundColor: '#f8fafc'
+                      }}
+                      placeholder="Domicilio fiscal según SUNAT"
+                      readOnly
+                    />
+                  </div>
+
+                  {/* Actividad Económica y Tipo */}
+                  <div style={modalStyles.formRow}>
+                    <div style={modalStyles.formGroup}>
+                      <label style={modalStyles.label}>Actividad Económica</label>
+                      <input
+                        type="text"
+                        name="actividad_economica"
+                        value={formData.actividad_economica}
+                        onChange={handleInputChange}
+                        style={{
+                          ...modalStyles.input,
+                          backgroundColor: '#f8fafc'
+                        }}
+                        placeholder="Actividad económica"
+                        readOnly
+                      />
+                    </div>
+
+                    <div style={modalStyles.formGroup}>
+                      <label style={modalStyles.label}>Tipo Contribuyente</label>
+                      <input
+                        type="text"
+                        name="tipo_contribuyente"
+                        value={formData.tipo_contribuyente}
+                        onChange={handleInputChange}
+                        style={{
+                          ...modalStyles.input,
+                          backgroundColor: '#f8fafc'
+                        }}
+                        placeholder="Tipo"
+                        readOnly
+                      />
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
 
             {/* Estado activo */}
             <div style={modalStyles.checkbox}>

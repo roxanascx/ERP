@@ -86,13 +86,13 @@ export function useSociosNegocio(): UseSociosNegocioState & UseSociosNegocioActi
 
   // CRUD Operations
   const createSocio = useCallback(async (data: SocioNegocioCreate): Promise<SocioNegocio> => {
-    if (!empresaActual?.id) {
+    if (!empresaActual?.ruc) {
       throw new Error('No hay empresa seleccionada');
     }
 
     try {
       updateState({ loading: true, error: null });
-      const socio = await sociosNegocioApi.createSocio(empresaActual.id, data);
+      const socio = await sociosNegocioApi.createSocio(empresaActual.ruc, data);
       
       // Agregar al inicio de la lista
       setState(prev => ({
@@ -110,7 +110,7 @@ export function useSociosNegocio(): UseSociosNegocioState & UseSociosNegocioActi
       handleError(error);
       throw error;
     }
-  }, [empresaActual?.id, updateState, handleError]);
+  }, [empresaActual?.ruc, updateState, handleError]);
 
   const getSocio = useCallback(async (id: string): Promise<SocioNegocio> => {
     try {
@@ -168,11 +168,11 @@ export function useSociosNegocio(): UseSociosNegocioState & UseSociosNegocioActi
 
   // List and Search
   const loadSocios = useCallback(async (filters?: SocioFilters): Promise<void> => {
-    if (!empresaActual?.id) return;
+    if (!empresaActual?.ruc) return;
 
     try {
       updateState({ loading: true, error: null });
-      const response = await sociosNegocioApi.listSocios(empresaActual.id, filters);
+      const response = await sociosNegocioApi.listSocios(empresaActual.ruc, filters);
       
       updateState({
         socios: response.socios,
@@ -187,14 +187,14 @@ export function useSociosNegocio(): UseSociosNegocioState & UseSociosNegocioActi
     } catch (error) {
       handleError(error);
     }
-  }, [empresaActual?.id, updateState, handleError]);
+  }, [empresaActual?.ruc, updateState, handleError]);
 
   const searchSocios = useCallback(async (filters: SocioSearchFilters): Promise<void> => {
-    if (!empresaActual?.id) return;
+    if (!empresaActual?.ruc) return;
 
     try {
       updateState({ loading: true, error: null });
-      const response = await sociosNegocioApi.searchSocios(empresaActual.id, filters);
+      const response = await sociosNegocioApi.searchSocios(empresaActual.ruc, filters);
       
       updateState({
         socios: response.socios,
@@ -209,16 +209,16 @@ export function useSociosNegocio(): UseSociosNegocioState & UseSociosNegocioActi
     } catch (error) {
       handleError(error);
     }
-  }, [empresaActual?.id, updateState, handleError]);
+  }, [empresaActual?.ruc, updateState, handleError]);
 
   const loadMoreSocios = useCallback(async (): Promise<void> => {
-    if (!empresaActual?.id || !state.pagination.hasMore || state.loading) return;
+    if (!empresaActual?.ruc || !state.pagination.hasMore || state.loading) return;
 
     try {
       updateState({ loading: true, error: null });
       const nextOffset = state.pagination.offset + state.pagination.limit;
       
-      const response = await sociosNegocioApi.listSocios(empresaActual.id, {
+      const response = await sociosNegocioApi.listSocios(empresaActual.ruc, {
         limit: state.pagination.limit,
         offset: nextOffset
       });
@@ -237,20 +237,20 @@ export function useSociosNegocio(): UseSociosNegocioState & UseSociosNegocioActi
     } catch (error) {
       handleError(error);
     }
-  }, [empresaActual?.id, state.pagination, state.loading, updateState, handleError]);
+  }, [empresaActual?.ruc, state.pagination, state.loading, updateState, handleError]);
 
   // Stats
   const loadStats = useCallback(async (): Promise<void> => {
-    if (!empresaActual?.id) return;
+    if (!empresaActual?.ruc) return;
 
     try {
       updateState({ loading: true, error: null });
-      const stats = await sociosNegocioApi.getStats(empresaActual.id);
+      const stats = await sociosNegocioApi.getStats(empresaActual.ruc);
       updateState({ stats, loading: false });
     } catch (error) {
       handleError(error);
     }
-  }, [empresaActual?.id, updateState, handleError]);
+  }, [empresaActual?.ruc, updateState, handleError]);
 
   // RUC Operations
   const consultarRuc = useCallback(async (ruc: string): Promise<ConsultaRucResponse> => {
@@ -269,14 +269,14 @@ export function useSociosNegocio(): UseSociosNegocioState & UseSociosNegocioActi
     ruc: string, 
     tipoSocio: 'proveedor' | 'cliente' | 'ambos'
   ): Promise<SocioNegocio> => {
-    if (!empresaActual?.id) {
+    if (!empresaActual?.ruc) {
       throw new Error('No hay empresa seleccionada');
     }
 
     try {
       updateState({ loading: true, error: null });
       const socio = await sociosNegocioApi.createSocioFromRuc({
-        empresa_id: empresaActual.id,
+        empresa_id: empresaActual.ruc,
         ruc,
         tipo_socio: tipoSocio
       });
@@ -297,7 +297,7 @@ export function useSociosNegocio(): UseSociosNegocioState & UseSociosNegocioActi
       handleError(error);
       throw error;
     }
-  }, [empresaActual?.id, updateState, handleError]);
+  }, [empresaActual?.ruc, updateState, handleError]);
 
   const syncSocioWithSunat = useCallback(async (id: string): Promise<SocioNegocio> => {
     try {
@@ -330,12 +330,12 @@ export function useSociosNegocio(): UseSociosNegocioState & UseSociosNegocioActi
 
   // Auto-load stats when empresa changes
   useEffect(() => {
-    if (empresaActual?.id) {
+    if (empresaActual?.ruc) {
       loadStats();
     } else {
       resetState();
     }
-  }, [empresaActual?.id, loadStats, resetState]);
+  }, [empresaActual?.ruc, loadStats, resetState]);
 
   return {
     // State
