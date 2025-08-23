@@ -60,7 +60,6 @@ const RvieVentas = ({
   const [loadingComprobantes, setLoadingComprobantes] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [ultimaActualizacion, setUltimaActualizacion] = useState<Date | null>(null);
   
   // 🆕 Estados para gestión de BD
   const [vistaBD, setVistaBD] = useState(false); // false = SUNAT, true = BD
@@ -152,7 +151,6 @@ const RvieVentas = ({
         }));
         
         setDatosBD(comprobantesDB);
-        setUltimaActualizacion(new Date(resultado.comprobantes[0]?.fecha_registro || new Date()));
         
         setSuccessMessage(`✅ Cargados ${comprobantesDB.length} comprobantes desde BD local`);
         setTimeout(() => setSuccessMessage(null), 3000);
@@ -190,7 +188,6 @@ const RvieVentas = ({
         
         setComprobantes(comprobantesData);
         calcularEstadisticas(comprobantesData);
-        setUltimaActualizacion(new Date());
         
         setSuccessMessage(`✅ Datos actualizados exitosamente. ${comprobantesData.length} comprobantes encontrados.`);
         setTimeout(() => setSuccessMessage(null), 5000);
@@ -400,118 +397,69 @@ const RvieVentas = ({
 
   return (
     <div className="rvie-ventas-luxury">
-      {/* FILA 1: HEADER COMPACTO CON INFO DEL PERÍODO Y TOGGLE DE VISTAS */}
+      {/* HEADER OPTIMIZADO - SIN INFORMACIÓN REDUNDANTE */}
       <div className="compact-header-row">
         <div className="header-info-compact">
-          <h2>📊 Ventas e Ingresos</h2>
-          <div className="header-badges">
-            <span className="info-badge">📅 {periodo.mes}/{periodo.año}</span>
-            <span className="info-badge">🏢 {ruc}</span>
-            <span className={`info-badge ${authStatus?.authenticated ? 'success' : 'error'}`}>
-              {authStatus?.authenticated ? '✅ Autenticado' : '❌ No autenticado'}
-            </span>
-            {/* 🆕 Indicador de estado BD */}
-            {estadoBD?.tiene_datos && (
-              <span className="info-badge success">
-                💾 BD: {estadoBD.total_comprobantes} registros
-              </span>
+          <h2>📊 Ventas e Ingresos - {periodo.mes}/{periodo.año}</h2>
+          <div className="header-status">
+            <span className="status-badge neutral">🏢 RUC: {ruc}</span>
+            {authStatus?.authenticated ? (
+              <span className="status-badge success">✅ Conectado</span>
+            ) : (
+              <span className="status-badge error">❌ Sin conexión</span>
             )}
-            {ultimaActualizacion && (
-              <span className="info-badge">🕒 {ultimaActualizacion.toLocaleString('es-PE', { 
-                day: '2-digit', 
-                month: '2-digit', 
-                hour: '2-digit', 
-                minute: '2-digit' 
-              })}</span>
+            {estadoBD?.tiene_datos && (
+              <span className="status-badge info">� BD: {estadoBD.total_comprobantes}</span>
             )}
           </div>
         </div>
         
-        <div className="header-actions">
-          {/* 🆕 Toggle de vistas */}
-          <div className="vista-toggle">
+        <div className="header-actions-optimized">
+          <div className="vista-toggle-compact">
             <button
-              className={`compact-button ${!vistaBD ? 'primary' : 'secondary'}`}
+              className={`toggle-btn ${!vistaBD ? 'active' : ''}`}
               onClick={() => {
                 setVistaBD(false);
                 if (!vistaBD && authStatus?.authenticated) {
-                  actualizarDesdeSunat(); // Refrescar datos SUNAT
+                  actualizarDesdeSunat();
                 }
               }}
               disabled={loading || loadingComprobantes}
             >
-              🌐 SUNAT
+              🌐
             </button>
             <button
-              className={`compact-button ${vistaBD ? 'primary' : 'secondary'}`}
+              className={`toggle-btn ${vistaBD ? 'active' : ''}`}
               onClick={() => {
                 setVistaBD(true);
-                cargarDesdeBD(); // Cargar datos de BD
+                cargarDesdeBD();
               }}
               disabled={loadingBD || (!estadoBD?.tiene_datos)}
-              title={!estadoBD?.tiene_datos ? 'No hay datos guardados en BD' : 'Ver datos guardados localmente'}
             >
-              💾 BD Local {estadoBD?.tiene_datos ? `(${estadoBD.total_comprobantes})` : ''}
+              💾
             </button>
           </div>
           
           <button
-            className="compact-button primary"
+            className="action-btn-primary"
             onClick={actualizarDesdeSunat}
             disabled={loadingComprobantes || !authStatus?.authenticated}
+            title="Actualizar desde SUNAT"
           >
-            {loadingComprobantes ? (
-              <>
-                <div className="loading-spinner"></div>
-                Actualizando...
-              </>
-            ) : (
-              <>🔄 Actualizar SUNAT</>
-            )}
+            {loadingComprobantes ? '⏳' : '🔄'}
           </button>
         </div>
-        
-        {/* 🆕 Badges informativos */}
-        <div className="info-badges">
-          {vistaBD ? (
-            <div className="badge badge-bd">
-              💾 Vista BD Local - {datosBD?.length || 0} registros
-              {estadoBD?.ultima_actualizacion && (
-                <span className="badge-detail">
-                  (última actualización: {new Date(estadoBD.ultima_actualizacion).toLocaleDateString()})
-                </span>
-              )}
-            </div>
-          ) : (
-            <div className="badge badge-sunat">
-              🌐 Vista SUNAT - {comprobantes?.length || 0} registros
-              {estadoBD?.tiene_datos && (
-                <span className="badge-detail">
-                  💡 Datos también guardados en BD Local
-                </span>
-              )}
-            </div>
-          )}
-        </div>
 
-        {loadingBD && (
-          <div className="loading-message">
-            <div className="loading-spinner"></div>
-            Cargando datos desde BD local...
-          </div>
-        )}
-        
         {(loading || loadingComprobantes) && (
-          <div className="compact-loading">
+          <div className="loading-indicator">
             <div className="loading-spinner"></div>
-            <span>Consultando SUNAT...</span>
           </div>
         )}
       </div>
 
-      {/* FILA 2: ESTADÍSTICAS + ANÁLISIS + FILTROS EN UNA SOLA FILA */}
+      {/* FILA 1: ESTADÍSTICAS + ANÁLISIS POR TIPO + ESTADOS */}
       {stats && (
-        <div className="compact-analysis-row">
+        <div className="stats-analysis-row">
           {/* ESTADÍSTICAS PRINCIPALES */}
           <div className="stats-compact">
             <div className="stat-item-compact total">
@@ -541,102 +489,107 @@ const RvieVentas = ({
             </div>
           </div>
 
-          {/* ANÁLISIS POR TIPO */}
-          <div className="tipo-analysis-compact">
-            <h4>🔍 Por Tipo</h4>
-            <div className="tipo-breakdown-compact">
-              {Object.entries(stats.por_tipo).map(([tipo, data]) => {
-                const porcentaje = (data.cantidad / stats.total_comprobantes * 100).toFixed(1);
-                return (
-                  <div key={tipo} className="tipo-item-compact">
-                    <span className={`tipo-badge-compact ${getTipoBadgeClass(tipo)}`}>
-                      {getTipoNombre(tipo)}
-                    </span>
-                    <div className="tipo-stats-compact">
-                      <span>{data.cantidad} ({porcentaje}%)</span>
-                      <span>{formatMonto(data.monto)}</span>
+          {/* SECCIÓN DE ANÁLISIS: POR TIPO + ESTADOS */}
+          <div className="analysis-section">
+            {/* ANÁLISIS POR TIPO */}
+            <div className="tipo-analysis-compact">
+              <h4>🔍 Por Tipo</h4>
+              <div className="tipo-breakdown-compact">
+                {Object.entries(stats.por_tipo).map(([tipo, data]) => {
+                  const porcentaje = (data.cantidad / stats.total_comprobantes * 100).toFixed(1);
+                  return (
+                    <div key={tipo} className="tipo-item-compact">
+                      <span className={`tipo-badge-compact ${getTipoBadgeClass(tipo)}`}>
+                        {getTipoNombre(tipo)}
+                      </span>
+                      <div className="tipo-stats-compact">
+                        <span>{data.cantidad} ({porcentaje}%)</span>
+                        <span>{formatMonto(data.monto)}</span>
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* FILTROS COMPACTOS */}
-          <div className="filtros-compact">
-            <h4>🎯 Filtros</h4>
-            <div className="filtros-grid-compact">
-              <div className="filtro-compact">
-                <label>Tipo</label>
-                <select
-                  value={filtros.tipo_comprobante}
-                  onChange={(e) => setFiltros(prev => ({ ...prev, tipo_comprobante: e.target.value }))}
-                >
-                  <option value="">Todos</option>
-                  <option value="01">Factura</option>
-                  <option value="03">Boleta</option>
-                  <option value="07">N.Crédito</option>
-                  <option value="08">N.Débito</option>
-                </select>
-              </div>
-
-              <div className="filtro-compact">
-                <label>Estado</label>
-                <select
-                  value={filtros.estado}
-                  onChange={(e) => setFiltros(prev => ({ ...prev, estado: e.target.value }))}
-                >
-                  <option value="">Todos</option>
-                  <option value="ACTIVO">Activo</option>
-                  <option value="ANULADO">Anulado</option>
-                </select>
-              </div>
-
-              <div className="filtro-compact">
-                <label>Monto Min</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={filtros.monto_min}
-                  onChange={(e) => setFiltros(prev => ({ ...prev, monto_min: e.target.value }))}
-                  placeholder="0.00"
-                />
-              </div>
-
-              <div className="filtro-compact">
-                <label>Monto Max</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={filtros.monto_max}
-                  onChange={(e) => setFiltros(prev => ({ ...prev, monto_max: e.target.value }))}
-                  placeholder="∞"
-                />
+                  );
+                })}
               </div>
             </div>
-          </div>
 
-          {/* ESTADOS COMPACTOS */}
-          <div className="estados-compact">
-            <h4>📋 Estados</h4>
-            <div className="estados-list-compact">
-              {Object.entries(stats.por_estado).map(([estado, cantidad]) => {
-                const porcentaje = (cantidad / stats.total_comprobantes * 100).toFixed(1);
-                return (
-                  <div key={estado} className="estado-item-compact">
-                    <span className={`estado-badge-compact ${estado.toLowerCase()}`}>
-                      {estado}
-                    </span>
-                    <span className="estado-stats-compact">
-                      {cantidad} ({porcentaje}%)
-                    </span>
-                  </div>
-                );
-              })}
+            {/* ANÁLISIS DE ESTADOS */}
+            <div className="estados-compact">
+              <h4>📋 Estados</h4>
+              <div className="estados-list-compact">
+                {Object.entries(stats.por_estado).map(([estado, cantidad]) => {
+                  const porcentaje = (cantidad / stats.total_comprobantes * 100).toFixed(1);
+                  return (
+                    <div key={estado} className="estado-item-compact">
+                      <span className={`estado-badge-compact ${estado.toLowerCase()}`}>
+                        {estado}
+                      </span>
+                      <span className="estado-stats-compact">
+                        {cantidad} ({porcentaje}%)
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
         </div>
       )}
+
+      {/* FILA 2: FILTROS EN UNA SOLA FILA SEPARADA */}
+      <div className="filtros-row">
+        <div className="filtros-compact">
+          <h4>🎯 Filtros</h4>
+          <div className="filtros-grid-horizontal">
+            <div className="filtro-compact">
+              <label>Tipo</label>
+              <select
+                value={filtros.tipo_comprobante}
+                onChange={(e) => setFiltros(prev => ({ ...prev, tipo_comprobante: e.target.value }))}
+              >
+                <option value="">Todos</option>
+                <option value="01">Factura</option>
+                <option value="03">Boleta</option>
+                <option value="07">N.Crédito</option>
+                <option value="08">N.Débito</option>
+              </select>
+            </div>
+
+            <div className="filtro-compact">
+              <label>Estado</label>
+              <select
+                value={filtros.estado}
+                onChange={(e) => setFiltros(prev => ({ ...prev, estado: e.target.value }))}
+              >
+                <option value="">Todos</option>
+                <option value="ACTIVO">Activo</option>
+                <option value="ANULADO">Anulado</option>
+              </select>
+            </div>
+
+            <div className="filtro-compact">
+              <label>Monto Min</label>
+              <input
+                type="number"
+                step="0.01"
+                value={filtros.monto_min}
+                onChange={(e) => setFiltros(prev => ({ ...prev, monto_min: e.target.value }))}
+                placeholder="0.00"
+              />
+            </div>
+
+            <div className="filtro-compact">
+              <label>Monto Max</label>
+              <input
+                type="number"
+                step="0.01"
+                value={filtros.monto_max}
+                onChange={(e) => setFiltros(prev => ({ ...prev, monto_max: e.target.value }))}
+                placeholder="∞"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
 
       {/* TABLA LUXURY */}
       {comprobantesFiltrados.length > 0 ? (
@@ -657,6 +610,7 @@ const RvieVentas = ({
             <table className="luxury-table">
               <thead>
                 <tr>
+                  <th style={{ textAlign: 'center', width: '50px' }}>#</th>
                   <th>Tipo</th>
                   <th>Número</th>
                   <th>Fecha</th>
@@ -749,6 +703,9 @@ const RvieVentas = ({
                                        findFieldByPattern(comp, 'tipo');
                   return (
                     <tr key={id}>
+                      <td style={{ textAlign: 'center', fontSize: '0.9rem', fontWeight: 'bold', color: '#6b7280' }}>
+                        {index + 1}
+                      </td>
                       <td>
                         <span className={`table-badge ${getTipoBadgeClass(tipoComprobante)}`}>
                           {tipoComprobante === '01' ? 'FAC' : 

@@ -155,39 +155,204 @@
 }
 
 /* ========================================
-   FILA 2: ANÁLISIS COMPACTO
+   HEADER OPTIMIZADO - SIN REDUNDANCIAS  
    ======================================== */
-.compact-analysis-row {
+
+/* Status badges optimizados */
+.header-status {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.status-badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.status-badge.success {
+  background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+  color: #15803d;
+}
+
+.status-badge.error {
+  background: linear-gradient(135deg, #fef2f2 0%, #fecaca 100%);
+  color: #dc2626;
+}
+
+.status-badge.info {
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  color: #1d4ed8;
+}
+
+.status-badge.neutral {
+  background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+  color: #475569;
+  border: 1px solid #cbd5e1;
+}
+
+.status-badge.empresa {
+  background: linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%);
+  color: #7c3aed;
+  font-weight: 600;
+  border: 1px solid #c4b5fd;
+}
+
+/* Actions optimizadas */
+.header-actions-optimized {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.vista-toggle-compact {
+  display: flex;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  overflow: hidden;
+  background: white;
+}
+
+.toggle-btn {
+  padding: 0.5rem 0.75rem;
+  border: none;
+  background: white;
+  color: #6b7280;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 1.1rem;
+}
+
+.toggle-btn.active {
+  background: #3b82f6;
+  color: white;
+}
+
+.toggle-btn:hover:not(:disabled) {
+  background: #f3f4f6;
+}
+
+.toggle-btn.active:hover {
+  background: #2563eb;
+}
+
+.toggle-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.action-btn-primary {
+  padding: 0.5rem 0.75rem;
+  background: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 1.1rem;
+}
+
+.action-btn-primary:hover:not(:disabled) {
+  background: #2563eb;
+  transform: translateY(-1px);
+}
+
+.action-btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.loading-indicator {
+  display: flex;
+  align-items: center;
+  color: #3b82f6;
+}
+
+/* ========================================
+   FILA 2: ANÁLISIS COMPACTO - REORGANIZADO
+   ======================================== */
+
+/* FILA 1: ESTADÍSTICAS + ANÁLISIS - DISTRIBUCIÓN 50/50 */
+.stats-analysis-row {
   background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
   border-radius: 16px;
-  padding: 1.5rem;
-  margin-bottom: 1.5rem;
+  padding: 1rem;
+  margin-bottom: 1rem;
   box-shadow: 
-    0 10px 15px -3px rgba(0, 0, 0, 0.1),
-    0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.8);
   display: grid;
-  grid-template-columns: auto 1fr auto auto;
+  grid-template-columns: 1fr 1fr; /* 50% estadísticas, 50% análisis */
   gap: 2rem;
   align-items: start;
 }
 
-/* ESTADÍSTICAS COMPACTAS */
+/* SECCIÓN DE ANÁLISIS (TIPO + ESTADOS) - LADO DERECHO */
+.analysis-section {
+  display: grid;
+  grid-template-columns: 1fr 1fr; /* Por Tipo 50%, Estados 50% */
+  gap: 1rem;
+  height: 100%;
+}
+
+/* FILA 2: FILTROS SEPARADOS */
+.filtros-row {
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  border-radius: 16px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  box-shadow: 
+    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+}
+
+.filtros-grid-horizontal {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+  margin-top: 0.5rem;
+}
+
+@media (max-width: 768px) {
+  .stats-analysis-row {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  
+  .filtros-grid-horizontal {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .filtros-grid-horizontal {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ESTADÍSTICAS COMPACTAS - OCUPAN TODA SU MITAD DEL ESPACIO */
 .stats-compact {
   display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  min-width: 180px;
+  gap: 0.5rem;
+  width: 100%;
+  justify-content: space-between;
 }
 
 .stat-item-compact {
   display: flex;
   align-items: center;
-  gap: 1rem;
-  padding: 1rem;
-  border-radius: 12px;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
   border: 1px solid transparent;
   transition: all 0.2s ease;
+  flex: 1; /* Cada tarjeta ocupa el mismo espacio */
+  font-size: 0.85rem;
+  min-width: 0; /* Permite que se ajusten al espacio disponible */
 }
 
 .stat-item-compact.total {
@@ -206,68 +371,93 @@
 }
 
 .stat-item-compact .stat-icon {
-  font-size: 1.5rem;
-  width: 40px;
-  height: 40px;
+  font-size: 1.2rem;
+  width: 28px;
+  height: 28px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 10px;
+  border-radius: 6px;
   background: rgba(255, 255, 255, 0.8);
+  flex-shrink: 0;
+}
+
+.stat-item-compact .stat-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
 }
 
 .stat-item-compact .stat-value {
-  font-size: 1.1rem;
+  font-size: 0.95rem;
   font-weight: 700;
   color: #1e293b;
-  line-height: 1.2;
+  line-height: 1.1;
 }
 
 .stat-item-compact .stat-label {
-  font-size: 0.8rem;
+  font-size: 0.7rem;
   color: #64748b;
   font-weight: 500;
+  text-transform: uppercase;
 }
 
-/* ANÁLISIS POR TIPO COMPACTO */
+/* FILA DE ANÁLISIS - TIPO Y ESTADOS EN UNA FILA */
+.analysis-row {
+  display: flex;
+  gap: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+@media (max-width: 768px) {
+  .analysis-row {
+    flex-direction: column;
+    gap: 1rem;
+  }
+}
+
+/* ANÁLISIS POR TIPO COMPACTO - OPTIMIZADO */
 .tipo-analysis-compact {
   flex: 1;
-  min-width: 250px;
+  min-width: 220px;
 }
 
 .tipo-analysis-compact h4 {
   color: #1e293b;
-  font-size: 1rem;
+  font-size: 0.9rem;
   font-weight: 600;
-  margin: 0 0 1rem 0;
+  margin: 0 0 0.5rem 0;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 .tipo-breakdown-compact {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0.5rem;
 }
 
 .tipo-item-compact {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0.75rem;
+  padding: 0.5rem;
   background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
   border: 1px solid #cbd5e1;
-  border-radius: 10px;
+  border-radius: 8px;
+  font-size: 0.8rem;
 }
 
 .tipo-badge-compact {
-  padding: 0.25rem 0.75rem;
-  border-radius: 8px;
-  font-size: 0.8rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 6px;
+  font-size: 0.7rem;
   font-weight: 600;
   color: white;
   text-transform: uppercase;
+  min-width: 50px;
+  text-align: center;
 }
 
 .tipo-badge-compact.factura { background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); }
@@ -279,8 +469,8 @@
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 0.25rem;
-  font-size: 0.8rem;
+  gap: 0.15rem;
+  font-size: 0.75rem;
 }
 
 .tipo-stats-compact span:first-child {
@@ -293,45 +483,46 @@
   font-weight: 600;
 }
 
-/* FILTROS COMPACTOS */
+/* FILTROS COMPACTOS - OPTIMIZADOS */
 .filtros-compact {
-  min-width: 200px;
+  min-width: 180px;
 }
 
 .filtros-compact h4 {
   color: #1e293b;
-  font-size: 1rem;
+  font-size: 0.9rem;
   font-weight: 600;
-  margin: 0 0 1rem 0;
+  margin: 0 0 0.5rem 0;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 .filtros-grid-compact {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
 }
 
 .filtro-compact {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 4px;
 }
 
 .filtro-compact label {
-  font-size: 0.8rem;
+  font-size: 0.7rem;
   font-weight: 500;
   color: #374151;
+  text-transform: uppercase;
 }
 
 .filtro-compact select,
 .filtro-compact input {
-  padding: 8px 0.75rem;
+  padding: 6px 0.5rem;
   border: 1px solid #d1d5db;
-  border-radius: 8px;
-  font-size: 0.85rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
   background: white;
   transition: all 0.2s ease;
 }
@@ -340,46 +531,49 @@
 .filtro-compact input:focus {
   outline: none;
   border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
 }
 
-/* ESTADOS COMPACTOS */
+/* ESTADOS COMPACTOS - OPTIMIZADOS */
 .estados-compact {
-  min-width: 150px;
+  min-width: 160px;
 }
 
 .estados-compact h4 {
   color: #1e293b;
-  font-size: 1rem;
+  font-size: 0.9rem;
   font-weight: 600;
-  margin: 0 0 1rem 0;
+  margin: 0 0 0.5rem 0;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 .estados-list-compact {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0.5rem;
 }
 
 .estado-item-compact {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0.75rem;
+  padding: 0.5rem;
   background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
   border: 1px solid #cbd5e1;
-  border-radius: 10px;
+  border-radius: 8px;
+  font-size: 0.8rem;
 }
 
 .estado-badge-compact {
-  padding: 0.25rem 0.75rem;
-  border-radius: 8px;
-  font-size: 0.8rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 6px;
+  font-size: 0.7rem;
   font-weight: 600;
   text-transform: uppercase;
+  min-width: 60px;
+  text-align: center;
 }
 
 .estado-badge-compact.activo {
@@ -392,6 +586,12 @@
   background: linear-gradient(135deg, #fef2f2 0%, #fecaca 100%);
   color: #dc2626;
   border: 1px solid #fca5a5;
+}
+
+.estado-stats-compact {
+  font-size: 0.75rem;
+  color: #64748b;
+  font-weight: 500;
 }
 
 .estado-stats-compact {
@@ -1440,5 +1640,36 @@
 @keyframes spin {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
+}
+
+/* ========================================
+   NUMERACIÓN DE FILAS EN TABLA
+   ======================================== */
+.luxury-table th:first-child,
+.luxury-table td:first-child {
+  width: 50px;
+  text-align: center;
+  font-weight: bold;
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  border-right: 1px solid #e2e8f0;
+}
+
+.luxury-table th:first-child {
+  background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+  font-size: 0.75rem;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.luxury-table td:first-child {
+  color: #64748b;
+  font-size: 0.85rem;
+  font-weight: 600;
+  background: linear-gradient(135deg, #fafbfc 0%, #f3f4f6 100%);
+  border-right: 1px solid #e5e7eb;
+  position: sticky;
+  left: 0;
+  z-index: 5;
 }
 

@@ -21,6 +21,7 @@ import type {
   SireModuloActivo,
   SireModuloConfig
 } from '../types/sire';
+import { rvieComprobantesService } from './rvieComprobantesService';
 
 // ========================================
 // CONFIGURACIÓN BASE
@@ -738,9 +739,7 @@ export const rvieVentasService = {
         
         // 🆕 AUTO-GUARDADO: Guardar automáticamente en BD local
         try {
-          const { rvieComprobantesService } = await import('./rvieComprobantesService');
-          
-          const resultadoGuardado = await rvieComprobantesService.guardarDesdeSunat(
+          await rvieComprobantesService.guardarDesdeSunat(
             ruc, 
             periodo, 
             response.data.data.registros
