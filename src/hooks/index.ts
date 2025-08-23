@@ -18,3 +18,6 @@ export { useSireAutoAuth } from './useSireAutoAuth';
 export { useRce } from './useRce';
 export { useRceComprobantes } from './useRceComprobantes';
 export { useRceProcesos } from './useRceProcesos';
+
+// Hooks Socios de Negocio
+export { useSociosNegocio } from './useSociosNegocio';

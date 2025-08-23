@@ -16,6 +16,7 @@ import {
   RceTicketsPage,
   RceResumenPage
 } from './pages';
+import SociosNegocioPage from './pages/socios-negocio/SociosNegocioPage';
 import TestLogoutPage from './pages/TestLogoutPage';
 import EmpresaProtectedRoute from './components/EmpresaProtectedRoute';
 import { RceDataProvider } from './contexts/RceDataContext';
@@ -230,6 +231,20 @@ const AppRouter: React.FC = () => {
                 <RceDataProvider>
                   <RceResumenPage />
                 </RceDataProvider>
+              </EmpresaProtectedRoute>
+            ) : (
+              <Navigate to="/" replace />
+            )
+          } 
+        />
+
+        {/* Socios de Negocio - MÓDULO INDEPENDIENTE */}
+        <Route 
+          path="/socios-negocio" 
+          element={
+            isSignedIn ? (
+              <EmpresaProtectedRoute>
+                <SociosNegocioPage />
               </EmpresaProtectedRoute>
             ) : (
               <Navigate to="/" replace />

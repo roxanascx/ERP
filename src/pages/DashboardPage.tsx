@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useEmpresaValidation } from '../hooks/useEmpresaValidation';
 
@@ -8,89 +8,98 @@ const DashboardPage: React.FC = () => {
 
   const modules = [
     { 
+      icon: '🤝', 
+      title: 'Socios de Negocio', 
+      desc: 'Proveedores y clientes unificados', 
+      color: '#6366f1',
+      link: '/socios-negocio',
+      highlight: true,
+      bgGradient: 'linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(99, 102, 241, 0.08) 100%)'
+    },
+    { 
       icon: '🏢', 
       title: 'Proveedores', 
-      desc: 'Sistema de gestión intergaláctica', 
-      color: '#00d4ff',
-      bgGradient: 'linear-gradient(135deg, #00d4ff 0%, #0099cc 100%)'
+      desc: 'Gestión de proveedores', 
+      color: '#8b5cf6',
+      bgGradient: 'linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(139, 92, 246, 0.05) 100%)'
     },
     { 
       icon: '👥', 
       title: 'Clientes', 
-      desc: 'Base de datos estelar CRM', 
-      color: '#4facfe',
-      bgGradient: 'linear-gradient(135deg, #4facfe 0%, #00c6fb 100%)'
+      desc: 'Base de datos CRM', 
+      color: '#a855f7',
+      bgGradient: 'linear-gradient(135deg, rgba(168, 85, 247, 0.1) 0%, rgba(168, 85, 247, 0.05) 100%)'
     },
     { 
-      icon: '🛸', 
+      icon: '📊', 
       title: 'SIRE', 
-      desc: 'Portal de reportes cósmicos SUNAT', 
-      color: '#ff6b6b', 
+      desc: 'Reportes SUNAT', 
+      color: '#06b6d4', 
       link: '/sire',
-      highlight: true,
-      bgGradient: 'linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%)'
+      bgGradient: 'linear-gradient(135deg, rgba(6, 182, 212, 0.1) 0%, rgba(6, 182, 212, 0.05) 100%)'
     },
     { 
-      icon: '⭐', 
+      icon: '💰', 
       title: 'Contabilidad', 
-      desc: 'Finanzas del universo digital', 
-      color: '#4ecdc4',
-      bgGradient: 'linear-gradient(135deg, #4ecdc4 0%, #2980b9 100%)'
+      desc: 'Gestión financiera', 
+      color: '#10b981',
+      bgGradient: 'linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(16, 185, 129, 0.05) 100%)'
     },
     { 
       icon: '📦', 
       title: 'Inventario', 
-      desc: 'Almacén espacial inteligente', 
-      color: '#a29bfe',
-      bgGradient: 'linear-gradient(135deg, #a29bfe 0%, #6c5ce7 100%)'
+      desc: 'Control de almacén', 
+      color: '#f59e0b',
+      bgGradient: 'linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(245, 158, 11, 0.05) 100%)'
     },
     { 
-      icon: '👨‍🚀', 
+      icon: '👤', 
       title: 'Empleados', 
-      desc: 'Tripulación corporativa', 
-      color: '#fd79a8',
-      bgGradient: 'linear-gradient(135deg, #fd79a8 0%, #e84393 100%)'
+      desc: 'Recursos humanos', 
+      color: '#ef4444',
+      bgGradient: 'linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(239, 68, 68, 0.05) 100%)'
     },
     { 
-      icon: '🌌', 
+      icon: '📈', 
       title: 'Reportes', 
-      desc: 'Análisis del cosmos empresarial', 
-      color: '#fdcb6e',
-      bgGradient: 'linear-gradient(135deg, #fdcb6e 0%, #e17055 100%)'
+      desc: 'Análisis y estadísticas', 
+      color: '#3b82f6',
+      bgGradient: 'linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(59, 130, 246, 0.05) 100%)'
     },
     { 
       icon: '⚙️', 
       title: 'Configuración', 
-      desc: 'Panel de control espacial', 
-      color: '#74b9ff',
-      bgGradient: 'linear-gradient(135deg, #74b9ff 0%, #0984e3 100%)'
+      desc: 'Panel de administración', 
+      color: '#6b7280',
+      bgGradient: 'linear-gradient(135deg, rgba(107, 114, 128, 0.1) 0%, rgba(107, 114, 128, 0.05) 100%)'
     }
   ];
 
   const sidebarItems = [
-    { icon: '🌌', title: 'Dashboard', link: '/dashboard', active: true },
-    { icon: '🛸', title: 'SIRE', link: '/sire' },
+    { icon: '🏠', title: 'Dashboard', link: '/dashboard', active: true },
+    { icon: '🤝', title: 'Socios de Negocio', link: '/socios-negocio' },
+    { icon: '📊', title: 'SIRE', link: '/sire' },
     { icon: '🏢', title: 'Proveedores', link: '#' },
     { icon: '👥', title: 'Clientes', link: '#' },
-    { icon: '⭐', title: 'Contabilidad', link: '#' },
+    { icon: '💰', title: 'Contabilidad', link: '#' },
     { icon: '📦', title: 'Inventario', link: '#' },
-    { icon: '👨‍🚀', title: 'Empleados', link: '#' },
-    { icon: '🌌', title: 'Reportes', link: '#' },
+    { icon: '👤', title: 'Empleados', link: '#' },
+    { icon: '📈', title: 'Reportes', link: '#' },
     { icon: '⚙️', title: 'Configuración', link: '#' },
   ];
 
   return (
     <div style={{
       minHeight: '100vh',
-      background: 'linear-gradient(135deg, #0a0e27 0%, #1a1a3e 25%, #2d3561 50%, #4169e1 75%, #00d4ff 100%)',
+      background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 25%, #e2e8f0 50%, #cbd5e1 75%, #94a3b8 100%)',
       backgroundSize: '400% 400%',
-      animation: 'galacticShift 20s ease infinite',
+      animation: 'subtleShift 20s ease infinite',
       display: 'flex',
-      fontFamily: "'Orbitron', 'Exo 2', 'Inter', monospace",
+      fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif",
       position: 'relative',
       overflow: 'hidden'
     }}>
-      {/* Starfield background */}
+      {/* Subtle background texture */}
       <div style={{
         position: 'absolute',
         top: 0,
@@ -98,19 +107,15 @@ const DashboardPage: React.FC = () => {
         width: '100%',
         height: '100%',
         background: `
-          radial-gradient(2px 2px at 20px 30px, #ffffff, transparent),
-          radial-gradient(2px 2px at 40px 70px, #00d4ff, transparent),
-          radial-gradient(1px 1px at 90px 40px, #4facfe, transparent),
-          radial-gradient(1px 1px at 130px 80px, #ffffff, transparent),
-          radial-gradient(2px 2px at 160px 30px, #74b9ff, transparent)
+          radial-gradient(circle at 20% 80%, rgba(99, 102, 241, 0.03) 0%, transparent 50%),
+          radial-gradient(circle at 80% 20%, rgba(6, 182, 212, 0.03) 0%, transparent 50%),
+          radial-gradient(circle at 40% 40%, rgba(139, 92, 246, 0.02) 0%, transparent 50%)
         `,
-        backgroundSize: '200px 100px',
-        animation: 'stars 50s linear infinite',
         pointerEvents: 'none',
         opacity: 0.6
       }} />
 
-      {/* Cosmic particles */}
+      {/* Elegant ambient overlay */}
       <div style={{
         position: 'absolute',
         top: 0,
@@ -118,30 +123,30 @@ const DashboardPage: React.FC = () => {
         width: '100%',
         height: '100%',
         background: `
-          radial-gradient(circle at 15% 85%, rgba(0, 212, 255, 0.3) 0%, transparent 50%),
-          radial-gradient(circle at 85% 15%, rgba(79, 172, 254, 0.2) 0%, transparent 50%),
-          radial-gradient(circle at 50% 50%, rgba(116, 185, 255, 0.1) 0%, transparent 70%)
+          radial-gradient(circle at 15% 85%, rgba(99, 102, 241, 0.08) 0%, transparent 50%),
+          radial-gradient(circle at 85% 15%, rgba(6, 182, 212, 0.06) 0%, transparent 50%),
+          radial-gradient(circle at 50% 50%, rgba(139, 92, 246, 0.04) 0%, transparent 70%)
         `,
-        animation: 'cosmicFloat 25s ease-in-out infinite',
+        animation: 'ambientFloat 25s ease-in-out infinite',
         pointerEvents: 'none'
       }} />
 
-      {/* Sidebar Ultra Galáctico */}
+      {/* Modern Sidebar */}
       <div style={{
         width: sidebarOpen ? '280px' : '70px',
-        background: 'linear-gradient(180deg, rgba(50, 80, 150, 0.85) 0%, rgba(70, 120, 200, 0.8) 50%, rgba(90, 150, 255, 0.75) 100%)',
+        background: 'linear-gradient(180deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 250, 252, 0.9) 50%, rgba(241, 245, 249, 0.85) 100%)',
         backdropFilter: 'blur(20px) saturate(160%)',
-        borderRight: '1px solid rgba(100, 180, 255, 0.4)',
+        borderRight: '1px solid rgba(203, 213, 225, 0.3)',
         transition: 'all 0.4s cubic-bezier(0.23, 1, 0.32, 1)',
         position: 'fixed',
         height: '100vh',
         zIndex: 1000,
-        boxShadow: '15px 0 30px rgba(50, 150, 255, 0.15), inset 1px 0 1px rgba(120, 200, 255, 0.3)',
+        boxShadow: '8px 0 24px rgba(0, 0, 0, 0.06), inset 1px 0 1px rgba(255, 255, 255, 0.3)',
         borderTopRightRadius: '20px',
         borderBottomRightRadius: '20px',
-        border: '1px solid rgba(150, 200, 255, 0.3)'
+        border: '1px solid rgba(226, 232, 240, 0.4)'
       }}>
-        {/* Toggle Button Galáctico */}
+        {/* Toggle Button */}
         <button
           onClick={() => setSidebarOpen(!sidebarOpen)}
           style={{
@@ -151,28 +156,28 @@ const DashboardPage: React.FC = () => {
             width: '40px',
             height: '40px',
             borderRadius: '50%',
-            background: 'radial-gradient(circle, #4facfe 0%, #00bfff 50%, #1e90ff 100%)',
-            border: '2px solid rgba(100, 180, 255, 0.5)',
+            background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+            border: '2px solid rgba(255, 255, 255, 0.8)',
             color: '#ffffff',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             fontSize: '16px',
-            boxShadow: '0 0 20px rgba(50, 150, 255, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3)',
+            boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.3)',
             transition: 'all 0.3s cubic-bezier(0.23, 1, 0.32, 1)',
             zIndex: 1001,
             transform: 'scale(1)'
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.transform = 'scale(1.1) rotate(5deg)';
-            e.currentTarget.style.boxShadow = '0 0 25px rgba(50, 150, 255, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.4)';
-            e.currentTarget.style.background = 'radial-gradient(circle, #74b9ff 0%, #00bfff 50%, #1e90ff 100%)';
+            e.currentTarget.style.transform = 'scale(1.05)';
+            e.currentTarget.style.boxShadow = '0 6px 16px rgba(99, 102, 241, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.4)';
+            e.currentTarget.style.background = 'linear-gradient(135deg, #7c3aed 0%, #a855f7 100%)';
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.transform = 'scale(1) rotate(0deg)';
-            e.currentTarget.style.boxShadow = '0 0 20px rgba(50, 150, 255, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3)';
-            e.currentTarget.style.background = 'radial-gradient(circle, #4facfe 0%, #00bfff 50%, #1e90ff 100%)';
+            e.currentTarget.style.transform = 'scale(1)';
+            e.currentTarget.style.boxShadow = '0 4px 12px rgba(99, 102, 241, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.3)';
+            e.currentTarget.style.background = 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)';
           }}
         >
           {sidebarOpen ? '◀' : '▶'}
@@ -180,7 +185,7 @@ const DashboardPage: React.FC = () => {
 
         {/* Sidebar Content */}
         <div style={{ padding: '25px 15px', paddingTop: '70px' }}>
-          {/* Logo Espacial */}
+          {/* Modern Logo */}
           <div style={{
             display: 'flex',
             alignItems: 'center',
@@ -191,36 +196,42 @@ const DashboardPage: React.FC = () => {
             <div style={{
               width: '45px',
               height: '45px',
-              background: 'radial-gradient(circle, #4facfe 0%, #00bfff 50%, #1e90ff 100%)',
+              background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
               borderRadius: '15px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               fontSize: '22px',
-              boxShadow: '0 0 20px rgba(50, 150, 255, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3)',
+              boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.3)',
               transform: 'perspective(1000px) rotateX(5deg) rotateY(5deg)',
               transition: 'all 0.3s ease',
-              border: '1px solid rgba(120, 200, 255, 0.4)'
+              border: '1px solid rgba(255, 255, 255, 0.4)'
             }}>
-              🌌
+              🏢
             </div>
             {sidebarOpen && (
-              <span style={{
-                color: '#ffffff',
-                fontWeight: '700',
-                fontSize: '16px',
-                opacity: sidebarOpen ? 1 : 0,
-                transition: 'opacity 0.4s ease',
-                textShadow: '0 0 15px rgba(100, 180, 255, 0.8)',
-                fontFamily: "'Orbitron', monospace",
-                letterSpacing: '1px'
+              <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '2px'
               }}>
-                ERP GALAXY
-              </span>
+                <h3 style={{
+                  margin: 0,
+                  fontSize: '18px',
+                  fontWeight: '700',
+                  color: '#1e293b',
+                  fontFamily: "'Inter', sans-serif"
+                }}>ERP</h3>
+                <span style={{
+                  fontSize: '12px',
+                  color: '#64748b',
+                  fontWeight: '500'
+                }}>Sistema de Gestión</span>
+              </div>
             )}
           </div>
 
-          {/* Navigation Items Galácticos */}
+          {/* Navigation Items */}
           <nav>
             {sidebarItems.map((item, index) => (
               <Link
@@ -230,619 +241,330 @@ const DashboardPage: React.FC = () => {
                   display: 'flex',
                   alignItems: 'center',
                   gap: '12px',
-                  padding: '12px 10px',
-                  margin: '5px 0',
+                  padding: '12px 16px',
+                  marginBottom: '8px',
                   borderRadius: '12px',
                   textDecoration: 'none',
-                  color: '#ffffff',
-                  transition: 'all 0.3s cubic-bezier(0.23, 1, 0.32, 1)',
-                  background: item.active 
-                    ? 'linear-gradient(135deg, rgba(100, 180, 255, 0.3) 0%, rgba(50, 150, 255, 0.2) 100%)'
-                    : 'transparent',
-                  border: item.active ? '1px solid rgba(120, 200, 255, 0.4)' : '1px solid transparent',
-                  boxShadow: item.active ? '0 0 15px rgba(50, 150, 255, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)' : 'none',
-                  transform: 'translateX(0)',
-                  position: 'relative',
-                  overflow: 'hidden'
+                  color: item.active ? '#6366f1' : '#64748b',
+                  background: item.active ? 'linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.05) 100%)' : 'transparent',
+                  border: item.active ? '1px solid rgba(99, 102, 241, 0.2)' : '1px solid transparent',
+                  transition: 'all 0.3s ease',
+                  fontWeight: item.active ? '600' : '500',
+                  fontSize: '14px',
+                  boxShadow: item.active ? '0 2px 8px rgba(99, 102, 241, 0.15)' : 'none'
                 }}
                 onMouseEnter={(e) => {
                   if (!item.active) {
-                    e.currentTarget.style.background = 'linear-gradient(135deg, rgba(120, 200, 255, 0.2) 0%, rgba(80, 170, 255, 0.1) 100%)';
-                    e.currentTarget.style.transform = 'translateX(6px) scale(1.02)';
-                    e.currentTarget.style.boxShadow = '0 0 12px rgba(100, 180, 255, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2)';
-                    e.currentTarget.style.border = '1px solid rgba(120, 200, 255, 0.3)';
+                    e.currentTarget.style.background = 'rgba(248, 250, 252, 0.8)';
+                    e.currentTarget.style.color = '#1e293b';
+                    e.currentTarget.style.transform = 'translateX(4px)';
                   }
                 }}
                 onMouseLeave={(e) => {
                   if (!item.active) {
                     e.currentTarget.style.background = 'transparent';
-                    e.currentTarget.style.transform = 'translateX(0) scale(1)';
-                    e.currentTarget.style.boxShadow = 'none';
-                    e.currentTarget.style.border = '1px solid transparent';
+                    e.currentTarget.style.color = '#64748b';
+                    e.currentTarget.style.transform = 'translateX(0)';
                   }
                 }}
               >
-                <span style={{ 
-                  fontSize: '18px', 
-                  minWidth: '18px',
-                  filter: 'drop-shadow(0 0 6px rgba(100, 180, 255, 0.6))'
-                }}>{item.icon}</span>
-                {sidebarOpen && (
-                  <span style={{
-                    fontWeight: item.active ? '600' : '500',
-                    fontSize: '14px',
-                    opacity: sidebarOpen ? 1 : 0,
-                    transition: 'opacity 0.4s ease',
-                    textShadow: '0 0 8px rgba(100, 180, 255, 0.5)',
-                    fontFamily: "'Exo 2', sans-serif",
-                    letterSpacing: '0.5px'
-                  }}>
-                    {item.title}
-                  </span>
-                )}
-                {item.active && (
-                  <div style={{
-                    position: 'absolute',
-                    left: 0,
-                    top: 0,
-                    bottom: 0,
-                    width: '3px',
-                    background: 'linear-gradient(180deg, #4facfe 0%, #00bfff 50%, #74b9ff 100%)',
-                    borderRadius: '0 3px 3px 0',
-                    boxShadow: '0 0 10px rgba(50, 150, 255, 0.8)'
-                  }} />
-                )}
+                <span style={{ fontSize: '18px', minWidth: '18px' }}>{item.icon}</span>
+                {sidebarOpen && <span>{item.title}</span>}
               </Link>
             ))}
           </nav>
         </div>
       </div>
 
-      {/* Main Content Galáctico */}
+      {/* Main Content */}
       <div style={{
         marginLeft: sidebarOpen ? '280px' : '70px',
         flex: 1,
         padding: '25px',
         transition: 'all 0.4s cubic-bezier(0.23, 1, 0.32, 1)'
       }}>
-        {/* Header Galáctico Completo */}
+        {/* Modern Header */}
         <header style={{
-          background: 'linear-gradient(135deg, rgba(5, 8, 20, 0.98) 0%, rgba(15, 25, 45, 0.95) 30%, rgba(25, 40, 70, 0.92) 60%, rgba(35, 55, 95, 0.9) 100%)',
-          backdropFilter: 'blur(40px) saturate(200%)',
+          background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 250, 252, 0.9) 30%, rgba(241, 245, 249, 0.85) 60%, rgba(226, 232, 240, 0.8) 100%)',
+          backdropFilter: 'blur(20px) saturate(200%)',
           borderRadius: '20px',
           padding: '25px 35px',
           marginBottom: '25px',
           boxShadow: `
-            0 0 80px rgba(0, 212, 255, 0.5),
-            inset 0 1px 0 rgba(0, 212, 255, 0.3),
-            0 20px 40px rgba(0, 0, 0, 0.3),
-            0 0 0 1px rgba(0, 212, 255, 0.4)
+            0 8px 32px rgba(0, 0, 0, 0.1),
+            inset 0 1px 0 rgba(255, 255, 255, 0.5),
+            0 0 0 1px rgba(226, 232, 240, 0.4)
           `,
-          border: '1px solid rgba(0, 212, 255, 0.5)',
+          border: '1px solid rgba(226, 232, 240, 0.5)',
           position: 'relative',
           overflow: 'hidden',
           transform: 'translateY(0)',
           transition: 'all 0.4s cubic-bezier(0.23, 1, 0.32, 1)'
         }}
         onMouseEnter={(e) => {
-          e.currentTarget.style.transform = 'translateY(-3px) scale(1.002)';
+          e.currentTarget.style.transform = 'translateY(-2px)';
           e.currentTarget.style.boxShadow = `
-            0 0 120px rgba(0, 212, 255, 0.7),
-            inset 0 1px 0 rgba(0, 212, 255, 0.5),
-            0 25px 50px rgba(0, 0, 0, 0.4),
-            0 0 0 2px rgba(0, 212, 255, 0.6)
+            0 12px 40px rgba(0, 0, 0, 0.15),
+            inset 0 1px 0 rgba(255, 255, 255, 0.6),
+            0 0 0 1px rgba(99, 102, 241, 0.2)
           `;
         }}
         onMouseLeave={(e) => {
-          e.currentTarget.style.transform = 'translateY(0) scale(1)';
+          e.currentTarget.style.transform = 'translateY(0)';
           e.currentTarget.style.boxShadow = `
-            0 0 80px rgba(0, 212, 255, 0.5),
-            inset 0 1px 0 rgba(0, 212, 255, 0.3),
-            0 20px 40px rgba(0, 0, 0, 0.3),
-            0 0 0 1px rgba(0, 212, 255, 0.4)
+            0 8px 32px rgba(0, 0, 0, 0.1),
+            inset 0 1px 0 rgba(255, 255, 255, 0.5),
+            0 0 0 1px rgba(226, 232, 240, 0.4)
           `;
         }}
         >
-          {/* Efectos de fondo galáctico animado */}
           <div style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: `
-              conic-gradient(from 0deg, rgba(0, 212, 255, 0.2), rgba(79, 172, 254, 0.25), rgba(116, 185, 255, 0.2), rgba(0, 212, 255, 0.2)),
-              radial-gradient(circle at 20% 30%, rgba(0, 212, 255, 0.15) 0%, transparent 50%),
-              radial-gradient(circle at 80% 70%, rgba(116, 185, 255, 0.12) 0%, transparent 50%)
-            `,
-            backgroundSize: '200% 200%, 100% 100%, 100% 100%',
-            animation: 'cosmicRotate 25s ease infinite, cosmicFloat 15s ease-in-out infinite',
-            opacity: 0.9
-          }} />
-          
-          {/* Partículas estelares */}
-          <div style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: `
-              radial-gradient(1px 1px at 15% 25%, rgba(255, 255, 255, 0.8), transparent),
-              radial-gradient(1px 1px at 85% 75%, rgba(0, 212, 255, 0.8), transparent),
-              radial-gradient(1px 1px at 45% 15%, rgba(116, 185, 255, 0.6), transparent),
-              radial-gradient(1px 1px at 75% 45%, rgba(255, 255, 255, 0.7), transparent),
-              radial-gradient(1px 1px at 25% 85%, rgba(0, 212, 255, 0.9), transparent)
-            `,
-            backgroundSize: '100px 100px',
-            animation: 'stars 30s linear infinite',
-            opacity: 0.7
-          }} />
-          
-          <div style={{ position: 'relative', zIndex: 3 }}>
-            <h1 style={{
-              fontSize: 'clamp(2.2rem, 5.5vw, 4rem)',
-              fontWeight: '900',
-              color: '#ffffff',
-              margin: '0',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '18px',
-              background: 'linear-gradient(135deg, #00d4ff 0%, #4facfe 25%, #74b9ff 50%, #ffffff 75%, #00d4ff 100%)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              backgroundClip: 'text',
-              backgroundSize: '200% 200%',
-              animation: 'galacticShift 8s ease infinite',
-              textShadow: `
-                0 0 60px rgba(0, 212, 255, 1),
-                0 0 120px rgba(116, 185, 255, 0.8),
-                0 0 180px rgba(0, 212, 255, 0.6)
-              `,
-              letterSpacing: '3px',
-              fontFamily: "'Orbitron', monospace",
-              filter: 'drop-shadow(0 6px 12px rgba(0, 0, 0, 0.6))'
-            }}>
-              <span style={{
-                background: `
-                  radial-gradient(circle, #00d4ff 0%, #1a73e8 20%, #0f3460 40%, #061a2e 60%, #000814 100%),
-                  conic-gradient(from 45deg, rgba(0, 212, 255, 0.3), rgba(116, 185, 255, 0.3), rgba(0, 212, 255, 0.3))
-                `,
-                borderRadius: '18px',
-                padding: '12px 18px',
-                fontSize: 'clamp(1.8rem, 4.5vw, 3rem)',
-                boxShadow: `
-                  0 0 60px rgba(0, 212, 255, 0.9),
-                  inset 0 2px 0 rgba(0, 212, 255, 0.7),
-                  0 0 40px rgba(116, 185, 255, 0.7),
-                  inset 0 -2px 0 rgba(0, 30, 60, 0.5)
-                `,
-                transform: 'perspective(1000px) rotateX(5deg) rotateY(5deg)',
-                animation: 'headerIconFloat 6s ease-in-out infinite, pulse 4s ease-in-out infinite',
-                border: '2px solid rgba(0, 212, 255, 0.9)',
-                color: '#00d4ff',
-                position: 'relative',
-                overflow: 'hidden'
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            position: 'relative',
+            zIndex: 2
+          }}>
+            <div>
+              <h1 style={{
+                fontSize: 'clamp(1.8rem, 4vw, 2.2rem)',
+                fontWeight: '700',
+                color: '#1e293b',
+                margin: 0,
+                marginBottom: '8px',
+                background: 'linear-gradient(135deg, #1e293b 0%, #475569 100%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text',
+                letterSpacing: '-0.025em'
               }}>
-                <span style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  background: 'conic-gradient(from 0deg, transparent, rgba(0, 212, 255, 0.3), transparent)',
-                  animation: 'logoSpin 8s linear infinite'
-                }} />
-                <span style={{ position: 'relative', zIndex: 2 }}>🌌</span>
-              </span>
-              ERP GALAXY
-            </h1>
+                Bienvenido al ERP
+              </h1>
+              <p style={{
+                fontSize: '1rem',
+                color: '#64748b',
+                margin: 0,
+                fontWeight: '500'
+              }}>
+                Panel de control y gestión empresarial
+              </p>
+            </div>
             {empresaActual && (
               <div style={{
-                marginTop: '25px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '20px',
-                flexWrap: 'wrap'
+                background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.05) 100%)',
+                borderRadius: '12px',
+                padding: '12px 20px',
+                border: '1px solid rgba(99, 102, 241, 0.2)',
+                backdropFilter: 'blur(10px)'
               }}>
                 <div style={{
-                  background: 'linear-gradient(135deg, rgba(0, 212, 255, 0.25) 0%, rgba(79, 172, 254, 0.15) 100%)',
-                  backdropFilter: 'blur(20px)',
-                  border: '1px solid rgba(0, 212, 255, 0.5)',
-                  padding: '12px 20px',
-                  borderRadius: '15px',
-                  color: '#ffffff',
+                  fontSize: '14px',
                   fontWeight: '600',
-                  fontSize: 'clamp(0.9rem, 2.5vw, 1rem)',
-                  boxShadow: '0 0 25px rgba(0, 212, 255, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2)',
-                  textShadow: '0 0 15px rgba(0, 212, 255, 0.8)',
-                  fontFamily: "'Exo 2', sans-serif",
-                  letterSpacing: '0.5px'
+                  color: '#6366f1',
+                  marginBottom: '4px'
                 }}>
-                  🏢 {empresaActual.ruc} - {empresaActual.razon_social}
+                  🏢 {empresaActual.ruc}
                 </div>
-                <Link
-                  to="/empresas"
-                  style={{
-                    background: 'linear-gradient(135deg, rgba(79, 172, 254, 0.2) 0%, rgba(116, 185, 255, 0.1) 100%)',
-                    backdropFilter: 'blur(20px)',
-                    border: '1px solid rgba(79, 172, 254, 0.4)',
-                    padding: '12px 20px',
-                    borderRadius: '15px',
-                    color: '#ffffff',
-                    textDecoration: 'none',
-                    fontWeight: '500',
-                    fontSize: 'clamp(0.9rem, 2.5vw, 1rem)',
-                    transition: 'all 0.3s cubic-bezier(0.23, 1, 0.32, 1)',
-                    display: 'inline-block',
-                    transform: 'translateY(0)',
-                    textShadow: '0 0 10px rgba(79, 172, 254, 0.8)',
-                    fontFamily: "'Exo 2', sans-serif",
-                    letterSpacing: '0.5px'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.transform = 'translateY(-4px) scale(1.02)';
-                    e.currentTarget.style.boxShadow = '0 0 35px rgba(79, 172, 254, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.4)';
-                    e.currentTarget.style.background = 'linear-gradient(135deg, rgba(79, 172, 254, 0.4) 0%, rgba(116, 185, 255, 0.3) 100%)';
-                    e.currentTarget.style.borderColor = 'rgba(79, 172, 254, 0.6)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.transform = 'translateY(0) scale(1)';
-                    e.currentTarget.style.boxShadow = 'none';
-                    e.currentTarget.style.background = 'linear-gradient(135deg, rgba(79, 172, 254, 0.2) 0%, rgba(116, 185, 255, 0.1) 100%)';
-                    e.currentTarget.style.borderColor = 'rgba(79, 172, 254, 0.3)';
-                  }}
+                <div style={{
+                  fontSize: '13px',
+                  color: '#64748b',
+                  fontWeight: '500'
+                }}>
+                  {empresaActual.razon_social}
+                </div>
+                <button style={{
+                  marginTop: '8px',
+                  padding: '6px 12px',
+                  fontSize: '12px',
+                  background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontWeight: '500',
+                  transition: 'all 0.2s ease'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'scale(1.05)';
+                  e.currentTarget.style.background = 'linear-gradient(135deg, #7c3aed 0%, #a855f7 100%)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'scale(1)';
+                  e.currentTarget.style.background = 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)';
+                }}
                 >
-                  🔄 Cambiar empresa
-                </Link>
+                  Cambiar empresa
+                </button>
               </div>
             )}
           </div>
         </header>
 
-        {/* Main Container Ultra Premium */}
+        {/* Main Container */}
         <div style={{
-          background: 'linear-gradient(135deg, rgba(255,255,255,0.25) 0%, rgba(255,255,255,0.1) 100%)',
-          backdropFilter: 'blur(40px) saturate(180%)',
-          borderRadius: '32px',
-          padding: 'clamp(40px, 6vw, 60px)',
-          boxShadow: '0 20px 40px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.2)',
-          border: '1px solid rgba(255, 255, 255, 0.2)',
+          background: 'linear-gradient(135deg, rgba(255,255,255,0.9) 0%, rgba(248,250,252,0.8) 100%)',
+          backdropFilter: 'blur(20px) saturate(180%)',
+          borderRadius: '24px',
+          padding: 'clamp(30px, 5vw, 50px)',
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 0 0 1px rgba(226, 232, 240, 0.3)',
+          border: '1px solid rgba(226, 232, 240, 0.3)',
           maxWidth: '1400px',
           margin: '0 auto',
           position: 'relative',
           overflow: 'hidden'
         }}>
-          {/* Background decoration ultra moderno */}
-          <div style={{
-            position: 'absolute',
-            top: '-50%',
-            right: '-50%',
-            width: '100%',
-            height: '100%',
-            background: 'conic-gradient(from 0deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1), rgba(240, 147, 251, 0.1), rgba(102, 126, 234, 0.1))',
-            animation: 'rotate 30s linear infinite',
-            opacity: 0.6
-          }} />
-
           <h2 style={{
-            fontSize: 'clamp(1.8rem, 4vw, 2.5rem)',
+            fontSize: 'clamp(1.6rem, 3vw, 2rem)',
             fontWeight: '700',
-            color: '#ffffff',
-            marginBottom: 'clamp(25px, 4vw, 35px)',
+            color: '#1e293b',
+            marginBottom: 'clamp(20px, 3vw, 30px)',
             display: 'flex',
             alignItems: 'center',
-            gap: '15px',
+            gap: '12px',
             textAlign: 'center',
             justifyContent: 'center',
             position: 'relative',
             zIndex: 2,
-            background: 'linear-gradient(135deg, #ffffff 0%, #e3f2fd 50%, #90caf9 100%)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            backgroundClip: 'text',
-            textShadow: '0 0 20px rgba(255, 255, 255, 0.8), 0 0 40px rgba(144, 202, 249, 0.6)',
-            letterSpacing: '1px',
-            fontFamily: "'Orbitron', monospace",
-            filter: 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3))'
+            letterSpacing: '-0.025em'
           }}>
-            <span style={{
-              background: 'linear-gradient(135deg, #ffffff 0%, #e3f2fd 50%, #90caf9 100%)',
-              borderRadius: '12px',
-              padding: '6px 10px',
-              fontSize: 'clamp(1.2rem, 3vw, 1.8rem)',
-              boxShadow: '0 0 25px rgba(255, 255, 255, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.8)',
-              animation: 'iconPulse 4s ease-in-out infinite',
-              color: '#1565c0',
-              border: '1px solid rgba(255, 255, 255, 0.6)'
-            }}>⚡</span>
-            Módulos del Sistema
+            📊 Módulos del Sistema
           </h2>
           
-          {/* Layout ultra moderno con efectos 3D */}
           <div style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-            gap: 'clamp(15px, 3vw, 25px)',
-            maxWidth: '900px',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+            gap: 'clamp(20px, 3vw, 30px)',
+            maxWidth: '1200px',
             margin: '0 auto',
-            placeItems: 'center',
             position: 'relative',
             zIndex: 2
           }}>
-            
-            {modules.map((item, index) => (
+            {modules.map((module, index) => (
               <Link
                 key={index}
-                to={item.link || '#'}
-                style={{ textDecoration: 'none', width: '100%' }}
-                onClick={!item.link ? (e) => e.preventDefault() : undefined}
+                to={module.link || '#'}
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: '30px 20px',
+                  borderRadius: '20px',
+                  textDecoration: 'none',
+                  background: module.bgGradient,
+                  border: `2px solid ${module.color}20`,
+                  transition: 'all 0.4s cubic-bezier(0.23, 1, 0.32, 1)',
+                  cursor: 'pointer',
+                  position: 'relative',
+                  minHeight: '180px',
+                  boxShadow: module.highlight 
+                    ? `0 8px 32px ${module.color}30, 0 0 0 2px ${module.color}40`
+                    : `0 4px 16px ${module.color}20`,
+                  backdropFilter: 'blur(10px)',
+                  overflow: 'hidden'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-8px) scale(1.02)';
+                  e.currentTarget.style.boxShadow = `0 16px 48px ${module.color}40, 0 0 0 2px ${module.color}60`;
+                  e.currentTarget.style.background = `linear-gradient(135deg, ${module.color}15, ${module.color}08)`;
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0) scale(1)';
+                  e.currentTarget.style.boxShadow = module.highlight 
+                    ? `0 8px 32px ${module.color}30, 0 0 0 2px ${module.color}40`
+                    : `0 4px 16px ${module.color}20`;
+                  e.currentTarget.style.background = module.bgGradient;
+                }}
               >
-                <div
-                  style={{
-                    width: 'clamp(140px, 16vw, 170px)',
-                    height: 'clamp(140px, 16vw, 170px)',
-                    border: item.highlight 
-                      ? `2px solid ${item.color}` 
-                      : `1px solid rgba(255, 255, 255, 0.3)`,
-                    borderRadius: '50%',
-                    cursor: item.link ? 'pointer' : 'not-allowed',
-                    transition: 'all 0.5s cubic-bezier(0.23, 1, 0.32, 1)',
-                    background: item.highlight 
-                      ? `conic-gradient(from 0deg, ${item.color}15, ${item.color}25, ${item.color}15)`
-                      : 'linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.05) 100%)',
-                    opacity: item.link ? 1 : 0.6,
-                    position: 'relative',
-                    overflow: 'hidden',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    padding: 'clamp(12px, 2.5vw, 20px)',
-                    boxSizing: 'border-box',
-                    margin: '0 auto',
-                    backdropFilter: 'blur(15px)',
-                    boxShadow: item.highlight 
-                      ? `0 10px 25px ${item.color}20, inset 0 1px 0 rgba(255, 255, 255, 0.3)`
-                      : '0 8px 20px rgba(255, 255, 255, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.2)',
-                    transform: 'perspective(1000px) rotateX(0deg) rotateY(0deg) translateZ(0px)',
-                    animation: `cardFloat${index % 3} 6s ease-in-out infinite ${index * 0.3}s`
-                  }}
-                  onMouseEnter={(e) => {
-                    if (item.link) {
-                      e.currentTarget.style.transform = 'perspective(1000px) rotateX(-10deg) rotateY(10deg) translateZ(50px) scale(1.05)';
-                      e.currentTarget.style.boxShadow = `0 25px 50px ${item.color}30, inset 0 1px 0 rgba(255, 255, 255, 0.4)`;
-                      e.currentTarget.style.borderColor = item.color;
-                      e.currentTarget.style.background = item.highlight 
-                        ? `conic-gradient(from 0deg, ${item.color}25, ${item.color}35, ${item.color}25)`
-                        : `linear-gradient(135deg, ${item.color}15 0%, ${item.color}25 100%)`;
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (item.link) {
-                      e.currentTarget.style.transform = 'perspective(1000px) rotateX(0deg) rotateY(0deg) translateZ(0px) scale(1)';
-                      e.currentTarget.style.boxShadow = item.highlight 
-                        ? `0 10px 25px ${item.color}20, inset 0 1px 0 rgba(255, 255, 255, 0.3)`
-                        : '0 8px 20px rgba(255, 255, 255, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.2)';
-                      e.currentTarget.style.borderColor = item.highlight 
-                        ? item.color
-                        : 'rgba(255, 255, 255, 0.3)';
-                      e.currentTarget.style.background = item.highlight 
-                        ? `conic-gradient(from 0deg, ${item.color}15, ${item.color}25, ${item.color}15)`
-                        : 'linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.05) 100%)';
-                    }
-                  }}
-                >
-                  {item.highlight && (
-                    <div style={{
-                      position: 'absolute',
-                      top: 0,
-                      left: 0,
-                      right: 0,
-                      bottom: 0,
-                      border: `2px solid ${item.color}`,
-                      borderRadius: '50%',
-                      animation: `glow${index % 2} 3s ease-in-out infinite alternate`,
-                      opacity: 0.7
-                    }} />
-                  )}
-                  
-                  <div style={{ 
-                    fontSize: 'clamp(2rem, 5vw, 3rem)', 
-                    marginBottom: 'clamp(8px, 2vw, 12px)',
-                    filter: item.link ? 'drop-shadow(0 4px 8px rgba(0, 0, 0, 0.2))' : 'grayscale(100%) drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1))',
-                    transform: 'scale(1)',
-                    transition: 'all 0.3s ease'
-                  }}>
-                    {item.icon}
-                  </div>
-                  
-                  <h3 style={{
-                    fontSize: 'clamp(0.9rem, 2.5vw, 1.1rem)',
+                {module.highlight && (
+                  <div style={{
+                    position: 'absolute',
+                    top: '15px',
+                    right: '15px',
+                    background: module.color,
+                    color: 'white',
+                    fontSize: '10px',
                     fontWeight: '700',
-                    color: item.link ? 'rgba(255, 255, 255, 0.95)' : 'rgba(255, 255, 255, 0.5)',
-                    marginBottom: 'clamp(4px, 1vw, 6px)',
-                    lineHeight: '1.2',
-                    textAlign: 'center',
-                    textShadow: '0 2px 8px rgba(0,0,0,0.2)',
-                    letterSpacing: '-0.01em'
+                    padding: '4px 8px',
+                    borderRadius: '12px',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px'
                   }}>
-                    {item.title}
-                  </h3>
-                  
-                  <p style={{
-                    fontSize: 'clamp(0.7rem, 1.8vw, 0.85rem)',
-                    color: 'rgba(255,255,255,0.8)',
-                    margin: '0',
-                    lineHeight: '1.3',
-                    textAlign: 'center',
-                    display: '-webkit-box',
-                    WebkitLineClamp: 2,
-                    WebkitBoxOrient: 'vertical',
-                    overflow: 'hidden',
-                    textShadow: '0 1px 4px rgba(0,0,0,0.2)'
-                  }}>
-                    {item.desc}
-                  </p>
-                  
-                  {!item.link && (
-                    <div style={{
-                      position: 'absolute',
-                      bottom: 'clamp(8px, 2vw, 12px)',
-                      left: '50%',
-                      transform: 'translateX(-50%)',
-                      padding: 'clamp(4px, 1vw, 6px) clamp(8px, 2vw, 12px)',
-                      background: 'linear-gradient(135deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.1) 100%)',
-                      backdropFilter: 'blur(10px)',
-                      border: '1px solid rgba(255,255,255,0.3)',
-                      borderRadius: '12px',
-                      fontSize: 'clamp(0.6rem, 1.2vw, 0.75rem)',
-                      color: 'rgba(255,255,255,0.8)',
-                      fontWeight: '500',
-                      whiteSpace: 'nowrap',
-                      textShadow: '0 1px 3px rgba(0,0,0,0.2)'
-                    }}>
-                      Próximamente
-                    </div>
-                  )}
+                    Activo
+                  </div>
+                )}
+                
+                <div style={{
+                  fontSize: '3rem',
+                  marginBottom: '15px',
+                  filter: `drop-shadow(0 4px 8px ${module.color}40)`,
+                  transition: 'all 0.3s ease'
+                }}>
+                  {module.icon}
                 </div>
+                
+                <h3 style={{
+                  fontSize: '1.2rem',
+                  fontWeight: '700',
+                  color: '#1e293b',
+                  margin: '0 0 8px 0',
+                  textAlign: 'center',
+                  letterSpacing: '-0.025em'
+                }}>
+                  {module.title}
+                </h3>
+                
+                <p style={{
+                  fontSize: '0.875rem',
+                  color: '#64748b',
+                  margin: 0,
+                  textAlign: 'center',
+                  fontWeight: '500',
+                  lineHeight: '1.4'
+                }}>
+                  {module.desc}
+                </p>
               </Link>
             ))}
           </div>
         </div>
       </div>
 
-      {/* Ultra Modern CSS Animations */}
+      {/* Modern CSS Animations */}
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&display=swap');
-        @import url('https://fonts.googleapis.com/css2?family=Exo+2:wght@300;400;500;600;700;800&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
         
-        @keyframes galacticShift {
+        @keyframes subtleShift {
           0% { background-position: 0% 50%; }
           50% { background-position: 100% 50%; }
           100% { background-position: 0% 50%; }
         }
         
-        @keyframes stars {
-          0% { transform: translateX(0); }
-          100% { transform: translateX(-200px); }
-        }
-        
-        @keyframes cosmicFloat {
+        @keyframes ambientFloat {
           0%, 100% { 
             transform: rotate(0deg) scale(1);
             opacity: 0.6;
           }
           33% { 
-            transform: rotate(120deg) scale(1.1);
+            transform: rotate(120deg) scale(1.05);
             opacity: 0.8;
           }
           66% { 
-            transform: rotate(240deg) scale(0.9);
+            transform: rotate(240deg) scale(0.95);
             opacity: 0.7;
           }
-        }
-        
-        @keyframes pulse {
-          0%, 100% { 
-            box-shadow: 0 0 30px rgba(0, 212, 255, 0.6), inset 0 2px 0 rgba(255, 255, 255, 0.3);
-            transform: scale(1);
-          }
-          50% { 
-            box-shadow: 0 0 40px rgba(0, 212, 255, 0.9), inset 0 2px 0 rgba(255, 255, 255, 0.4);
-            transform: scale(1.05);
-          }
-        }
-        
-        @keyframes logoSpin {
-          0% { transform: perspective(1000px) rotateX(5deg) rotateY(5deg) rotateZ(0deg); }
-          100% { transform: perspective(1000px) rotateX(5deg) rotateY(5deg) rotateZ(360deg); }
-        }
-        
-        @keyframes iconGlow {
-          0% { filter: drop-shadow(0 0 8px rgba(0, 212, 255, 0.6)); }
-          100% { filter: drop-shadow(0 0 15px rgba(0, 212, 255, 1)); }
-        }
-        
-        @keyframes activeGlow {
-          0% { box-shadow: 0 0 15px rgba(0, 212, 255, 0.8); }
-          100% { box-shadow: 0 0 25px rgba(0, 212, 255, 1), 0 0 35px rgba(0, 212, 255, 0.5); }
-        }
-        
-        @keyframes cosmicRotate {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-        
-        @keyframes headerIconFloat {
-          0%, 100% { 
-            transform: perspective(1000px) rotateX(5deg) rotateY(5deg) translateY(0px);
-          }
-          50% { 
-            transform: perspective(1000px) rotateX(5deg) rotateY(5deg) translateY(-10px);
-          }
-        }
-        
-        @keyframes cardFloat0 {
-          0%, 100% { 
-            transform: translateY(0px) rotateX(5deg) rotateY(5deg);
-          }
-          50% { 
-            transform: translateY(-8px) rotateX(5deg) rotateY(5deg);
-          }
-        }
-        
-        @keyframes cardFloat1 {
-          0%, 100% { 
-            transform: translateY(0px) rotateX(2deg) rotateY(-2deg);
-          }
-          50% { 
-            transform: translateY(-6px) rotateX(2deg) rotateY(-2deg);
-          }
-        }
-        
-        @keyframes cardFloat2 {
-          0%, 100% { 
-            transform: translateY(0px) rotateX(-2deg) rotateY(2deg);
-          }
-          50% { 
-            transform: translateY(-10px) rotateX(-2deg) rotateY(2deg);
-          }
-        }
-        
-        @keyframes iconPulse {
-          0%, 100% { 
-            transform: scale(1) rotate(0deg);
-          }
-          50% { 
-            transform: scale(1.05) rotate(2deg);
-          }
-        }
-        
-        @keyframes glow0 {
-          0% { box-shadow: 0 0 20px currentColor, inset 0 0 20px currentColor; opacity: 0.6; }
-          100% { box-shadow: 0 0 40px currentColor, inset 0 0 40px currentColor; opacity: 1; }
-        }
-        
-        @keyframes glow1 {
-          0% { box-shadow: 0 0 30px currentColor; opacity: 0.8; }
-          100% { box-shadow: 0 0 50px currentColor; opacity: 1; }
-        }
-        
-        @keyframes rotate {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
         }
         
         @media (max-width: 768px) {
           .grid-container {
             grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
           }
         }
         
         @media (max-width: 480px) {
           .grid-container {
-            grid-template-columns: repeat(2, 1fr);
+            grid-template-columns: 1fr;
             gap: 15px;
           }
         }
