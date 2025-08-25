@@ -23,7 +23,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({
     { icon: '📊', title: 'SIRE', link: '/sire' },
     { icon: '🏢', title: 'Proveedores', link: '#' },
     { icon: '👥', title: 'Clientes', link: '#' },
-    { icon: '💰', title: 'Contabilidad', link: '#' },
+    { icon: '💰', title: 'Contabilidad', link: '/contabilidad' },
     { icon: '📦', title: 'Inventario', link: '#' },
     { icon: '👤', title: 'Empleados', link: '#' },
     { icon: '📈', title: 'Reportes', link: '#' },

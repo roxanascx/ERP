@@ -17,6 +17,8 @@ import {
   RceResumenPage
 } from './pages';
 import SociosNegocioPage from './pages/socios-negocio/SociosNegocioPage';
+import ContabilidadPage from './pages/contabilidad/ContabilidadPage';
+import PlanContablePage from './pages/contabilidad/PlanContablePage';
 import TestLogoutPage from './pages/TestLogoutPage';
 import EmpresaProtectedRoute from './components/EmpresaProtectedRoute';
 import { RceDataProvider } from './contexts/RceDataContext';
@@ -251,6 +253,23 @@ const AppRouter: React.FC = () => {
             )
           } 
         />
+
+        {/* CONTABILIDAD - MÓDULO INDEPENDIENTE */}
+        <Route 
+          path="/contabilidad" 
+          element={
+            isSignedIn ? (
+              <EmpresaProtectedRoute>
+                <ContabilidadPage />
+              </EmpresaProtectedRoute>
+            ) : (
+              <Navigate to="/" replace />
+            )
+          } 
+        >
+          {/* Rutas anidadas de contabilidad */}
+          <Route path="plan-contable" element={<PlanContablePage />} />
+        </Route>
 
         {/* SIRE Legacy - mantener compatibilidad temporal */}
         <Route 

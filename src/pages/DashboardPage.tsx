@@ -1,10 +1,42 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useEmpresaValidation } from '../hooks/useEmpresaValidation';
+import { getCurrentExchangeRate } from '../services/exchangeRateApi';
 
 const DashboardPage: React.FC = () => {
   const { empresaActual } = useEmpresaValidation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [now, setNow] = useState<Date>(new Date());
+  const [exchangeRate, setExchangeRate] = useState<{compra?: number; venta?: number; fecha?: string} | null>(null);
+  const [exchangeError, setExchangeError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const data = await getCurrentExchangeRate('USD', 'PEN');
+        if (!mounted) return;
+        setExchangeRate({ compra: data.compra, venta: data.venta, fecha: data.fecha });
+      } catch (e: any) {
+        console.error('Error obteniendo tipo de cambio:', e);
+        if (!mounted) return;
+        if (e?.response) {
+          setExchangeError(`Error ${e.response.status}: ${e.response.data?.detail || 'no disponible'}`);
+        } else if (e?.request) {
+          setExchangeError('Sin respuesta del servidor');
+        } else {
+          setExchangeError('Error desconocido');
+        }
+      }
+    })();
+
+    return () => { mounted = false; };
+  }, []);
 
   const modules = [
     { 
@@ -16,20 +48,7 @@ const DashboardPage: React.FC = () => {
       highlight: true,
       bgGradient: 'linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(99, 102, 241, 0.08) 100%)'
     },
-    { 
-      icon: '🏢', 
-      title: 'Proveedores', 
-      desc: 'Gestión de proveedores', 
-      color: '#8b5cf6',
-      bgGradient: 'linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(139, 92, 246, 0.05) 100%)'
-    },
-    { 
-      icon: '👥', 
-      title: 'Clientes', 
-      desc: 'Base de datos CRM', 
-      color: '#a855f7',
-      bgGradient: 'linear-gradient(135deg, rgba(168, 85, 247, 0.1) 0%, rgba(168, 85, 247, 0.05) 100%)'
-    },
+  // Proveedores y Clientes removidos del dashboard por petición
     { 
       icon: '📊', 
       title: 'SIRE', 
@@ -43,6 +62,7 @@ const DashboardPage: React.FC = () => {
       title: 'Contabilidad', 
       desc: 'Gestión financiera', 
       color: '#10b981',
+      link: '/contabilidad',
       bgGradient: 'linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(16, 185, 129, 0.05) 100%)'
     },
     { 
@@ -79,9 +99,8 @@ const DashboardPage: React.FC = () => {
     { icon: '🏠', title: 'Dashboard', link: '/dashboard', active: true },
     { icon: '🤝', title: 'Socios de Negocio', link: '/socios-negocio' },
     { icon: '📊', title: 'SIRE', link: '/sire' },
-    { icon: '🏢', title: 'Proveedores', link: '#' },
-    { icon: '👥', title: 'Clientes', link: '#' },
-    { icon: '💰', title: 'Contabilidad', link: '#' },
+  // Proveedores y Clientes removidos del sidebar
+    { icon: '💰', title: 'Contabilidad', link: '/contabilidad' },
     { icon: '📦', title: 'Inventario', link: '#' },
     { icon: '👤', title: 'Empleados', link: '#' },
     { icon: '📈', title: 'Reportes', link: '#' },
@@ -349,54 +368,74 @@ const DashboardPage: React.FC = () => {
                 Panel de control y gestión empresarial
               </p>
             </div>
-            {empresaActual && (
-              <div style={{
-                background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.05) 100%)',
-                borderRadius: '12px',
-                padding: '12px 20px',
-                border: '1px solid rgba(99, 102, 241, 0.2)',
-                backdropFilter: 'blur(10px)'
-              }}>
+            <div style={{display: 'flex', gap: '12px', alignItems: 'center'}}>
+              {empresaActual && (
                 <div style={{
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  color: '#6366f1',
-                  marginBottom: '4px'
+                  background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.05) 100%)',
+                  borderRadius: '12px',
+                  padding: '12px 20px',
+                  border: '1px solid rgba(99, 102, 241, 0.2)',
+                  backdropFilter: 'blur(10px)'
                 }}>
-                  🏢 {empresaActual.ruc}
+                  <div style={{
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    color: '#6366f1',
+                    marginBottom: '4px'
+                  }}>
+                    🏢 {empresaActual.ruc}
+                  </div>
+                  <div style={{
+                    fontSize: '13px',
+                    color: '#64748b',
+                    fontWeight: '500'
+                  }}>
+                    {empresaActual.razon_social}
+                  </div>
+                  <button style={{
+                    marginTop: '8px',
+                    padding: '6px 12px',
+                    fontSize: '12px',
+                    background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    fontWeight: '500',
+                    transition: 'all 0.2s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'scale(1.05)';
+                    e.currentTarget.style.background = 'linear-gradient(135deg, #7c3aed 0%, #a855f7 100%)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'scale(1)';
+                    e.currentTarget.style.background = 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)';
+                  }}
+                  >
+                    Cambiar empresa
+                  </button>
                 </div>
-                <div style={{
-                  fontSize: '13px',
-                  color: '#64748b',
-                  fontWeight: '500'
-                }}>
-                  {empresaActual.razon_social}
+              )}
+
+              {/* Fecha y hora en vivo */}
+              <div style={{display: 'flex', flexDirection: 'column', alignItems: 'flex-end', color: '#334155'}}>
+                <div style={{fontSize: '13px', fontWeight: 600, textTransform: 'capitalize'}}>
+                  {now.toLocaleDateString('es-PE', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                 </div>
-                <button style={{
-                  marginTop: '8px',
-                  padding: '6px 12px',
-                  fontSize: '12px',
-                  background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  fontWeight: '500',
-                  transition: 'all 0.2s ease'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = 'scale(1.05)';
-                  e.currentTarget.style.background = 'linear-gradient(135deg, #7c3aed 0%, #a855f7 100%)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = 'scale(1)';
-                  e.currentTarget.style.background = 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)';
-                }}
-                >
-                  Cambiar empresa
-                </button>
+                <div style={{display: 'flex', gap: '18px', alignItems: 'center'}}>
+                  <div style={{fontSize: '18px', fontWeight: 700, color: '#0f172a'}}>
+                    {now.toLocaleTimeString('es-PE')}
+                  </div>
+                  <div style={{textAlign: 'right', color: '#475569'}}>
+                    <div style={{fontSize: '12px', fontWeight: 600}}>Tipo de cambio (USD → PEN)</div>
+                    <div style={{fontSize: '16px', fontWeight: 700, color: '#0f172a'}}>
+                      {exchangeRate ? `Compra ${exchangeRate.compra?.toFixed(4) ?? 'N/D'} • Venta ${exchangeRate.venta?.toFixed(4) ?? 'N/D'}` : (exchangeError ?? 'Cargando...')}
+                    </div>
+                  </div>
+                </div>
               </div>
-            )}
+            </div>
           </div>
         </header>
 
