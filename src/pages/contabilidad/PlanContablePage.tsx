@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ContabilidadProvider } from '../../contexts/ContabilidadContext';
-import PlanContableTable from '../../components/contabilidad/PlanContableTable';
-import EstadisticasCard from '../../components/contabilidad/EstadisticasCard';
-import FiltrosContabilidad from '../../components/contabilidad/FiltrosContabilidad';
+import PlanContableTable from '../../components/contabilidad/planContable/PlanContableTable';
+import EstadisticasCard from '../../components/contabilidad/planContable/EstadisticasCard';
+import FiltrosContabilidad from '../../components/contabilidad/planContable/FiltrosContabilidad';
+import CuentaModal from '../../components/contabilidad/planContable/CuentaModal';
 import ContabilidadApiService from '../../services/contabilidadApi';
-import type { CuentaContable, EstadisticasPlanContable } from '../../types/contabilidad';
+import type { CuentaContable, CuentaContableCreate, EstadisticasPlanContable } from '../../types/contabilidad';
 
 const PlanContablePage: React.FC = () => {
   return (
@@ -15,6 +17,7 @@ const PlanContablePage: React.FC = () => {
 };
 
 const PlanContablePageContent: React.FC = () => {
+  const navigate = useNavigate();
   const [cuentas, setCuentas] = useState<CuentaContable[]>([]);
   const [estadisticas, setEstadisticas] = useState<EstadisticasPlanContable | null>(null);
   const [loading, setLoading] = useState(true);
@@ -26,8 +29,13 @@ const PlanContablePageContent: React.FC = () => {
     solo_activas: true
   });
 
+  // Estados para el modal de cuenta
+  const [modalAbierto, setModalAbierto] = useState(false);
+  const [cuentaEditando, setCuentaEditando] = useState<CuentaContable | undefined>(undefined);
+  const [modoModal, setModoModal] = useState<'crear' | 'editar'>('crear');
+
   // Referencias para debouncing
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const timeoutRef = useRef<number | null>(null);
   const isInitialLoad = useRef(true);
 
   // Cargar datos iniciales
@@ -119,6 +127,110 @@ const PlanContablePageContent: React.FC = () => {
     } catch (err: any) {
       throw new Error(err.response?.data?.detail || 'Error eliminando cuenta');
     }
+  };
+
+  const handleToggleActivarCuenta = async (cuenta: CuentaContable) => {
+    const accion = cuenta.activa ? 'desactivar' : 'activar';
+    const mensaje = `¿Está seguro de ${accion} la cuenta ${cuenta.codigo} - ${cuenta.descripcion}?`;
+    
+    if (!window.confirm(mensaje)) {
+      return;
+    }
+
+    try {
+      // Actualizar solo el estado activo
+      const cuentaActualizada = await ContabilidadApiService.updateCuenta(
+        cuenta.codigo, 
+        { activa: !cuenta.activa }
+      );
+      
+      setCuentas(prev => prev.map(c => 
+        c.codigo === cuenta.codigo ? cuentaActualizada : c
+      ));
+      
+      // Recargar estadísticas
+      const nuevasEstadisticas = await ContabilidadApiService.getEstadisticas();
+      setEstadisticas(nuevasEstadisticas);
+      
+      console.log(`Cuenta ${cuenta.codigo} ${accion}da exitosamente`);
+    } catch (err: any) {
+      console.error(`Error ${accion}ndo cuenta:`, err);
+      setError(err.response?.data?.detail || `Error ${accion}ndo cuenta`);
+    }
+  };
+
+  // Funciones del modal
+  const abrirModalCrear = () => {
+    setModoModal('crear');
+    setCuentaEditando(undefined);
+    setModalAbierto(true);
+  };
+
+  const abrirModalEditar = (cuenta: CuentaContable) => {
+    setModoModal('editar');
+    setCuentaEditando(cuenta);
+    setModalAbierto(true);
+  };
+
+  const cerrarModal = () => {
+    setModalAbierto(false);
+    setCuentaEditando(undefined);
+  };
+
+  const handleSubmitCuenta = async (datosFormulario: Partial<CuentaContable>) => {
+    try {
+      if (modoModal === 'crear') {
+        // Convertir datos parciales a formato de creación
+        const datosCreacion: CuentaContableCreate = {
+          codigo: datosFormulario.codigo!,
+          descripcion: datosFormulario.descripcion!,
+          nivel: datosFormulario.nivel!,
+          clase_contable: datosFormulario.clase_contable!,
+          grupo: datosFormulario.grupo,
+          subgrupo: datosFormulario.subgrupo,
+          cuenta_padre: datosFormulario.cuenta_padre,
+          es_hoja: datosFormulario.es_hoja,
+          acepta_movimiento: datosFormulario.acepta_movimiento,
+          naturaleza: datosFormulario.naturaleza,
+          moneda: datosFormulario.moneda,
+          activa: datosFormulario.activa
+        };
+        const nuevaCuenta = await ContabilidadApiService.createCuenta(datosCreacion);
+        setCuentas(prev => [...prev, nuevaCuenta]);
+      } else if (modoModal === 'editar' && cuentaEditando) {
+        const cuentaActualizada = await ContabilidadApiService.updateCuenta(
+          cuentaEditando.codigo, 
+          datosFormulario
+        );
+        setCuentas(prev => prev.map(c => 
+          c.codigo === cuentaEditando.codigo ? cuentaActualizada : c
+        ));
+      }
+      
+      // Recargar estadísticas
+      const nuevasEstadisticas = await ContabilidadApiService.getEstadisticas();
+      setEstadisticas(nuevasEstadisticas);
+      
+      cerrarModal();
+    } catch (err: any) {
+      throw new Error(err.response?.data?.detail || 'Error guardando cuenta');
+    }
+  };
+
+  // Obtener cuentas que pueden ser padre (niveles inferiores al actual)
+  const getCuentasPadre = (): CuentaContable[] => {
+    if (modoModal === 'crear') {
+      // Para nuevas cuentas, mostrar todas las cuentas activas
+      return cuentas.filter(c => c.activa);
+    } else if (cuentaEditando) {
+      // Para editar, mostrar cuentas con nivel menor al actual
+      return cuentas.filter(c => 
+        c.activa && 
+        c.nivel < cuentaEditando.nivel && 
+        c.codigo !== cuentaEditando.codigo
+      );
+    }
+    return [];
   };
 
   if (loading) {
@@ -221,38 +333,74 @@ const PlanContablePageContent: React.FC = () => {
           boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.5)'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
-            <div>
-              <h2 style={{
-                fontSize: '1.875rem',
-                fontWeight: '700',
-                margin: 0,
-                background: 'linear-gradient(135deg, #111827 0%, #6b7280 100%)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                backgroundClip: 'text'
-              }}>
-                📋 Plan Contable
-              </h2>
-              <p style={{
-                marginTop: '0.5rem',
-                color: '#6b7280',
-                fontWeight: '500'
-              }}>
-                Gestión del catálogo de cuentas contables • 
-                <span style={{
-                  display: 'inline-flex',
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+              {/* Botón de regreso */}
+              <button
+                onClick={() => navigate('/contabilidad')}
+                style={{
+                  display: 'flex',
                   alignItems: 'center',
-                  marginLeft: '0.5rem',
-                  padding: '0.25rem 0.625rem',
-                  borderRadius: '9999px',
-                  fontSize: '0.75rem',
-                  fontWeight: '600',
-                  background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(99, 102, 241, 0.1) 100%)',
-                  color: '#1e40af'
+                  gap: '0.5rem',
+                  padding: '0.75rem 1rem',
+                  borderRadius: '0.5rem',
+                  border: '1px solid #e5e7eb',
+                  background: 'linear-gradient(135deg, #ffffff 0%, #f9fafb 100%)',
+                  color: '#374151',
+                  cursor: 'pointer',
+                  fontSize: '0.875rem',
+                  fontWeight: '500',
+                  transition: 'all 0.2s ease',
+                  boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%)';
+                  e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.15)';
+                  e.currentTarget.style.transform = 'translateY(-1px)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'linear-gradient(135deg, #ffffff 0%, #f9fafb 100%)';
+                  e.currentTarget.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.1)';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                }}
+              >
+                <span style={{ fontSize: '1rem' }}>←</span>
+                Contabilidad
+              </button>
+              
+              {/* Información del plan contable */}
+              <div>
+                <h2 style={{
+                  fontSize: '1.875rem',
+                  fontWeight: '700',
+                  margin: 0,
+                  background: 'linear-gradient(135deg, #111827 0%, #6b7280 100%)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  backgroundClip: 'text'
                 }}>
-                  {cuentas.length} cuentas encontradas
-                </span>
-              </p>
+                  📋 Plan Contable
+                </h2>
+                <p style={{
+                  marginTop: '0.5rem',
+                  color: '#6b7280',
+                  fontWeight: '500'
+                }}>
+                  Gestión del catálogo de cuentas contables • 
+                  <span style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    marginLeft: '0.5rem',
+                    padding: '0.25rem 0.625rem',
+                    borderRadius: '9999px',
+                    fontSize: '0.75rem',
+                    fontWeight: '600',
+                    background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(99, 102, 241, 0.1) 100%)',
+                    color: '#1e40af'
+                  }}>
+                    {cuentas.length} cuentas encontradas
+                  </span>
+                </p>
+              </div>
             </div>
           </div>
           
@@ -274,7 +422,7 @@ const PlanContablePageContent: React.FC = () => {
           <FiltrosContabilidad
             filtros={filtros}
             onFiltrosChange={setFiltros}
-            onCrearCuenta={() => {/* Modal será manejado por el componente */}}
+            onCrearCuenta={abrirModalCrear}
             totalCuentas={cuentas.length}
           />
         </div>
@@ -290,8 +438,9 @@ const PlanContablePageContent: React.FC = () => {
           <PlanContableTable
             cuentas={cuentas}
             loading={loading}
-            onEditarCuenta={(cuenta: CuentaContable) => console.log('Editar cuenta:', cuenta)}
+            onEditarCuenta={abrirModalEditar}
             onEliminarCuenta={handleEliminarCuenta}
+            onToggleActivarCuenta={handleToggleActivarCuenta}
             cuentaSeleccionada={undefined}
             onCuentaSelect={(cuenta: CuentaContable) => console.log('Cuenta seleccionada:', cuenta)}
           />
@@ -299,6 +448,15 @@ const PlanContablePageContent: React.FC = () => {
 
         {/* Modal será renderizado por PlanContableTable cuando sea necesario */}
       </div>
+
+      {/* Modal para crear/editar cuentas */}
+      <CuentaModal
+        isOpen={modalAbierto}
+        onClose={cerrarModal}
+        onSubmit={handleSubmitCuenta}
+        cuenta={cuentaEditando}
+        modo={modoModal}
+      />
       
       {/* Modern CSS Animations */}
       <style>{`

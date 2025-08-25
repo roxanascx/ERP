@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import type { CuentaContable } from '../../types/contabilidad';
+import type { CuentaContable } from '../../../types/contabilidad';
 
 interface EstructuraJerarquicaProps {
   cuentas: CuentaContable[];

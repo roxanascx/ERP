@@ -1,5 +1,5 @@
 import React from 'react';
-import type { EstadisticasPlanContable } from '../../types/contabilidad';
+import type { EstadisticasPlanContable } from '../../../types/contabilidad';
 
 interface EstadisticasCardProps {
   estadisticas: EstadisticasPlanContable;
