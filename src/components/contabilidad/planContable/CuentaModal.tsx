@@ -135,8 +135,6 @@ const CuentaModal: React.FC<CuentaModalProps> = ({
     return { tipo: 'Indefinido', nivel: 1, color: '#6b7280' };
   };
 
-  const tipoCuenta = getTipoCuenta(formData.codigo);
-
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
 

@@ -13,6 +13,9 @@ export interface CuentaContable {
   naturaleza: 'DEUDORA' | 'ACREEDORA';
   moneda: 'MN' | 'ME';
   activa: boolean;
+  tipo_plan?: 'estandar' | 'personalizado';
+  empresa_id?: string;
+  archivo_origen?: string;
   tiene_hijos?: boolean;
   fecha_creacion: string;
   fecha_modificacion?: string;
@@ -31,6 +34,9 @@ export interface CuentaContableCreate {
   naturaleza?: 'DEUDORA' | 'ACREEDORA';
   moneda?: 'MN' | 'ME';
   activa?: boolean;
+  tipo_plan?: 'estandar' | 'personalizado';
+  empresa_id?: string;
+  archivo_origen?: string;
 }
 
 export interface ClaseContable {
@@ -72,6 +78,51 @@ export interface FiltrosCuentas {
   clase_contable?: number;
   nivel?: number;
   busqueda?: string;
+  limit?: number;
+  empresa_id?: string;
+  tipo_plan?: 'estandar' | 'personalizado';
+}
+
+// === NUEVOS TIPOS PARA PLANES PERSONALIZADOS ===
+
+export interface ValidationResult {
+  is_valid: boolean;
+  errors: string[];
+  warnings: string[];
+  total_lines: number;
+  valid_accounts: number;
+  preview_data: ValidationAccountPreview[];
+}
+
+export interface ValidationAccountPreview {
+  codigo: string;
+  descripcion: string;
+  nivel: number;
+  clase_contable: number;
+  line_number: number;
+}
+
+export interface ImportResult {
+  success: boolean;
+  imported_count: number;
+  errors: string[];
+  warnings: string[];
+  backup_created: boolean;
+}
+
+export interface PlanContableInfo {
+  tipo: 'estandar' | 'personalizado';
+  nombre: string;
+  descripcion: string;
+  total_cuentas: number;
+  fecha_creacion?: string;
+  archivo_origen?: string;
+  activo: boolean;
+}
+
+export interface SwitchPlanRequest {
+  tipo_plan: 'estandar' | 'personalizado';
+  empresa_id: string;
 }
 
 // Estados de la UI

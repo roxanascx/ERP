@@ -50,6 +50,17 @@ export class ContabilidadApiService {
     if (filtros?.busqueda && filtros.busqueda.trim()) {
       params.append('busqueda', filtros.busqueda.trim());
     }
+    if (filtros?.limit) {
+      params.append('limit', filtros.limit.toString());
+    }
+    
+    // Nuevos parámetros para planes personalizados
+    if (filtros?.empresa_id) {
+      params.append('empresa_id', filtros.empresa_id);
+    }
+    if (filtros?.tipo_plan) {
+      params.append('tipo_plan', filtros.tipo_plan);
+    }
 
     const response = await contabilidadApi.get(`/plan/cuentas?${params.toString()}`);
     return response.data;
@@ -185,6 +196,73 @@ export class ContabilidadApiService {
     }
 
     return { valido: true };
+  }
+
+  // === NUEVOS MÉTODOS PARA PLANES PERSONALIZADOS ===
+
+  // Descargar plantilla de plan contable en TXT
+  static async downloadTemplate(): Promise<Blob> {
+    const response = await contabilidadApi.get('/plan/template', {
+      responseType: 'blob'
+    });
+    return response.data;
+  }
+
+  // Descargar plantilla de plan contable en Excel
+  static async downloadTemplateExcel(): Promise<Blob> {
+    const response = await contabilidadApi.get('/plan/template-excel', {
+      responseType: 'blob'
+    });
+    return response.data;
+  }
+
+  // Validar archivo de plan contable
+  static async validatePlanFile(empresaId: string, file: File): Promise<any> {
+    const formData = new FormData();
+    formData.append('empresa_id', empresaId);
+    formData.append('file', file);
+
+    const response = await contabilidadApi.post('/plan/validate', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    });
+    return response.data;
+  }
+
+  // Importar plan contable personalizado
+  static async importPlanPersonalizado(empresaId: string, file: File): Promise<any> {
+    const formData = new FormData();
+    formData.append('empresa_id', empresaId);
+    formData.append('file', file);
+
+    const response = await contabilidadApi.post('/plan/import', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    });
+    return response.data;
+  }
+
+  // Obtener tipos de plan disponibles
+  static async getTiposPlanes(empresaId: string): Promise<any[]> {
+    const response = await contabilidadApi.get(`/plan/tipos/${empresaId}`);
+    return response.data;
+  }
+
+  // Cambiar tipo de plan activo
+  static async switchPlan(empresaId: string, tipoPlan: 'estandar' | 'personalizado'): Promise<any> {
+    const response = await contabilidadApi.post('/plan/switch', {
+      empresa_id: empresaId,
+      tipo_plan: tipoPlan
+    });
+    return response.data;
+  }
+
+  // Eliminar plan personalizado
+  static async deletePlanPersonalizado(empresaId: string): Promise<any> {
+    const response = await contabilidadApi.delete(`/plan/personalizado/${empresaId}`);
+    return response.data;
   }
 }
 

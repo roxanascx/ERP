@@ -5,6 +5,7 @@ import PlanContableTable from '../../components/contabilidad/planContable/PlanCo
 import EstadisticasCard from '../../components/contabilidad/planContable/EstadisticasCard';
 import FiltrosContabilidad from '../../components/contabilidad/planContable/FiltrosContabilidad';
 import CuentaModal from '../../components/contabilidad/planContable/CuentaModal';
+import PlanContableManager from '../../components/contabilidad/planContable/PlanContableManager';
 import ContabilidadApiService from '../../services/contabilidadApi';
 import type { CuentaContable, CuentaContableCreate, EstadisticasPlanContable } from '../../types/contabilidad';
 
@@ -22,6 +23,11 @@ const PlanContablePageContent: React.FC = () => {
   const [estadisticas, setEstadisticas] = useState<EstadisticasPlanContable | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Nuevos estados para gestión de planes personalizados
+  const [tipoPlanActivo, setTipoPlanActivo] = useState<'estandar' | 'personalizado'>('estandar');
+  const [empresaId] = useState('empresa_demo'); // En una app real, esto vendría del contexto de usuario
+  
   const [filtros, setFiltros] = useState({
     busqueda: '',
     clase_contable: undefined as number | undefined,
@@ -80,8 +86,13 @@ const PlanContablePageContent: React.FC = () => {
       setLoading(true);
       setError(null);
       
+      // Incluir parámetros de empresa y tipo de plan en las consultas
       const [cuentasData, estadisticasData] = await Promise.all([
-        ContabilidadApiService.getCuentas({ activos_solo: filtros.solo_activas }),
+        ContabilidadApiService.getCuentas({ 
+          activos_solo: filtros.solo_activas,
+          empresa_id: empresaId,
+          tipo_plan: tipoPlanActivo
+        }),
         ContabilidadApiService.getEstadisticas()
       ]);
       
@@ -99,19 +110,35 @@ const PlanContablePageContent: React.FC = () => {
     try {
       setError(null);
       
-      // Usar una sola llamada con todos los filtros
-      const cuentasData = await ContabilidadApiService.getCuentas({
+      // Construir parámetros incluyendo empresa y tipo de plan
+      const params: any = {
         activos_solo: filtros.solo_activas,
-        clase_contable: filtros.clase_contable,
-        nivel: filtros.nivel,
-        busqueda: filtros.busqueda.trim() || undefined
-      });
-      
+        empresa_id: empresaId,
+        tipo_plan: tipoPlanActivo
+      };
+
+      if (filtros.clase_contable) params.clase_contable = filtros.clase_contable;
+      if (filtros.nivel) params.nivel = filtros.nivel;
+      if (filtros.busqueda?.trim()) params.busqueda = filtros.busqueda.trim();
+
+      const cuentasData = await ContabilidadApiService.getCuentas(params);
       setCuentas(cuentasData);
     } catch (err: any) {
       console.error('Error cargando cuentas:', err);
-      setError(err.response?.data?.detail || 'Error aplicando filtros');
+      setError(err.response?.data?.detail || 'Error cargando cuentas');
     }
+  };
+
+  // Handlers para el gestor de planes
+  const handlePlanChanged = (nuevoTipoPlan: 'estandar' | 'personalizado') => {
+    setTipoPlanActivo(nuevoTipoPlan);
+    // Recargar datos con el nuevo tipo de plan
+    cargarDatos();
+  };
+
+  const handleImportSuccess = () => {
+    // Recargar todos los datos después de una importación exitosa
+    cargarDatos();
   };
 
   const handleEliminarCuenta = async (cuenta: CuentaContable) => {
@@ -215,22 +242,6 @@ const PlanContablePageContent: React.FC = () => {
     } catch (err: any) {
       throw new Error(err.response?.data?.detail || 'Error guardando cuenta');
     }
-  };
-
-  // Obtener cuentas que pueden ser padre (niveles inferiores al actual)
-  const getCuentasPadre = (): CuentaContable[] => {
-    if (modoModal === 'crear') {
-      // Para nuevas cuentas, mostrar todas las cuentas activas
-      return cuentas.filter(c => c.activa);
-    } else if (cuentaEditando) {
-      // Para editar, mostrar cuentas con nivel menor al actual
-      return cuentas.filter(c => 
-        c.activa && 
-        c.nivel < cuentaEditando.nivel && 
-        c.codigo !== cuentaEditando.codigo
-      );
-    }
-    return [];
   };
 
   if (loading) {
@@ -410,6 +421,14 @@ const PlanContablePageContent: React.FC = () => {
           )}
         </div>
 
+        {/* Gestión de Planes Contables */}
+        <PlanContableManager
+          empresaId={empresaId}
+          planActual={tipoPlanActivo}
+          onPlanChanged={handlePlanChanged}
+          onImportSuccess={handleImportSuccess}
+        />
+
         {/* Filtros y controles */}
         <div style={{
           borderRadius: '1rem',
@@ -443,6 +462,7 @@ const PlanContablePageContent: React.FC = () => {
             onToggleActivarCuenta={handleToggleActivarCuenta}
             cuentaSeleccionada={undefined}
             onCuentaSelect={(cuenta: CuentaContable) => console.log('Cuenta seleccionada:', cuenta)}
+            searchTerm={filtros.busqueda}
           />
         </div>
 

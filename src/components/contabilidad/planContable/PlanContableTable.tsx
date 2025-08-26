@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import type { CuentaContable } from '../../../types/contabilidad';
+import SearchHighlight from '../../common/SearchHighlight';
 
 interface PlanContableTableProps {
   cuentas: CuentaContable[];
@@ -9,6 +10,7 @@ interface PlanContableTableProps {
   onToggleActivarCuenta: (cuenta: CuentaContable) => void;
   cuentaSeleccionada?: string;
   onCuentaSelect: (cuenta: CuentaContable) => void;
+  searchTerm?: string; // Nuevo prop para el término de búsqueda
 }
 
 interface CuentaConHijos extends CuentaContable {
@@ -24,7 +26,8 @@ const PlanContableTable: React.FC<PlanContableTableProps> = ({
   onEliminarCuenta,
   onToggleActivarCuenta,
   cuentaSeleccionada,
-  onCuentaSelect
+  onCuentaSelect,
+  searchTerm = '' // Valor por defecto
 }) => {
   const [sortField, setSortField] = useState<keyof CuentaContable>('codigo');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
@@ -141,16 +144,42 @@ const PlanContableTable: React.FC<PlanContableTableProps> = ({
     }
   };
 
-  // Construir y aplanar la jerarquía
-  const cuentasJerarquicas = React.useMemo(() => {
+  // Construir la vista de cuentas (jerárquica o plana según si hay búsqueda)
+  const cuentasParaMostrar = React.useMemo(() => {
+    // Si hay término de búsqueda, mostrar lista plana de resultados
+    if (searchTerm && searchTerm.trim()) {
+      return cuentas.map(cuenta => ({
+        ...cuenta,
+        expandido: false,
+        tieneHijos: false,
+        hijos: []
+      }));
+    }
+    
+    // Si no hay búsqueda, construir jerarquía normal
     const jerarquia = construirJerarquia(cuentas);
     return aplanarJerarquia(jerarquia);
-  }, [cuentas, expandedNodes]);
+  }, [cuentas, expandedNodes, searchTerm]);
 
   const sortedCuentas = React.useMemo(() => {
-    // Para mantener la jerarquía, solo ordenamos dentro de cada nivel
-    return cuentasJerarquicas;
-  }, [cuentasJerarquicas, sortField, sortDirection]);
+    // Si hay búsqueda, no necesitamos mantener jerarquía, podemos ordenar libremente
+    if (searchTerm && searchTerm.trim()) {
+      const sorted = [...cuentasParaMostrar].sort((a, b) => {
+        const aValue = String(a[sortField] || '');
+        const bValue = String(b[sortField] || '');
+        
+        if (sortDirection === 'asc') {
+          return aValue.localeCompare(bValue);
+        } else {
+          return bValue.localeCompare(aValue);
+        }
+      });
+      return sorted;
+    }
+    
+    // Para vista jerárquica, mantener orden jerárquico
+    return cuentasParaMostrar;
+  }, [cuentasParaMostrar, sortField, sortDirection, searchTerm]);
 
   const SortIcon = ({ field }: { field: keyof CuentaContable }) => {
     if (sortField !== field) {
@@ -660,9 +689,10 @@ const PlanContableTable: React.FC<PlanContableTableProps> = ({
           </thead>
           <tbody style={{ background: 'white' }}>
             {sortedCuentas.map((cuenta) => {
-              // Usar el nivel calculado en lugar de calcular basado en longitud
-              const nivelIndentacion = cuenta.nivel || (cuenta.codigo.length - 1);
-              const tieneHijos = cuenta.tieneHijos;
+              // En modo de búsqueda, no usar jerarquía
+              const modoBusqueda = searchTerm && searchTerm.trim();
+              const nivelIndentacion = modoBusqueda ? 0 : (cuenta.nivel || (cuenta.codigo.length - 1));
+              const tieneHijos = modoBusqueda ? false : cuenta.tieneHijos;
               const estaExpandido = expandedNodes.has(cuenta.codigo);
               
               return (
@@ -753,7 +783,10 @@ const PlanContableTable: React.FC<PlanContableTableProps> = ({
                         fontWeight: cuenta.codigo.length <= 3 ? '700' : '500', // Negrita para códigos de 1-3 dígitos
                         color: '#111827'
                       }}>
-                        {cuenta.codigo}
+                        <SearchHighlight 
+                          text={cuenta.codigo} 
+                          searchTerm={searchTerm}
+                        />
                       </div>
                       
                       {/* Badge de clase contable - Solo para niveles 1, 2 y 3 */}
@@ -786,7 +819,10 @@ const PlanContableTable: React.FC<PlanContableTableProps> = ({
                       fontWeight: cuenta.codigo.length <= 3 ? '600' : '400', // Negrita para cuentas principales (1-3 dígitos)
                       marginBottom: '2px'
                     }}>
-                      {cuenta.descripcion}
+                      <SearchHighlight 
+                        text={cuenta.descripcion} 
+                        searchTerm={searchTerm}
+                      />
                     </div>
                     <div style={{ fontSize: '0.75rem', color: '#6b7280', display: 'flex', alignItems: 'center', gap: '8px' }}>
                       {cuenta.cuenta_padre && (
