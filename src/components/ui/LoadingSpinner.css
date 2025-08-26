@@ -1,0 +1,141 @@
+/* LoadingSpinner.css */
+.loading-spinner-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 15px;
+  padding: 40px 20px;
+}
+
+.loading-spinner {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.spinner-circle {
+  width: 12px;
+  height: 12px;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  border-radius: 50%;
+  animation: bounce 1.4s ease-in-out infinite both;
+}
+
+.spinner-circle:nth-child(1) {
+  animation-delay: -0.32s;
+}
+
+.spinner-circle:nth-child(2) {
+  animation-delay: -0.16s;
+}
+
+.loading-message {
+  color: #667eea;
+  font-weight: 600;
+  font-size: 1em;
+  text-align: center;
+}
+
+/* Tamaños */
+.loading-spinner-container.small {
+  padding: 20px 15px;
+  gap: 10px;
+}
+
+.loading-spinner-container.small .spinner-circle {
+  width: 8px;
+  height: 8px;
+}
+
+.loading-spinner-container.small .loading-message {
+  font-size: 0.85em;
+}
+
+.loading-spinner-container.large {
+  padding: 60px 30px;
+  gap: 20px;
+}
+
+.loading-spinner-container.large .spinner-circle {
+  width: 16px;
+  height: 16px;
+}
+
+.loading-spinner-container.large .loading-message {
+  font-size: 1.2em;
+}
+
+/* Animaciones */
+@keyframes bounce {
+  0%, 80%, 100% {
+    transform: scale(0);
+    opacity: 0.5;
+  }
+  40% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Variante inline */
+.loading-spinner-container.inline {
+  flex-direction: row;
+  padding: 10px;
+  gap: 10px;
+}
+
+.loading-spinner-container.inline .loading-message {
+  font-size: 0.9em;
+}
+
+/* Estados especiales */
+.loading-spinner-container.overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(5px);
+  z-index: 10;
+}
+
+.loading-spinner-container.fullscreen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  z-index: 9999;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .loading-spinner-container {
+    padding: 30px 15px;
+    gap: 12px;
+  }
+  
+  .loading-message {
+    font-size: 0.9em;
+  }
+}
+
+@media (max-width: 480px) {
+  .loading-spinner-container {
+    padding: 20px 10px;
+    gap: 10px;
+  }
+  
+  .spinner-circle {
+    width: 10px;
+    height: 10px;
+  }
+  
+  .loading-message {
+    font-size: 0.85em;
+  }
+}

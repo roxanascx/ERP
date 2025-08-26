@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import MainLayout from '../../components/MainLayout';
+import useEmpresaActual from '../../hooks/useEmpresaActual';
 import type { LibroContableConfig } from '../../types/contabilidad';
 
 const ContabilidadPage: React.FC = () => {
   const [activeModule, setActiveModule] = useState<string>('plan-contable');
   const location = useLocation();
+  const { empresa } = useEmpresaActual();
   
   // Verificar si estamos en una subruta
   const isSubRoute = location.pathname !== '/contabilidad';
@@ -27,8 +29,8 @@ const ContabilidadPage: React.FC = () => {
       descripcion: 'Registro cronológico de todas las operaciones contables',
       icono: '📖',
       color: '#dc2626',
-      ruta: '/contabilidad/libro-diario',
-      implementado: false
+      ruta: `/contabilidad/libro-diario/${empresa?.ruc || 'empresa_demo'}`,
+      implementado: true
     },
     {
       modulo: 'libro-mayor',

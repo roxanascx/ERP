@@ -19,6 +19,7 @@ import {
 import SociosNegocioPage from './pages/socios-negocio/SociosNegocioPage';
 import ContabilidadPage from './pages/contabilidad/ContabilidadPage';
 import PlanContablePage from './pages/contabilidad/PlanContablePage';
+import LibroDiarioPage from './pages/contabilidad/LibroDiarioPage';
 import TestLogoutPage from './pages/TestLogoutPage';
 import EmpresaProtectedRoute from './components/EmpresaProtectedRoute';
 import { RceDataProvider } from './contexts/RceDataContext';
@@ -269,6 +270,7 @@ const AppRouter: React.FC = () => {
         >
           {/* Rutas anidadas de contabilidad */}
           <Route path="plan-contable" element={<PlanContablePage />} />
+          <Route path="libro-diario/:empresaId" element={<LibroDiarioPage />} />
         </Route>
 
         {/* SIRE Legacy - mantener compatibilidad temporal */}
