@@ -3,14 +3,12 @@ import type { LibroDiario } from '../../../types/libroDiario';
 
 interface LibroDiarioTableProps {
   libros: LibroDiario[];
-  onSeleccionar: (libro: LibroDiario) => void;
   onVerAsientos?: (libro: LibroDiario) => void;
   onEliminar: (libroId: string) => void;
 }
 
 const LibroDiarioTable: React.FC<LibroDiarioTableProps> = ({
   libros,
-  onSeleccionar,
   onVerAsientos,
   onEliminar
 }) => {
@@ -215,28 +213,6 @@ const LibroDiarioTable: React.FC<LibroDiarioTableProps> = ({
                 gap: '8px',
                 justifyContent: 'flex-end'
               }}>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onSeleccionar(libro);
-                  }}
-                  style={{
-                    background: '#3b82f6',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '6px',
-                    padding: '8px 12px',
-                    cursor: 'pointer',
-                    fontSize: '12px',
-                    fontWeight: '500',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px'
-                  }}
-                >
-                  👁️ Ver Detalle
-                </button>
-
                 {onVerAsientos && (
                   <button
                     onClick={(e) => {
@@ -244,20 +220,30 @@ const LibroDiarioTable: React.FC<LibroDiarioTableProps> = ({
                       onVerAsientos(libro);
                     }}
                     style={{
-                      background: '#10b981',
+                      background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
                       color: 'white',
                       border: 'none',
                       borderRadius: '6px',
-                      padding: '8px 12px',
+                      padding: '10px 16px',
                       cursor: 'pointer',
-                      fontSize: '12px',
-                      fontWeight: '500',
+                      fontSize: '13px',
+                      fontWeight: '600',
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '4px'
+                      gap: '6px',
+                      transition: 'all 0.2s ease',
+                      boxShadow: '0 2px 4px rgba(16, 185, 129, 0.3)'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = 'translateY(-1px)';
+                      e.currentTarget.style.boxShadow = '0 4px 8px rgba(16, 185, 129, 0.4)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'translateY(0)';
+                      e.currentTarget.style.boxShadow = '0 2px 4px rgba(16, 185, 129, 0.3)';
                     }}
                   >
-                    📝 Asientos
+                    📝 Gestionar Asientos
                   </button>
                 )}
 

@@ -4,7 +4,6 @@
 export interface DetalleAsiento {
   codigoCuenta: string;
   denominacionCuenta: string;
-  descripcion: string;
   debe?: number;
   haber?: number;
 }
@@ -15,6 +14,7 @@ export interface AsientoContable {
   fecha: string; // YYYY-MM-DD format
   descripcion: string; // Glosa o descripción del asiento
   detalles: DetalleAsiento[];
+  estado?: 'borrador' | 'confirmado' | 'anulado'; // Estado del asiento
   
   // Campos adicionales para validación
   empresaId?: string;

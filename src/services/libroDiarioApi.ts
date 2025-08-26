@@ -38,7 +38,60 @@ export class LibroDiarioApiService {
   
   static async obtenerLibroDiario(libroId: string): Promise<LibroDiario> {
     const response = await libroDiarioApi.get(`/${libroId}`);
-    return response.data;
+    const libroBackend = response.data;
+    
+    console.log('📥 Libro del backend:', libroBackend);
+    
+    // Transformar asientos del formato backend al frontend
+    const asientosTransformados = this.transformarAsientosDeBackend(libroBackend.asientos || []);
+    console.log('🔄 Asientos transformados:', asientosTransformados);
+    
+    return {
+      ...libroBackend,
+      asientos: asientosTransformados
+    };
+  }
+  
+  // Transformar asientos del formato backend (individuales) al frontend (agrupados)
+  private static transformarAsientosDeBackend(asientosBackend: any[]): AsientoContable[] {
+    // Agrupar asientos por numeroDocumento (que representa nuestro número de asiento)
+    const asientosAgrupados = asientosBackend.reduce((acc, asientoBackend) => {
+      const numeroAsiento = asientoBackend.numeroDocumento || asientoBackend.numeroCorrelativo;
+      
+      if (!acc[numeroAsiento]) {
+        acc[numeroAsiento] = {
+          id: `asiento-${numeroAsiento}`,
+          numero: numeroAsiento,
+          fecha: asientoBackend.fecha,
+          descripcion: asientoBackend.glosa || asientoBackend.descripcion || '',
+          detalles: [],
+          empresaId: asientoBackend.empresaId,
+          libroId: asientoBackend.libroId,
+          usuarioCreacion: asientoBackend.usuarioCreacion,
+          fechaCreacion: asientoBackend.fechaCreacion,
+          fechaModificacion: asientoBackend.fechaModificacion,
+          // ✅ AGREGADO: Mantener IDs reales para eliminar
+          _backendIds: []
+        };
+      }
+      
+      // Agregar este detalle al asiento
+      acc[numeroAsiento].detalles.push({
+        codigoCuenta: asientoBackend.cuentaContable?.codigo || '',
+        denominacionCuenta: asientoBackend.cuentaContable?.denominacion || '',
+        debe: asientoBackend.debe || 0,
+        haber: asientoBackend.haber || 0,
+        // ✅ AGREGADO: ID real del backend para este detalle
+        _backendId: asientoBackend.id
+      });
+      
+      // ✅ AGREGADO: Mantener lista de IDs del backend
+      acc[numeroAsiento]._backendIds.push(asientoBackend.id);
+      
+      return acc;
+    }, {} as Record<string, any>);
+    
+    return Object.values(asientosAgrupados);
   }
   
   static async actualizarLibroDiario(libroId: string, libro: Partial<LibroDiario>): Promise<LibroDiario> {
@@ -79,19 +132,105 @@ export class LibroDiarioApiService {
   
   // === ASIENTOS CONTABLES ===
   
+  // Función helper para transformar formato frontend -> backend
+  private static transformarAsientoParaBackend(asiento: Omit<AsientoContable, 'id'>): any[] {
+    // El backend espera un array de objetos, uno por cada detalle del asiento
+    return asiento.detalles.map((detalle, index) => ({
+      numeroCorrelativo: `${asiento.numero}-${index + 1}`, // Número único por detalle
+      fecha: asiento.fecha,
+      glosa: asiento.descripcion,
+      codigoLibro: "5.1", // Libro Diario
+      numeroDocumento: asiento.numero, // Usar número de asiento como documento
+      cuentaContable: {
+        codigo: detalle.codigoCuenta,
+        denominacion: detalle.denominacionCuenta
+      },
+      debe: detalle.debe || 0,
+      haber: detalle.haber || 0,
+      empresaId: asiento.empresaId || 'empresa_demo'
+    }));
+  }
+  
   static async agregarAsiento(libroId: string, asiento: Omit<AsientoContable, 'id'>): Promise<AsientoContable> {
-    const response = await libroDiarioApi.post(`/${libroId}/asientos`, asiento);
-    return response.data;
+    console.log('📤 Enviando asiento:', asiento);
+    
+    // Transformar cada detalle en un asiento separado para el backend
+    const asientosBackend = this.transformarAsientoParaBackend(asiento);
+    console.log('🔄 Asientos transformados para backend:', asientosBackend);
+    
+    // Enviar cada detalle como un asiento separado
+    const resultados = [];
+    for (const asientoBackend of asientosBackend) {
+      const response = await libroDiarioApi.post(`/${libroId}/asientos`, asientoBackend);
+      resultados.push(response.data);
+    }
+    
+    console.log('✅ Asientos creados:', resultados);
+    
+    // Retornar el asiento original con un ID generado
+    return {
+      ...asiento,
+      id: `asiento-${Date.now()}` // ID temporal para el frontend
+    };
   }
   
   static async actualizarAsiento(libroId: string, asientoId: string, asiento: Partial<AsientoContable>): Promise<AsientoContable> {
-    const response = await libroDiarioApi.put(`/${libroId}/asientos/${asientoId}`, asiento);
-    return response.data;
+    // Para asientos agrupados del frontend, necesitamos eliminar y recrear
+    if (asientoId.startsWith('asiento-')) {
+      console.log('✏️ Editando asiento con ID artificial:', asientoId);
+      console.log('📝 Datos del asiento a actualizar:', asiento);
+      
+      // 1. Eliminar asiento existente
+      await this.eliminarAsiento(libroId, asientoId);
+      
+      // 2. Crear nuevo asiento con los datos actualizados
+      const asientoCompleto = {
+        numero: asiento.numero || asientoId.replace('asiento-', ''),
+        fecha: asiento.fecha || new Date().toISOString().split('T')[0],
+        descripcion: asiento.descripcion || '',
+        detalles: asiento.detalles || [],
+        empresaId: asiento.empresaId
+      };
+      
+      return await this.agregarAsiento(libroId, asientoCompleto);
+    } else {
+      // ID directo del backend (método original)
+      const response = await libroDiarioApi.put(`/${libroId}/asientos/${asientoId}`, asiento);
+      return response.data;
+    }
   }
   
   static async eliminarAsiento(libroId: string, asientoId: string): Promise<{ message: string }> {
-    const response = await libroDiarioApi.delete(`/${libroId}/asientos/${asientoId}`);
-    return response.data;
+    console.log('🗑️ SERVICIO ACTUALIZADO - Eliminando asiento:', { libroId, asientoId });
+    
+    // Si es un ID artificial del frontend, necesitamos obtener el libro completo para encontrar los IDs reales
+    if (asientoId.startsWith('asiento-')) {
+      console.log('🗑️ Eliminando asiento con ID artificial:', asientoId);
+      
+      // Obtener libro completo para encontrar los IDs reales del backend
+      const libro = await this.obtenerLibroDiario(libroId);
+      const asiento = libro.asientos?.find(a => a.id === asientoId) as any;
+      
+      if (!asiento || !asiento._backendIds) {
+        throw new Error('No se encontraron los IDs del backend para eliminar el asiento');
+      }
+      
+      console.log('🔍 IDs del backend a eliminar:', asiento._backendIds);
+      
+      // Eliminar cada línea del asiento
+      const promesasEliminacion = asiento._backendIds.map((backendId: string) => 
+        libroDiarioApi.delete(`/${libroId}/asientos/${backendId}`)
+      );
+      
+      await Promise.all(promesasEliminacion);
+      
+      return { message: `Asiento ${asiento.numero} eliminado correctamente` };
+    } else {
+      console.log('🗑️ Eliminando asiento con ID real del backend:', asientoId);
+      // ID directo del backend
+      const response = await libroDiarioApi.delete(`/${libroId}/asientos/${asientoId}`);
+      return response.data;
+    }
   }
   
   // === VALIDACIONES ===
@@ -182,7 +321,7 @@ export class LibroDiarioApiService {
     asiento.detalles.forEach((detalle, index) => {
       if (!detalle.codigoCuenta) errores.push(`Detalle ${index + 1}: Código de cuenta es requerido`);
       if (!detalle.denominacionCuenta) errores.push(`Detalle ${index + 1}: Denominación de cuenta es requerida`);
-      if (!detalle.descripcion) errores.push(`Detalle ${index + 1}: Descripción es requerida`);
+      // ❌ ELIMINADO: descripcion no existe en DetalleAsiento
       
       const debe = detalle.debe || 0;
       const haber = detalle.haber || 0;

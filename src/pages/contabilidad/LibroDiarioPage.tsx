@@ -2,13 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import type { LibroDiario, FiltrosLibroDiario, ResumenLibroDiario, AsientoContable } from '../../types/libroDiario';
 import LibroDiarioApiService from '../../services/libroDiarioApi';
+import ExportacionService from '../../services/exportacionService';
 import useEmpresaActual from '../../hooks/useEmpresaActual';
 
 // Componentes modulares
 import LibroDiarioHeader from '../../components/contabilidad/libroDiario/LibroDiarioHeader';
 import LibroDiarioTable from '../../components/contabilidad/libroDiario/LibroDiarioTable';
 import LibroDiarioResumen from '../../components/contabilidad/libroDiario/LibroDiarioResumen';
-import LibroDiarioDetalle from '../../components/contabilidad/libroDiario/LibroDiarioDetalle';
 import CrearLibroModal from '../../components/contabilidad/libroDiario/CrearLibroModal';
 import AsientosManager from '../../components/contabilidad/libroDiario/AsientosManager';
 
@@ -29,7 +29,7 @@ const LibroDiarioPage: React.FC = () => {
   });
   
   // Estados UI
-  const [vistaActual, setVistaActual] = useState<'lista' | 'detalle' | 'asientos'>('lista');
+  const [vistaActual, setVistaActual] = useState<'lista' | 'asientos'>('lista');
   const [libroSeleccionado, setLibroSeleccionado] = useState<LibroDiario | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
   const [mostrandoModal, setMostrandoModal] = useState(false);
@@ -82,17 +82,87 @@ const LibroDiarioPage: React.FC = () => {
 
   const handleExportar = (formato: 'excel' | 'pdf') => {
     showToast(`Exportando a ${formato.toUpperCase()}...`, 'info');
-    // Implementación futura
+    // Implementación futura para exportar toda la lista de libros
   };
 
-  const handleSeleccionarLibro = (libro: LibroDiario) => {
-    setLibroSeleccionado(libro);
-    setVistaActual('detalle');
+  // Nuevas funciones para exportar asientos específicos
+  const handleExportarAsientosExcel = async () => {
+    if (!libroSeleccionado?.id || !libroSeleccionado.asientos) {
+      showToast('Error: No hay asientos para exportar', 'error');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      showToast('Exportando asientos a Excel...', 'info');
+      
+      await ExportacionService.exportarAsientosExcel(
+        libroSeleccionado.asientos,
+        {
+          fileName: `libro_diario_${libroSeleccionado.descripcion}_${new Date().toISOString().split('T')[0]}.xlsx`,
+          sheetName: 'Asientos Contables',
+          includeMetadata: true
+        }
+      );
+      
+      showToast('✅ Asientos exportados a Excel correctamente', 'success');
+    } catch (error) {
+      console.error('Error al exportar a Excel:', error);
+      showToast('Error al exportar a Excel', 'error');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleVerAsientos = (libro: LibroDiario) => {
-    setLibroSeleccionado(libro);
-    setVistaActual('asientos');
+  const handleExportarAsientosPDF = async () => {
+    if (!libroSeleccionado?.id || !libroSeleccionado.asientos) {
+      showToast('Error: No hay asientos para exportar', 'error');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      showToast('Exportando asientos a PDF...', 'info');
+      
+      await ExportacionService.exportarAsientosPDF(
+        libroSeleccionado.asientos,
+        {
+          fileName: `libro_diario_${libroSeleccionado.descripcion}_${new Date().toISOString().split('T')[0]}.pdf`,
+          includeMetadata: true
+        }
+      );
+      
+      showToast('✅ Asientos exportados a PDF correctamente', 'success');
+    } catch (error) {
+      console.error('Error al exportar a PDF:', error);
+      showToast('Error al exportar a PDF', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerAsientos = async (libro: LibroDiario) => {
+    if (!libro.id) {
+      showToast('Error: Libro sin ID válido', 'error');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      console.log('🔄 Cargando libro completo con asientos:', libro.id);
+      
+      // Cargar libro completo con asientos desde el backend
+      const libroCompleto = await LibroDiarioApiService.obtenerLibroDiario(libro.id);
+      console.log('✅ Libro cargado:', libroCompleto);
+      
+      setLibroSeleccionado(libroCompleto);
+      setVistaActual('asientos');
+    } catch (error) {
+      console.error('❌ Error al cargar libro completo:', error);
+      showToast('Error al cargar los detalles del libro', 'error');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleEliminarLibro = async (libroId: string) => {
@@ -309,7 +379,6 @@ const LibroDiarioPage: React.FC = () => {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: '20px', marginTop: '20px' }}>
               <LibroDiarioTable
                 libros={libros}
-                onSeleccionar={handleSeleccionarLibro}
                 onVerAsientos={handleVerAsientos}
                 onEliminar={handleEliminarLibro}
               />
@@ -336,8 +405,8 @@ const LibroDiarioPage: React.FC = () => {
           </>
         )}
 
-        {/* Vista Detalle de Libro */}
-        {vistaActual === 'detalle' && libroSeleccionado && (
+        {/* Vista Gestión de Asientos */}
+        {vistaActual === 'asientos' && libroSeleccionado && (
           <div>
             <div style={{ marginBottom: '20px' }}>
               <button
@@ -360,62 +429,15 @@ const LibroDiarioPage: React.FC = () => {
               </button>
             </div>
 
-            <LibroDiarioDetalle
-              libro={libroSeleccionado}
-              onClose={volverALista}
-              onAgregarAsiento={() => setVistaActual('asientos')}
-            />
-          </div>
-        )}
-
-        {/* Vista Gestión de Asientos */}
-        {vistaActual === 'asientos' && libroSeleccionado && (
-          <div>
-            <div style={{ marginBottom: '20px', display: 'flex', gap: '12px' }}>
-              <button
-                onClick={volverALista}
-                style={{
-                  background: 'rgba(255, 255, 255, 0.2)',
-                  border: '1px solid rgba(255, 255, 255, 0.3)',
-                  borderRadius: '8px',
-                  color: 'white',
-                  padding: '10px 16px',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px'
-                }}
-              >
-                ← Volver a la lista
-              </button>
-              <button
-                onClick={() => setVistaActual('detalle')}
-                style={{
-                  background: 'rgba(255, 255, 255, 0.2)',
-                  border: '1px solid rgba(255, 255, 255, 0.3)',
-                  borderRadius: '8px',
-                  color: 'white',
-                  padding: '10px 16px',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px'
-                }}
-              >
-                📖 Ver detalle del libro
-              </button>
-            </div>
-
             <AsientosManager
               libroId={libroSeleccionado.id!}
               asientos={libroSeleccionado.asientos || []}
               onCrearAsiento={handleCrearAsiento}
               onEditarAsiento={handleEditarAsiento}
               onEliminarAsiento={handleEliminarAsiento}
+              onExportarExcel={handleExportarAsientosExcel}
+              onExportarPDF={handleExportarAsientosPDF}
+              isLoading={loading}
             />
           </div>
         )}

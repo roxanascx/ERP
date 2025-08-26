@@ -19,5 +19,8 @@ export { useRce } from './useRce';
 export { useRceComprobantes } from './useRceComprobantes';
 export { useRceProcesos } from './useRceProcesos';
 
+// Hooks de contabilidad
+export { default as usePlantillasAsiento } from './usePlantillasAsiento';
+
 // Hooks Socios de Negocio
 export { useSociosNegocio } from './useSociosNegocio';
