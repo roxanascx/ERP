@@ -20,7 +20,7 @@ export class ExportacionService {
     const {
       fileName = `libro_diario_${new Date().toISOString().split('T')[0]}.xlsx`,
       sheetName = 'Libro Diario',
-      includeHeaders = true,
+      // includeHeaders = true,
       includeMetadata = true
     } = config;
 
@@ -122,7 +122,7 @@ export class ExportacionService {
   /**
    * Simula la descarga de archivo (para demo)
    */
-  private static descargarSimulado(fileName: string, tipo: 'excel' | 'pdf') {
+  private static descargarSimulado(fileName: string, _tipo: 'excel' | 'pdf') {
     console.log(`📁 Simulando descarga de archivo: ${fileName}`);
     
     // En una implementación real, aquí crearíamos el blob y trigger de descarga

@@ -431,6 +431,7 @@ const LibroDiarioPage: React.FC = () => {
 
             <AsientosManager
               libroId={libroSeleccionado.id!}
+              libro={libroSeleccionado} 
               asientos={libroSeleccionado.asientos || []}
               onCrearAsiento={handleCrearAsiento}
               onEditarAsiento={handleEditarAsiento}

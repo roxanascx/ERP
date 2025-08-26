@@ -18,9 +18,9 @@ const PLANTILLAS_PREDEFINIDAS: PlantillaAsiento[] = [
     categoria: 'ventas',
     icono: '💰',
     detalles: [
-      { codigoCuenta: '101101', denominacionCuenta: 'Caja', descripcion: 'Por cobranza de venta', debe: 0, haber: 0 },
-      { codigoCuenta: '401111', denominacionCuenta: 'IGV por pagar', descripcion: 'IGV de la venta', debe: 0, haber: 0 },
-      { codigoCuenta: '701101', denominacionCuenta: 'Ventas', descripcion: 'Venta de mercadería', debe: 0, haber: 0 }
+      { codigoCuenta: '101101', denominacionCuenta: 'Caja', debe: 0, haber: 0 },
+      { codigoCuenta: '401111', denominacionCuenta: 'IGV por pagar', debe: 0, haber: 0 },
+      { codigoCuenta: '701101', denominacionCuenta: 'Ventas', debe: 0, haber: 0 }
     ]
   },
   {
@@ -30,9 +30,9 @@ const PLANTILLAS_PREDEFINIDAS: PlantillaAsiento[] = [
     categoria: 'ventas',
     icono: '🧾',
     detalles: [
-      { codigoCuenta: '121101', denominacionCuenta: 'Facturas por cobrar', descripcion: 'Por venta al crédito', debe: 0, haber: 0 },
-      { codigoCuenta: '401111', denominacionCuenta: 'IGV por pagar', descripcion: 'IGV de la venta', debe: 0, haber: 0 },
-      { codigoCuenta: '701101', denominacionCuenta: 'Ventas', descripcion: 'Venta de mercadería', debe: 0, haber: 0 }
+      { codigoCuenta: '121101', denominacionCuenta: 'Facturas por cobrar', debe: 0, haber: 0 },
+      { codigoCuenta: '401111', denominacionCuenta: 'IGV por pagar', debe: 0, haber: 0 },
+      { codigoCuenta: '701101', denominacionCuenta: 'Ventas', debe: 0, haber: 0 }
     ]
   },
   {
@@ -42,9 +42,9 @@ const PLANTILLAS_PREDEFINIDAS: PlantillaAsiento[] = [
     categoria: 'compras',
     icono: '🛒',
     detalles: [
-      { codigoCuenta: '601101', denominacionCuenta: 'Mercaderías', descripcion: 'Por compra de mercadería', debe: 0, haber: 0 },
-      { codigoCuenta: '401111', denominacionCuenta: 'IGV crédito fiscal', descripcion: 'IGV de la compra', debe: 0, haber: 0 },
-      { codigoCuenta: '101101', denominacionCuenta: 'Caja', descripcion: 'Por pago de compra', debe: 0, haber: 0 }
+      { codigoCuenta: '601101', denominacionCuenta: 'Mercaderías', debe: 0, haber: 0 },
+      { codigoCuenta: '401111', denominacionCuenta: 'IGV crédito fiscal', debe: 0, haber: 0 },
+      { codigoCuenta: '101101', denominacionCuenta: 'Caja', debe: 0, haber: 0 }
     ]
   },
   {
@@ -54,9 +54,9 @@ const PLANTILLAS_PREDEFINIDAS: PlantillaAsiento[] = [
     categoria: 'compras',
     icono: '📋',
     detalles: [
-      { codigoCuenta: '601101', denominacionCuenta: 'Mercaderías', descripcion: 'Por compra de mercadería', debe: 0, haber: 0 },
-      { codigoCuenta: '401111', denominacionCuenta: 'IGV crédito fiscal', descripcion: 'IGV de la compra', debe: 0, haber: 0 },
-      { codigoCuenta: '421101', denominacionCuenta: 'Proveedores', descripcion: 'Por compra al crédito', debe: 0, haber: 0 }
+      { codigoCuenta: '601101', denominacionCuenta: 'Mercaderías', debe: 0, haber: 0 },
+      { codigoCuenta: '401111', denominacionCuenta: 'IGV crédito fiscal', debe: 0, haber: 0 },
+      { codigoCuenta: '421101', denominacionCuenta: 'Proveedores', debe: 0, haber: 0 }
     ]
   },
   {
@@ -66,10 +66,10 @@ const PLANTILLAS_PREDEFINIDAS: PlantillaAsiento[] = [
     categoria: 'personal',
     icono: '👥',
     detalles: [
-      { codigoCuenta: '621101', denominacionCuenta: 'Sueldos', descripcion: 'Por planilla de sueldos', debe: 0, haber: 0 },
-      { codigoCuenta: '403101', denominacionCuenta: 'Essalud por pagar', descripcion: 'Aporte Essalud', debe: 0, haber: 0 },
-      { codigoCuenta: '403201', denominacionCuenta: 'ONP por pagar', descripcion: 'Aporte ONP', debe: 0, haber: 0 },
-      { codigoCuenta: '101201', denominacionCuenta: 'Bancos', descripcion: 'Por pago de planilla', debe: 0, haber: 0 }
+      { codigoCuenta: '621101', denominacionCuenta: 'Sueldos', debe: 0, haber: 0 },
+      { codigoCuenta: '403101', denominacionCuenta: 'Essalud por pagar', debe: 0, haber: 0 },
+      { codigoCuenta: '403201', denominacionCuenta: 'ONP por pagar', debe: 0, haber: 0 },
+      { codigoCuenta: '101201', denominacionCuenta: 'Bancos', debe: 0, haber: 0 }
     ]
   },
   {
@@ -79,8 +79,8 @@ const PLANTILLAS_PREDEFINIDAS: PlantillaAsiento[] = [
     categoria: 'financiero',
     icono: '🏦',
     detalles: [
-      { codigoCuenta: '101201', denominacionCuenta: 'Bancos', descripcion: 'Por depósito en cuenta corriente', debe: 0, haber: 0 },
-      { codigoCuenta: '101101', denominacionCuenta: 'Caja', descripcion: 'Por traslado a banco', debe: 0, haber: 0 }
+      { codigoCuenta: '101201', denominacionCuenta: 'Bancos', debe: 0, haber: 0 },
+      { codigoCuenta: '101101', denominacionCuenta: 'Caja', debe: 0, haber: 0 }
     ]
   },
   {
@@ -90,9 +90,9 @@ const PLANTILLAS_PREDEFINIDAS: PlantillaAsiento[] = [
     categoria: 'gastos',
     icono: '⚡',
     detalles: [
-      { codigoCuenta: '636101', denominacionCuenta: 'Servicios públicos', descripcion: 'Por pago de servicios', debe: 0, haber: 0 },
-      { codigoCuenta: '401111', denominacionCuenta: 'IGV crédito fiscal', descripcion: 'IGV de servicios', debe: 0, haber: 0 },
-      { codigoCuenta: '101101', denominacionCuenta: 'Caja', descripcion: 'Por pago en efectivo', debe: 0, haber: 0 }
+      { codigoCuenta: '636101', denominacionCuenta: 'Servicios públicos', debe: 0, haber: 0 },
+      { codigoCuenta: '401111', denominacionCuenta: 'IGV crédito fiscal', debe: 0, haber: 0 },
+      { codigoCuenta: '101101', denominacionCuenta: 'Caja', debe: 0, haber: 0 }
     ]
   }
 ];

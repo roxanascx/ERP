@@ -21,6 +21,7 @@ import ContabilidadPage from './pages/contabilidad/ContabilidadPage';
 import PlanContablePage from './pages/contabilidad/PlanContablePage';
 import LibroDiarioPage from './pages/contabilidad/LibroDiarioPage';
 import TestLogoutPage from './pages/TestLogoutPage';
+import PLETestPage from './pages/PLETestPage';
 import EmpresaProtectedRoute from './components/EmpresaProtectedRoute';
 import { RceDataProvider } from './contexts/RceDataContext';
 import RceIntegrationTest from './pages/test/RceIntegrationTest';
@@ -306,6 +307,14 @@ const AppRouter: React.FC = () => {
             ) : (
               <Navigate to="/" replace />
             )
+          } 
+        />
+        
+        {/* 🧪 Página de prueba PLE SUNAT */}
+        <Route 
+          path="/test-ple" 
+          element={
+            isSignedIn ? <PLETestPage /> : <Navigate to="/" replace />
           } 
         />
         

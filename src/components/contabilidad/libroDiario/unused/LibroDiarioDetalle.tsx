@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import type { LibroDiario } from '../../../types/libroDiario';
+import PLEExportManager from './PLEExportManager';
 
 interface LibroDiarioDetalleProps {
   libro: LibroDiario;
@@ -12,6 +13,14 @@ const LibroDiarioDetalle: React.FC<LibroDiarioDetalleProps> = ({
   onClose,
   onAgregarAsiento
 }) => {
+  const [mostrarPLEManager, setMostrarPLEManager] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+
+  // Toast helper
+  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 4000);
+  };
   const getEstadoColor = (estado: string) => {
     switch (estado) {
       case 'validado':
@@ -298,9 +307,9 @@ const LibroDiarioDetalle: React.FC<LibroDiarioDetalleProps> = ({
             </button>
 
             <button
-              onClick={() => alert('Funcionalidad en desarrollo')}
+              onClick={() => setMostrarPLEManager(true)}
               style={{
-                background: '#8b5cf6',
+                background: '#059669',
                 color: 'white',
                 border: 'none',
                 borderRadius: '8px',
@@ -314,31 +323,97 @@ const LibroDiarioDetalle: React.FC<LibroDiarioDetalleProps> = ({
                 transition: 'all 0.2s ease'
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = '#7c3aed';
+                e.currentTarget.style.backgroundColor = '#047857';
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = '#8b5cf6';
+                e.currentTarget.style.backgroundColor = '#059669';
               }}
             >
-              <span>📥</span>
-              Exportar
+              <span>🇵🇪</span>
+              Exportar PLE SUNAT
             </button>
           </div>
 
           <div style={{ 
             marginTop: '16px',
             padding: '12px',
-            background: '#fef7cd',
-            border: '1px solid #fbbf24',
+            background: '#ecfdf5',
+            border: '1px solid #10b981',
             borderRadius: '6px',
             fontSize: '14px',
-            color: '#92400e'
+            color: '#065f46'
           }}>
-            💡 <strong>Próximamente:</strong> Gestión completa de asientos contables, 
-            exportación a Excel/PDF y validaciones automáticas.
+            ✅ <strong>¡Nuevo!</strong> Exportación a formato PLE para SUNAT ya disponible. 
+            Genera archivos TXT y ZIP según especificaciones oficiales.
           </div>
         </div>
       </div>
+
+      {/* Toast */}
+      {toast && (
+        <div style={{
+          position: 'fixed',
+          top: '20px',
+          right: '20px',
+          padding: '12px 20px',
+          borderRadius: '8px',
+          backgroundColor: toast.type === 'success' ? '#10b981' : toast.type === 'error' ? '#ef4444' : '#3b82f6',
+          color: 'white',
+          fontSize: '14px',
+          fontWeight: '500',
+          zIndex: 1000,
+          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+          animation: 'slideIn 0.3s ease-out'
+        }}>
+          {toast.message}
+        </div>
+      )}
+
+      {/* Modal PLE Export Manager */}
+      {mostrarPLEManager && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: '20px'
+        }}>
+          <div style={{ maxWidth: '600px', width: '100%', maxHeight: '90vh', overflow: 'auto' }}>
+            <PLEExportManager
+              libro={libro}
+              onClose={() => setMostrarPLEManager(false)}
+              onSuccess={(mensaje) => {
+                showToast(mensaje, 'success');
+                setMostrarPLEManager(false);
+              }}
+              onError={(error) => {
+                showToast(error, 'error');
+              }}
+            />
+          </div>
+        </div>
+      )}
+
+      <style>
+        {`
+          @keyframes slideIn {
+            from {
+              transform: translateX(100%);
+              opacity: 0;
+            }
+            to {
+              transform: translateX(0);
+              opacity: 1;
+            }
+          }
+        `}
+      </style>
     </div>
   );
 };
