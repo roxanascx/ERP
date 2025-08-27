@@ -1,0 +1,182 @@
+/* ===== PLE DASHBOARD STYLES ===== */
+
+.ple-dashboard {
+  background: white;
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--shadow-base);
+  overflow: hidden;
+  min-height: 600px;
+  font-family: var(--font-family-base);
+}
+
+/* Header */
+.ple-dashboard__header {
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%);
+  color: white;
+  padding: var(--spacing-2xl) var(--spacing-2xl);
+  border-bottom: var(--border-width) solid var(--color-gray-200);
+}
+
+.ple-dashboard__header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--spacing-xl);
+}
+
+.ple-dashboard__title-section {
+  flex: 1;
+}
+
+.ple-dashboard__title {
+  margin: 0;
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-tight);
+}
+
+.ple-dashboard__subtitle {
+  margin: var(--spacing-xs) 0 0 0;
+  font-size: var(--font-size-sm);
+  opacity: 0.9;
+  line-height: var(--line-height-base);
+}
+
+/* Status */
+.ple-dashboard__status {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.ple-dashboard__loading {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  background: rgba(255, 255, 255, 0.2);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--border-radius-base);
+  font-size: var(--font-size-sm);
+  backdrop-filter: blur(10px);
+}
+
+.ple-dashboard__stats {
+  background: rgba(255, 255, 255, 0.2);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--border-radius-base);
+  text-align: center;
+  backdrop-filter: blur(10px);
+  min-width: 80px;
+}
+
+.ple-dashboard__stat-value {
+  font-weight: var(--font-weight-bold);
+  font-size: var(--font-size-lg);
+  line-height: var(--line-height-tight);
+}
+
+.ple-dashboard__stat-label {
+  font-size: var(--font-size-xs);
+  opacity: 0.8;
+  margin-top: 2px;
+}
+
+/* Navigation */
+.ple-dashboard__nav {
+  display: flex;
+  border-bottom: var(--border-width) solid var(--color-gray-200);
+  background: var(--color-gray-50);
+  overflow-x: auto;
+}
+
+.ple-dashboard__tab {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-lg) var(--spacing-xl);
+  border: none;
+  background: transparent;
+  color: var(--color-gray-600);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  font-family: var(--font-family-base);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all var(--transition-base);
+  white-space: nowrap;
+  position: relative;
+}
+
+.ple-dashboard__tab:hover:not(.ple-dashboard__tab--active) {
+  background: var(--color-gray-100);
+  color: var(--color-gray-700);
+}
+
+.ple-dashboard__tab--active {
+  background: white;
+  color: var(--color-primary);
+  font-weight: var(--font-weight-semibold);
+  border-bottom-color: var(--color-primary);
+  box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.ple-dashboard__tab-icon {
+  font-size: var(--font-size-base);
+  line-height: 1;
+}
+
+/* Content */
+.ple-dashboard__content {
+  padding: var(--spacing-2xl);
+  min-height: 500px;
+  background: white;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .ple-dashboard__header-content {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-lg);
+  }
+  
+  .ple-dashboard__title {
+    font-size: var(--font-size-xl);
+  }
+  
+  .ple-dashboard__nav {
+    flex-wrap: wrap;
+  }
+  
+  .ple-dashboard__tab {
+    padding: var(--spacing-md) var(--spacing-lg);
+    font-size: var(--font-size-xs);
+  }
+  
+  .ple-dashboard__content {
+    padding: var(--spacing-lg);
+  }
+}
+
+@media (max-width: 480px) {
+  .ple-dashboard__header {
+    padding: var(--spacing-lg);
+  }
+  
+  .ple-dashboard__title {
+    font-size: var(--font-size-lg);
+  }
+  
+  .ple-dashboard__subtitle {
+    font-size: var(--font-size-xs);
+  }
+  
+  .ple-dashboard__stats {
+    min-width: 60px;
+    padding: var(--spacing-xs) var(--spacing-sm);
+  }
+  
+  .ple-dashboard__stat-value {
+    font-size: var(--font-size-base);
+  }
+}

@@ -1,12 +1,94 @@
-import type { PLEGeneracionData } from '../components/contabilidad/ple/components/PLEFormGeneracion';
+// Configuración base de la API - UNIFICADA
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const PLE_BASE_PATH = '/api/v1/accounting/ple'; // Ruta unificada consistente
+
+// ========================================
+// TIPOS UNIFICADOS - SINCRONIZADOS CON BACKEND
+// ========================================
+
+export interface PLEGeneracionData {
+  libro_diario_id: string;      // ID del libro diario (requerido)
+  ejercicio: number;           
+  mes: number;                 
+  validar_antes_generar?: boolean;  // Consistente con backend
+  incluir_metadatos?: boolean;      // Consistente con backend
+  generar_zip?: boolean;            // Consistente con backend
+  directorio_salida?: string;       // Opcional
+  observaciones?: string;           // Consistente con backend
+}
+
+export interface PLEArchivo {
+  id: string;
+  nombre_archivo: string;
+  ejercicio: number;
+  mes: number;
+  fecha_generacion: string;
+  estado: string;
+  tamano_archivo: number;
+  total_registros: number;
+  ruc_empresa: string;
+  razon_social: string;
+  observaciones?: string;
+  errores: string[];
+}
+
+export interface PLEEstadistica {
+  total_archivos: number;
+  archivos_pendientes: number;
+  errores_recientes: number;
+  ultimo_periodo: {
+    ejercicio: number;
+    mes: number;
+  };
+}
+
+export interface PLEConfiguracion {
+  formatos_soportados: string[];
+  validaciones_disponibles: string[];
+  tipos_exportacion: string[];
+  configuracion_default: {
+    validar_antes_generar: boolean;
+    incluir_metadatos: boolean;
+    generar_zip: boolean;
+    formato: string;
+  };
+}
+
+export interface ValidacionResultado {
+  tipo: 'error' | 'warning' | 'info' | 'success';
+  campo: string;
+  mensaje: string;
+  detalle?: string;
+}
+
+export interface ValidacionEstadistica {
+  total_validaciones: number;
+  exitosas: number;
+  con_warnings: number;
+  con_errores: number;
+}
+
+export interface PLERegistro {
+  linea: number;
+  contenido: string;
+  campos: string[];
+}
+
+export interface PLEValidacion {
+  campo: string;
+  valor: string;
+  valido: boolean;
+  mensaje?: string;
+}e { PLEGeneracionData } from '../components/contabilidad/ple/components/PLEFormGeneracion';
 import type { PLEArchivo } from '../components/contabilidad/ple/components/PLEArchivosTable';
 import type { PLEEstadistica } from '../components/contabilidad/ple/components/PLEEstadisticas';
 import type { PLEConfiguracion } from '../components/contabilidad/ple/components/PLEConfiguracion';
 import type { ValidacionResultado, ValidacionEstadistica } from '../components/contabilidad/ple/components/PLEValidacionPanel';
 import type { PLERegistro, PLEValidacion } from '../components/contabilidad/ple/components/PLEPreview';
 
-// Configuración base de la API
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+// Configuración base de la API - UNIFICADA
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const PLE_BASE_PATH = '/api/v1/accounting/ple'; // Ruta unificada consistente
 
 class ApiError extends Error {
   public status: number;

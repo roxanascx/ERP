@@ -1,7 +1,10 @@
+/* Import Design System */
+@import './styles/design-system.css';
+
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
+  font-family: var(--font-family-base);
+  line-height: var(--line-height-base);
+  font-weight: var(--font-weight-normal);
 
   color-scheme: light dark;
   color: rgba(255, 255, 255, 0.87);

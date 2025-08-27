@@ -1,7 +1,10 @@
 import React, { useState } from 'react';
-import { PLEFormGeneracion } from './components/PLEFormGeneracion';
+import { PLEFormGeneracion } from './components/PLEFormGeneracionUnified';
 import { PLEPreview } from './components/PLEPreview';
 import { PLEValidacionPanel } from './components/PLEValidacionPanel';
+import { pleApiService, PLEApiService } from '../../../services/pleApiUnified';
+import type { PLEGeneracionData } from '../../../services/pleApiUnified';
+import './PLEGeneratorV3.css';
 
 interface PLEGeneratorV3Props {
   empresaId: string;
@@ -41,146 +44,176 @@ export const PLEGeneratorV3: React.FC<PLEGeneratorV3Props> = ({
       onRefresh();
     }
   };
+
+  const handleGenerar = async (formData: PLEGeneracionData) => {
+    setGenerando(true);
+    try {
+      console.log('🚀 Generando PLE con datos unificados:', formData);
+      
+      // Usar el servicio API unificado
+      const resultado = await pleApiService.generarPLE(formData);
+      
+      console.log('✅ PLE generado exitosamente:', resultado);
+      
+      if (resultado.success) {
+        console.log(`📄 Archivo generado: ${resultado.archivo_nombre}`);
+        console.log(`📊 Total registros: ${resultado.total_registros}`);
+        
+        if (resultado.errores.length > 0) {
+          console.warn('⚠️ Errores encontrados:', resultado.errores);
+        }
+        
+        if (resultado.advertencias.length > 0) {
+          console.warn('⚠️ Advertencias:', resultado.advertencias);
+        }
+        
+        // Llamar callback de actualización
+        if (onRefresh) {
+          onRefresh();
+        }
+      } else {
+        console.error('❌ Error en la generación:', resultado);
+      }
+      
+    } catch (error) {
+      console.error('💥 Error generando PLE:', error);
+      const mensajeError = PLEApiService.handleApiError(error);
+      console.error('📝 Mensaje de error procesado:', mensajeError);
+    } finally {
+      setGenerando(false);
+    }
+  };
   
   return (
-    <div style={{
-      display: 'flex',
-      flexDirection: 'column',
-      gap: '24px'
-    }}>
+    <div className="ple-generator">
       {/* Título y descripción */}
-      <div>
-        <h2 style={{
-          margin: '0 0 8px 0',
-          fontSize: '20px',
-          fontWeight: '600',
-          color: '#1f2937'
-        }}>
+      <div className="ple-generator__header">
+        <h2 className="ple-generator__title">
           🎯 Generar Archivo PLE SUNAT V3
         </h2>
-        <p style={{
-          margin: 0,
-          fontSize: '14px',
-          color: '#6b7280',
-          lineHeight: '1.5'
-        }}>
-          Selecciona un libro diario y configura las opciones para generar un archivo PLE 
-          en formato oficial SUNAT con 24 campos y compresión ZIP conforme.
+        <p className="ple-generator__description">
+          Configure los parámetros y genere archivos PLE en formato oficial SUNAT 
+          con validación automática y compresión ZIP conforme a normativa vigente.
         </p>
       </div>
       
-      {/* Formulario de generación */}
-      <div style={{
-        background: '#f9fafb',
-        border: '1px solid #e5e7eb',
-        borderRadius: '8px',
-        padding: '20px'
-      }}>
-        <PLEFormGeneracion
-          onGenerar={async () => {}}
-          loading={generando}
-        />
-      </div>
-      
-      {/* Panel de validación */}
-      {libroSeleccionado && (
-        <div style={{
-          background: '#fef3c7',
-          border: '1px solid #fbbf24',
-          borderRadius: '8px',
-          padding: '20px'
-        }}>
-          <div>Validación Panel - En desarrollo</div>
-          {/* <PLEValidacionPanel
-            libroId={libroSeleccionado}
-            onValidacionCompletada={handleValidacionCompletada}
-            autoValidar={opciones.validar_antes_generar}
-          /> */}
-        </div>
-      )}
-      
-      {/* Preview del archivo */}
-      {libroSeleccionado && validacionRealizada && datosValidacion?.validacion?.es_valido && (
-        <div style={{
-          background: '#ecfdf5',
-          border: '1px solid #10b981',
-          borderRadius: '8px',
-          padding: '20px'
-        }}>
-          <div>Preview - En desarrollo</div>
-          {/* <PLEPreview
-            libroId={libroSeleccionado}
+      <div className="ple-generator__content">
+        {/* Formulario de generación */}
+        <div className="ple-generator__section">
+          <PLEFormGeneracion
+            onGenerar={handleGenerar}
+            loading={generando}
             empresaId={empresaId}
-          /> */}
+            libroSeleccionado={libroSeleccionado}
+          />
         </div>
-      )}
-      
-      {/* Estado de generación */}
-      {generando && (
-        <div style={{
-          background: '#dbeafe',
-          border: '1px solid #3b82f6',
-          borderRadius: '8px',
-          padding: '20px',
-          textAlign: 'center'
-        }}>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '12px',
-            color: '#1e40af'
-          }}>
-            <div style={{
-              width: '24px',
-              height: '24px',
-              border: '3px solid #93c5fd',
-              borderTop: '3px solid #1e40af',
-              borderRadius: '50%',
-              animation: 'spin 1s linear infinite'
-            }} />
-            <span style={{ fontSize: '16px', fontWeight: '500' }}>
-              Generando archivo PLE...
-            </span>
+        
+        {/* Panel de validación */}
+        {libroSeleccionado && (
+          <div className="ple-generator__section">
+            <div className="alert alert-warning">
+              <div className="ple-generator__validation-header">
+                <h3>⚠️ Panel de Validación</h3>
+                <p>Esta funcionalidad está en desarrollo. Próximamente incluirá validación automática de balances contables.</p>
+              </div>
+            </div>
           </div>
-          <p style={{
-            margin: '8px 0 0 0',
-            fontSize: '14px',
-            color: '#3730a3'
-          }}>
-            Este proceso puede tomar unos segundos dependiendo del tamaño del libro diario.
-          </p>
+        )}
+        
+        {/* Preview del archivo */}
+        {libroSeleccionado && validacionRealizada && datosValidacion?.validacion?.es_valido && (
+          <div className="ple-generator__section">
+            <div className="alert alert-success">
+              <div className="ple-generator__preview-header">
+                <h3>✅ Vista Previa del Archivo</h3>
+                <p>El archivo ha sido validado correctamente y está listo para generar.</p>
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {/* Estado de generación */}
+        {generando && (
+          <div className="ple-generator__section">
+            <div className="ple-generator__loading">
+              <div className="ple-generator__loading-content">
+                <div className="loading-spinner animate-spin" />
+                <div className="ple-generator__loading-text">
+                  <h3>🔄 Generando Archivo PLE</h3>
+                  <p>Este proceso puede tomar unos segundos dependiendo del tamaño del libro diario.</p>
+                </div>
+              </div>
+              
+              <div className="ple-generator__progress">
+                <div className="ple-generator__progress-bar">
+                  <div className="ple-generator__progress-fill animate-pulse"></div>
+                </div>
+                <div className="ple-generator__progress-text">
+                  Procesando datos contables...
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {/* Información adicional */}
+        <div className="ple-generator__section">
+          <div className="ple-generator__info">
+            <h3 className="ple-generator__info-title">
+              📋 Información del Proceso PLE
+            </h3>
+            
+            <div className="ple-generator__info-grid">
+              <div className="ple-generator__info-item">
+                <div className="ple-generator__info-icon">📄</div>
+                <div className="ple-generator__info-content">
+                  <h4>Formato Oficial SUNAT</h4>
+                  <p>Archivos generados con 24 campos según especificaciones técnicas V3</p>
+                </div>
+              </div>
+              
+              <div className="ple-generator__info-item">
+                <div className="ple-generator__info-icon">🗜️</div>
+                <div className="ple-generator__info-content">
+                  <h4>Compresión ZIP</h4>
+                  <p>Compresión automática según normativa SUNAT para optimizar envío</p>
+                </div>
+              </div>
+              
+              <div className="ple-generator__info-item">
+                <div className="ple-generator__info-icon">📝</div>
+                <div className="ple-generator__info-content">
+                  <h4>Nomenclatura Estándar</h4>
+                  <p>Nombres de archivo siguen formato: LE + RUC + FECHA + CÓDIGOS</p>
+                </div>
+              </div>
+              
+              <div className="ple-generator__info-item">
+                <div className="ple-generator__info-icon">⚖️</div>
+                <div className="ple-generator__info-content">
+                  <h4>Validación Contable</h4>
+                  <p>Verificación automática de balance (Debe = Haber) antes de generar</p>
+                </div>
+              </div>
+              
+              <div className="ple-generator__info-item">
+                <div className="ple-generator__info-icon">🔐</div>
+                <div className="ple-generator__info-content">
+                  <h4>Integridad de Datos</h4>
+                  <p>Metadatos incluyen hash MD5 para verificación de integridad</p>
+                </div>
+              </div>
+              
+              <div className="ple-generator__info-item">
+                <div className="ple-generator__info-icon">📊</div>
+                <div className="ple-generator__info-content">
+                  <h4>Trazabilidad Completa</h4>
+                  <p>Registro detallado de cada archivo generado para auditoría</p>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-      )}
-      
-      {/* Información adicional */}
-      <div style={{
-        background: '#f3f4f6',
-        border: '1px solid #d1d5db',
-        borderRadius: '8px',
-        padding: '16px'
-      }}>
-        <h3 style={{
-          margin: '0 0 12px 0',
-          fontSize: '16px',
-          fontWeight: '600',
-          color: '#374151'
-        }}>
-          📋 Información del Proceso
-        </h3>
-        <ul style={{
-          margin: 0,
-          paddingLeft: '20px',
-          fontSize: '14px',
-          color: '#6b7280',
-          lineHeight: '1.6'
-        }}>
-          <li>El archivo se genera en formato oficial SUNAT de 24 campos</li>
-          <li>Se incluye compresión ZIP automática según normativa</li>
-          <li>La nomenclatura de archivos sigue el estándar: LE + RUC + FECHA + CÓDIGOS</li>
-          <li>Se valida el balance contable (Debe = Haber) antes de generar</li>
-          <li>Los metadatos incluyen hash MD5 para verificación de integridad</li>
-        </ul>
       </div>
     </div>
   );
