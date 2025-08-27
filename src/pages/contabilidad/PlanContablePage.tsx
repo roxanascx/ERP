@@ -41,7 +41,7 @@ const PlanContablePageContent: React.FC = () => {
   const [modoModal, setModoModal] = useState<'crear' | 'editar'>('crear');
 
   // Referencias para debouncing
-  const timeoutRef = useRef<number | null>(null);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isInitialLoad = useRef(true);
 
   // Cargar datos iniciales

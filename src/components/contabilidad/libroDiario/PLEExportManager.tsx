@@ -6,7 +6,7 @@ import type {
   PLEProcessStatus
 } from '../../../types/pleTypes';
 import { PLE_DEFAULT_OPTIONS } from '../../../types/pleTypes';
-import PLEApiService from '../../../services/pleApi';
+import { pleApiService } from '../../../services/pleApi';
 
 interface PLEExportManagerProps {
   libro: LibroDiario;
@@ -55,8 +55,69 @@ const PLEExportManager: React.FC<PLEExportManagerProps> = ({
     setError(null);
 
     try {
-      const resultado = await PLEApiService.validarPLE(libro.id);
-      setValidacionResult(resultado);
+      // Crear datos de generación a partir del libro y configuración
+      const datosGeneracion = {
+        ejercicio: periodoConfig.año,
+        mes: periodoConfig.mes,
+        ruc: libro.ruc,
+        razonSocial: libro.razonSocial || 'Empresa',
+        fechaInicio: `${periodoConfig.año}-${periodoConfig.mes.toString().padStart(2, '0')}-01`,
+        fechaFin: `${periodoConfig.año}-${periodoConfig.mes.toString().padStart(2, '0')}-31`,
+        incluirCierreEjercicio: false,
+        observaciones: ''
+      };
+
+      const resultado = await pleApiService.validarPLE(datosGeneracion);
+      
+      // Mapear el resultado al formato esperado por este componente
+      const resultadoMapeado: PLEValidationResult = {
+        exito: resultado.success,
+        libro_id: libro.id,
+        valido: resultado.resultados.every(r => r.tipo !== 'error'),
+        validacion_basica: {
+          valido: true,
+          total_asientos: 0,
+          total_debe: '0.00',
+          total_haber: '0.00',
+          balanceado: true,
+          errores: [],
+          warnings: []
+        },
+        validacion_sunat: {
+          valido: resultado.resultados.every(r => r.tipo !== 'error'),
+          total_registros: resultado.estadisticas.totalRegistros,
+          registros_validados: resultado.estadisticas.registrosValidos,
+          errores: resultado.resultados.filter(r => r.tipo === 'error').map(r => ({
+            codigo: r.codigo,
+            tabla: '',
+            campo: r.campo || '',
+            valor: '',
+            mensaje: r.mensaje,
+            critico: r.tipo === 'error',
+            sugerencia: r.sugerencia
+          })),
+          warnings: resultado.resultados.filter(r => r.tipo === 'advertencia').map(r => ({
+            codigo: r.codigo,
+            tabla: '',
+            campo: r.campo || '',
+            valor: '',
+            mensaje: r.mensaje,
+            sugerencia: r.sugerencia
+          })),
+          datos_enriquecidos: 0,
+          estadisticas: {
+            total_errores: resultado.estadisticas.registrosConErrores,
+            total_warnings: resultado.estadisticas.registrosConAdvertencias,
+            errores_criticos: resultado.estadisticas.registrosConErrores,
+            porcentaje_validado: resultado.estadisticas.porcentajeValidez,
+            cuentas_validadas: resultado.estadisticas.registrosValidos,
+            tiempo_validacion: 0
+          },
+          tiempo_validacion: 0
+        }
+      };
+      
+      setValidacionResult(resultadoMapeado);
       setEstado('idle');
     } catch (err: any) {
       const errorMsg = err.response?.data?.detail || err.message || 'Error al validar el libro';
@@ -92,12 +153,11 @@ const PLEExportManager: React.FC<PLEExportManagerProps> = ({
       // Usar el período seleccionado por el usuario
       const periodoFormateado = periodoConfig.descripcion.replace('-', '');
       
-      await PLEApiService.descargarConNombreAutomatico(
+      await pleApiService.descargarConNombreAutomatico(
         libro.id,
         libro.ruc,
         periodoFormateado,
-        formato,
-        opciones
+        formato
       );
 
       setEstado('success');

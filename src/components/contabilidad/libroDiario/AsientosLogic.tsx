@@ -45,6 +45,9 @@ export const useAsientosLogic = ({
   // Estados para PLE Export
   const [mostrarPLEManager, setMostrarPLEManager] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+  
+  // Estado para expansión de asientos
+  const [asientosExpandidos, setAsientosExpandidos] = useState<Set<string>>(new Set());
 
   // Toast helper
   const showToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
@@ -199,6 +202,23 @@ export const useAsientosLogic = ({
     }
   };
 
+  // Funciones para expansión de asientos
+  const toggleExpandirAsiento = (asientoId: string) => {
+    setAsientosExpandidos(prev => {
+      const nuevosExpandidos = new Set(prev);
+      if (nuevosExpandidos.has(asientoId)) {
+        nuevosExpandidos.delete(asientoId);
+      } else {
+        nuevosExpandidos.add(asientoId);
+      }
+      return nuevosExpandidos;
+    });
+  };
+
+  const isAsientoExpandido = (asientoId: string) => {
+    return asientosExpandidos.has(asientoId);
+  };
+
   return {
     // Estados
     mostrarFormulario,
@@ -240,6 +260,10 @@ export const useAsientosLogic = ({
     handleExportar,
     handleEliminarAsiento,
     limpiarFiltros,
-    cambiarPagina
+    cambiarPagina,
+    
+    // Funciones de expansión
+    toggleExpandirAsiento,
+    isAsientoExpandido
   };
 };

@@ -32,6 +32,15 @@ const ContabilidadPage: React.FC = () => {
       ruta: `/contabilidad/libro-diario/${empresa?.ruc || 'empresa_demo'}`,
       implementado: true
     },
+      {
+      modulo: 'ple',
+      titulo: 'PLE SUNAT',
+      descripcion: 'Programa de Libros Electrónicos - Generación y validación conforme SUNAT V3',
+      icono: '🏛️',
+      color: '#4f46e5',
+      ruta: '/contabilidad/ple',
+      implementado: true
+    },
     {
       modulo: 'libro-mayor',
       titulo: 'Libro Mayor',

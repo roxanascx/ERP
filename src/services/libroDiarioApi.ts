@@ -159,7 +159,7 @@ export class LibroDiarioApiService {
     console.log('🔄 Asientos transformados para backend:', asientosBackend);
     
     // Enviar cada detalle como un asiento separado
-    const resultados = [];
+    const resultados: any[] = [];
     for (const asientoBackend of asientosBackend) {
       const response = await libroDiarioApi.post(`/${libroId}/asientos`, asientoBackend);
       resultados.push(response.data);

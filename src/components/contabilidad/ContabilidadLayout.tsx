@@ -8,6 +8,22 @@ interface ContabilidadLayoutProps {
   subtitle?: string;
 }
 
+interface NavigationItem {
+  icon: string;
+  title: string;
+  link: string;
+  badge?: string;
+  special?: boolean;
+}
+
+interface NavigationItem {
+  icon: string;
+  title: string;
+  link: string;
+  badge?: string;
+  special?: boolean;
+}
+
 const ContabilidadLayout: React.FC<ContabilidadLayoutProps> = ({ 
   children, 
   title = '📊 Contabilidad', 
@@ -18,11 +34,18 @@ const ContabilidadLayout: React.FC<ContabilidadLayoutProps> = ({
   const location = useLocation();
 
   // Módulos específicos de contabilidad
-  const contabilidadItems = [
+  const contabilidadItems: NavigationItem[] = [
     { icon: '🏠', title: 'Dashboard', link: '/dashboard' },
     { icon: '📊', title: 'Contabilidad', link: '/contabilidad' },
     { icon: '📋', title: 'Plan Contable', link: '/contabilidad/plan-contable' },
     { icon: '📘', title: 'Libro Diario', link: '/contabilidad/libro-diario' },
+    { 
+      icon: '🏛️', 
+      title: 'PLE SUNAT', 
+      link: '/contabilidad/ple',
+      badge: 'V3',
+      special: true 
+    },
     { icon: '📗', title: 'Libro Mayor', link: '/contabilidad/libro-mayor' },
     { icon: '🧾', title: 'Balance Comprobación', link: '/contabilidad/balance-comprobacion' },
     { icon: '📊', title: 'Estado Resultados', link: '/contabilidad/estado-resultados' },
@@ -226,22 +249,44 @@ const ContabilidadLayout: React.FC<ContabilidadLayoutProps> = ({
                   overflow: 'hidden',
                   justifyContent: sidebarOpen ? 'flex-start' : 'center',
                   background: isActiveRoute(item.link) 
-                    ? 'linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(139, 92, 246, 0.1) 100%)'
-                    : 'transparent',
-                  color: isActiveRoute(item.link) ? '#6366f1' : '#6b7280',
-                  border: isActiveRoute(item.link) ? '1px solid rgba(99, 102, 241, 0.2)' : '1px solid transparent'
+                    ? (item.special 
+                        ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(5, 150, 105, 0.1) 100%)'
+                        : 'linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(139, 92, 246, 0.1) 100%)')
+                    : (item.special && !isActiveRoute(item.link)
+                        ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.05) 0%, rgba(5, 150, 105, 0.03) 100%)'
+                        : 'transparent'),
+                  color: isActiveRoute(item.link) 
+                    ? (item.special ? '#059669' : '#6366f1') 
+                    : (item.special ? '#10b981' : '#6b7280'),
+                  border: isActiveRoute(item.link) 
+                    ? (item.special ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(99, 102, 241, 0.2)') 
+                    : (item.special ? '1px solid rgba(16, 185, 129, 0.15)' : '1px solid transparent'),
+                  boxShadow: item.special ? '0 2px 8px rgba(16, 185, 129, 0.1)' : 'none'
                 }}
                 onMouseEnter={(e) => {
                   if (!isActiveRoute(item.link)) {
-                    e.currentTarget.style.background = 'linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(139, 92, 246, 0.05) 100%)';
-                    e.currentTarget.style.color = '#374151';
+                    if (item.special) {
+                      e.currentTarget.style.background = 'linear-gradient(135deg, rgba(16, 185, 129, 0.12) 0%, rgba(5, 150, 105, 0.08) 100%)';
+                      e.currentTarget.style.color = '#047857';
+                      e.currentTarget.style.boxShadow = '0 4px 12px rgba(16, 185, 129, 0.15)';
+                    } else {
+                      e.currentTarget.style.background = 'linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(139, 92, 246, 0.05) 100%)';
+                      e.currentTarget.style.color = '#374151';
+                    }
                     e.currentTarget.style.transform = 'translateX(2px)';
                   }
                 }}
                 onMouseLeave={(e) => {
                   if (!isActiveRoute(item.link)) {
-                    e.currentTarget.style.background = 'transparent';
-                    e.currentTarget.style.color = '#6b7280';
+                    if (item.special) {
+                      e.currentTarget.style.background = 'linear-gradient(135deg, rgba(16, 185, 129, 0.05) 0%, rgba(5, 150, 105, 0.03) 100%)';
+                      e.currentTarget.style.color = '#10b981';
+                      e.currentTarget.style.boxShadow = '0 2px 8px rgba(16, 185, 129, 0.1)';
+                    } else {
+                      e.currentTarget.style.background = 'transparent';
+                      e.currentTarget.style.color = '#6b7280';
+                      e.currentTarget.style.boxShadow = 'none';
+                    }
                     e.currentTarget.style.transform = 'translateX(0)';
                   }
                 }}
@@ -256,7 +301,33 @@ const ContabilidadLayout: React.FC<ContabilidadLayoutProps> = ({
                 }}>
                   {item.icon}
                 </span>
-                {sidebarOpen && <span>{item.title}</span>}
+                {sidebarOpen && (
+                  <div style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'space-between',
+                    flex: 1 
+                  }}>
+                    <span>{item.title}</span>
+                    {item.badge && (
+                      <span style={{
+                        background: item.special 
+                          ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
+                          : 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+                        color: 'white',
+                        fontSize: '10px',
+                        fontWeight: '700',
+                        padding: '2px 6px',
+                        borderRadius: '8px',
+                        marginLeft: '8px',
+                        boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+                        letterSpacing: '0.5px'
+                      }}>
+                        {item.badge}
+                      </span>
+                    )}
+                  </div>
+                )}
               </Link>
             ))}
           </nav>

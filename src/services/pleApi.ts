@@ -1,222 +1,321 @@
-import axios from 'axios';
-import type {
-  PLEExportOptions,
-  PLEExportResult,
-  PLEValidationResult,
-  PLEPreviewResult,
-  PLEStatsResult,
-  PLEReportResult
-} from '../types/pleTypes';
+import type { PLEGeneracionData } from '../components/contabilidad/ple/components/PLEFormGeneracion';
+import type { PLEArchivo } from '../components/contabilidad/ple/components/PLEArchivosTable';
+import type { PLEEstadistica } from '../components/contabilidad/ple/components/PLEEstadisticas';
+import type { PLEConfiguracion } from '../components/contabilidad/ple/components/PLEConfiguracion';
+import type { ValidacionResultado, ValidacionEstadistica } from '../components/contabilidad/ple/components/PLEValidacionPanel';
+import type { PLERegistro, PLEValidacion } from '../components/contabilidad/ple/components/PLEPreview';
 
-import { PLE_DEFAULT_OPTIONS } from '../types/pleTypes';
+// Configuración base de la API
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
-// Configuración base para el cliente axios PLE
-const pleApi = axios.create({
-  baseURL: '/api/v1/accounting/libros-diario',
-  timeout: 30000, // 30 segundos para operaciones PLE
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
-
-// Interceptor para manejo de errores
-pleApi.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    console.error('Error en API PLE:', error);
-    return Promise.reject(error);
-  }
-);
-
-export class PLEApiService {
+class ApiError extends Error {
+  public status: number;
   
-  // ====================================
-  // MÉTODOS PRINCIPALES PLE
-  // ====================================
+  constructor(status: number, message: string) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+  }
+}
 
-  /**
-   * Exportar libro diario a formato PLE para SUNAT
-   */
-  static async exportarPLE(
-    libroId: string, 
-    opciones: Partial<PLEExportOptions> = {}
-  ): Promise<PLEExportResult> {
-    const opcionesCompletas = { ...PLE_DEFAULT_OPTIONS, ...opciones };
+// Cliente HTTP base
+class ApiClient {
+  private baseURL: string;
+
+  constructor(baseURL: string) {
+    this.baseURL = baseURL;
+  }
+
+  private async request<T>(
+    endpoint: string,
+    options: RequestInit = {}
+  ): Promise<T> {
+    const url = `${this.baseURL}${endpoint}`;
     
-    const response = await pleApi.post(`/${libroId}/export-ple`, opcionesCompletas);
-    return response.data;
-  }
+    const defaultHeaders = {
+      'Content-Type': 'application/json',
+    };
 
-  /**
-   * Validar libro diario para exportación PLE
-   */
-  static async validarPLE(libroId: string): Promise<PLEValidationResult> {
-    const response = await pleApi.get(`/${libroId}/validate-ple`);
-    return response.data;
-  }
-
-  /**
-   * Obtener vista previa del archivo PLE
-   */
-  static async previewPLE(
-    libroId: string, 
-    maxLineas: number = 10
-  ): Promise<PLEPreviewResult> {
-    const response = await pleApi.get(`/${libroId}/preview-ple`, {
-      params: { max_lineas: maxLineas }
-    });
-    return response.data;
-  }
-
-  /**
-   * Obtener estadísticas del libro diario para PLE
-   */
-  static async obtenerEstadisticasPLE(libroId: string): Promise<PLEStatsResult> {
-    const response = await pleApi.get(`/${libroId}/stats-ple`);
-    return response.data;
-  }
-
-  /**
-   * Generar reporte detallado de validación PLE
-   */
-  static async generarReportePLE(libroId: string): Promise<PLEReportResult> {
-    const response = await pleApi.get(`/${libroId}/report-ple`);
-    return response.data;
-  }
-
-  /**
-   * Descargar archivo PLE generado
-   */
-  static async descargarArchivoPLE(
-    libroId: string,
-    formato: 'txt' | 'zip' = 'zip',
-    opciones: Partial<PLEExportOptions> = {}
-  ): Promise<Blob> {
-    const opcionesCompletas = { ...PLE_DEFAULT_OPTIONS, ...opciones };
-    
-    const response = await pleApi.get(`/${libroId}/download-ple`, {
-      params: { 
-        formato,
-        opciones: JSON.stringify(opcionesCompletas)
+    const config: RequestInit = {
+      ...options,
+      headers: {
+        ...defaultHeaders,
+        ...options.headers,
       },
-      responseType: 'blob'
-    });
-    
-    return response.data;
-  }
+    };
 
-  /**
-   * Validar y exportar en una sola operación
-   */
-  static async validarYExportarPLE(
-    libroId: string,
-    opciones: Partial<PLEExportOptions> = {},
-    forzarExportacion: boolean = false
-  ): Promise<{
-    exito: boolean;
-    validacion: PLEValidationResult;
-    exportacion: PLEExportResult | null;
-    mensaje: string;
-  }> {
-    const opcionesCompletas = { ...PLE_DEFAULT_OPTIONS, ...opciones };
-    
-    const response = await pleApi.post(`/${libroId}/validate-and-export-ple`, opcionesCompletas, {
-      params: { forzar_exportacion: forzarExportacion }
-    });
-    
-    return response.data;
-  }
-
-  // ====================================
-  // MÉTODOS DE UTILIDAD
-  // ====================================
-
-  /**
-   * Generar nombre de archivo PLE basado en datos del libro
-   */
-  static generarNombreArchivoPLE(
-    ruc: string,
-    periodo: string,
-    formato: 'txt' | 'zip' = 'txt'
-  ): string {
-    // Formato: LE + RUC + PERIODO + 00 + 0501 + 00 + 1 + 11 + .TXT
-    // Ejemplo: LE20100070970202301000501001111.TXT
-    const anio = periodo.substring(0, 4);
-    const mes = periodo.substring(4, 6) || '00';
-    const extension = formato === 'zip' ? '.zip' : '.TXT';
-    
-    return `LE${ruc}${anio}${mes}000501001111${extension}`;
-  }
-
-  /**
-   * Descargar archivo con nombre automático
-   */
-  static async descargarConNombreAutomatico(
-    libroId: string,
-    ruc: string,
-    periodo: string,
-    formato: 'txt' | 'zip' = 'zip',
-    opciones: Partial<PLEExportOptions> = {}
-  ): Promise<void> {
     try {
-      const blob = await this.descargarArchivoPLE(libroId, formato, opciones);
-      const nombreArchivo = this.generarNombreArchivoPLE(ruc, periodo, formato);
+      const response = await fetch(url, config);
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new ApiError(
+          response.status,
+          errorData.detail || `HTTP ${response.status}: ${response.statusText}`
+        );
+      }
+
+      // Si la respuesta es empty (204), retornar null
+      if (response.status === 204) {
+        return null as T;
+      }
+
+      const contentType = response.headers.get('content-type');
       
-      // Crear enlace de descarga temporal
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = nombreArchivo;
-      
-      // Activar descarga
-      document.body.appendChild(link);
-      link.click();
-      
-      // Limpiar
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-      
+      // Si es un archivo ZIP o similar
+      if (contentType?.includes('application/zip') || contentType?.includes('application/octet-stream')) {
+        return response.blob() as T;
+      }
+
+      return await response.json();
     } catch (error) {
-      console.error('Error en descarga automática:', error);
-      throw error;
+      if (error instanceof ApiError) {
+        throw error;
+      }
+      
+      // Error de red o parsing
+      throw new ApiError(0, `Error de conexión: ${error instanceof Error ? error.message : 'Error desconocido'}`);
     }
   }
 
-  /**
-   * Validar estado del libro antes de exportar
-   */
-  static async verificarEstadoLibro(libroId: string): Promise<{
-    listo: boolean;
-    errores: string[];
-    warnings: string[];
-    recomendaciones: string[];
-  }> {
+  async get<T>(endpoint: string, params?: Record<string, any>): Promise<T> {
+    let url = endpoint;
+    
+    if (params && Object.keys(params).length > 0) {
+      const searchParams = new URLSearchParams();
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          searchParams.append(key, String(value));
+        }
+      });
+      url += `?${searchParams.toString()}`;
+    }
+
+    return this.request<T>(url, { method: 'GET' });
+  }
+
+  async post<T>(endpoint: string, data?: any): Promise<T> {
+    return this.request<T>(endpoint, {
+      method: 'POST',
+      body: data ? JSON.stringify(data) : undefined,
+    });
+  }
+
+  async put<T>(endpoint: string, data?: any): Promise<T> {
+    return this.request<T>(endpoint, {
+      method: 'PUT',
+      body: data ? JSON.stringify(data) : undefined,
+    });
+  }
+
+  async delete<T>(endpoint: string): Promise<T> {
+    return this.request<T>(endpoint, { method: 'DELETE' });
+  }
+}
+
+// Tipos de respuesta de la API
+export interface PLEGeneracionResponse {
+  success: boolean;
+  message: string;
+  archivo_id: string;
+  archivo_nombre: string;
+  archivo_url?: string;
+  total_registros: number;
+  errores?: string[];
+  advertencias?: string[];
+}
+
+export interface PLEPreviewResponse {
+  success: boolean;
+  archivo: {
+    nombre: string;
+    ejercicio: number;
+    mes: number;
+    ruc: string;
+    totalRegistros: number;
+  };
+  registros: PLERegistro[];
+  validaciones: PLEValidacion[];
+}
+
+export interface PLEValidacionResponse {
+  success: boolean;
+  resultados: ValidacionResultado[];
+  estadisticas: ValidacionEstadistica;
+}
+
+// Servicio principal de PLE
+export class PLEApiService {
+  private client: ApiClient;
+
+  constructor() {
+    this.client = new ApiClient(API_BASE_URL);
+  }
+
+  // Generar archivo PLE
+  async generarPLE(data: PLEGeneracionData): Promise<PLEGeneracionResponse> {
+    const payload = {
+      ejercicio: data.ejercicio,
+      mes: data.mes,
+      ruc: data.ruc,
+      razon_social: data.razonSocial,
+      formato: "TXT",
+      incluir_cabecera: data.incluirCierreEjercicio || false,
+      validar_antes_generar: true,
+      observaciones: data.observaciones || ""
+    };
+
+    return this.client.post<PLEGeneracionResponse>('/accounting/test/ple/generar', payload);
+  }
+
+  // Obtener preview de PLE
+  async obtenerPreview(archivoId: string): Promise<PLEPreviewResponse> {
+    return this.client.get<PLEPreviewResponse>(`/accounting/test/ple/preview/${archivoId}`);
+  }
+
+  // Validar datos de PLE
+  async validarPLE(data: PLEGeneracionData): Promise<PLEValidacionResponse> {
+    const payload = {
+      ejercicio: data.ejercicio,
+      mes: data.mes,
+      ruc: data.ruc,
+      razon_social: data.razonSocial,
+      formato: "TXT",
+      incluir_cabecera: data.incluirCierreEjercicio || false,
+      validar_antes_generar: true,
+      observaciones: data.observaciones || ""
+    };
+
+    return this.client.post<PLEValidacionResponse>('/accounting/test/ple/validar', payload);
+  }
+
+  // Obtener lista de archivos PLE generados
+  async obtenerArchivos(filtros?: {
+    ejercicio?: number;
+    mes?: number;
+    ruc?: string;
+    limite?: number;
+    offset?: number;
+  }): Promise<PLEArchivo[]> {
+    return this.client.get<PLEArchivo[]>('/accounting/test/ple/archivos', filtros);
+  }
+
+  // Descargar archivo PLE
+  async descargarArchivo(archivoId: string): Promise<Blob> {
+    return this.client.get<Blob>(`/accounting/test/ple/descargar/${archivoId}`);
+  }
+
+  // Eliminar archivo PLE
+  async eliminarArchivo(archivoId: string): Promise<{ success: boolean; message: string }> {
+    return this.client.delete(`/accounting/test/ple/archivos/${archivoId}`);
+  }
+
+  // Obtener estadísticas
+  async obtenerEstadisticas(ejercicio: number, mes: number): Promise<PLEEstadistica> {
+    return this.client.get<PLEEstadistica>(`/accounting/test/ple/estadisticas/${ejercicio}/${mes}`);
+  }
+
+  // Configuración
+  async obtenerConfiguracion(): Promise<PLEConfiguracion> {
+    return this.client.get<PLEConfiguracion>('/accounting/test/ple/configuracion');
+  }
+
+  async guardarConfiguracion(configuracion: PLEConfiguracion): Promise<{ success: boolean; message: string }> {
+    return this.client.put('/accounting/test/ple/configuracion', configuracion);
+  }
+
+  // Funciones de utilidad para el manejo de errores
+  static handleApiError(error: unknown): string {
+    if (error instanceof ApiError) {
+      switch (error.status) {
+        case 400:
+          return 'Datos inválidos. Por favor, revisa la información ingresada.';
+        case 401:
+          return 'No tienes autorización para realizar esta operación.';
+        case 403:
+          return 'No tienes permisos suficientes.';
+        case 404:
+          return 'El recurso solicitado no fue encontrado.';
+        case 422:
+          return 'Error de validación en los datos enviados.';
+        case 500:
+          return 'Error interno del servidor. Por favor, intenta más tarde.';
+        default:
+          return error.message;
+      }
+    }
+
+    if (error instanceof Error) {
+      return error.message;
+    }
+
+    return 'Error desconocido. Por favor, intenta más tarde.';
+  }
+
+  // Funciones auxiliares para descargas
+  static async downloadBlob(blob: Blob, filename: string): Promise<void> {
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  }
+
+  // Función para manejar descarga de archivos
+  async descargarYGuardarArchivo(archivoId: string, nombreArchivo: string): Promise<void> {
     try {
-      const validacion = await this.validarPLE(libroId);
-      
-      return {
-        listo: validacion.valido,
-        errores: [
-          ...validacion.validacion_basica.errores,
-          ...validacion.validacion_sunat.errores.filter(e => e.critico).map(e => e.mensaje)
-        ],
-        warnings: [
-          ...validacion.validacion_basica.warnings,
-          ...validacion.validacion_sunat.warnings.map(w => w.mensaje)
-        ],
-        recomendaciones: validacion.validacion_sunat.errores
-          .filter(e => e.sugerencia)
-          .map(e => e.sugerencia!)
-      };
+      const blob = await this.descargarArchivo(archivoId);
+      await PLEApiService.downloadBlob(blob, nombreArchivo);
     } catch (error) {
-      return {
-        listo: false,
-        errores: ['Error al validar el libro diario'],
-        warnings: [],
-        recomendaciones: ['Verifique que el libro diario tenga asientos válidos']
+      throw new Error(`Error al descargar archivo: ${PLEApiService.handleApiError(error)}`);
+    }
+  }
+
+  // Función específica para descargar con nombre automático desde libro diario
+  async descargarConNombreAutomatico(
+    libroId: string, 
+    ruc: string, 
+    periodo: string, 
+    formato: 'txt' | 'zip' = 'zip',
+    opciones?: any
+  ): Promise<void> {
+    try {
+      // Generar PLE primero
+      const generacionData = {
+        ejercicio: parseInt(periodo.slice(0, 4)),
+        mes: parseInt(periodo.slice(4, 6)),
+        ruc: ruc,
+        razonSocial: 'Empresa',
+        fechaInicio: `${periodo.slice(0, 4)}-${periodo.slice(4, 6)}-01`,
+        fechaFin: `${periodo.slice(0, 4)}-${periodo.slice(4, 6)}-31`,
+        incluirCierreEjercicio: false,
+        observaciones: `Generado desde libro ${libroId}`
       };
+
+      const resultado = await this.generarPLE(generacionData);
+      
+      if (resultado.success && resultado.archivo_url) {
+        // Generar nombre automático
+        const nombreArchivo = `LE${ruc}${periodo}030100${formato === 'zip' ? '1' : '0'}11.${formato}`;
+        
+        // Descargar archivo
+        const response = await fetch(resultado.archivo_url);
+        const blob = await response.blob();
+        await PLEApiService.downloadBlob(blob, nombreArchivo);
+      } else {
+        throw new Error(resultado.message || 'Error al generar el archivo PLE');
+      }
+    } catch (error) {
+      throw new Error(`Error al descargar archivo: ${PLEApiService.handleApiError(error)}`);
     }
   }
 }
 
-export default PLEApiService;
+// Instancia singleton del servicio
+export const pleApiService = new PLEApiService();
+
+// Exportar tipos importantes
+export type { ApiError };

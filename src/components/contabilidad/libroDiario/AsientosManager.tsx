@@ -409,78 +409,234 @@ const AsientosManager: React.FC<AsientosManagerProps> = (props) => {
             {logic.asientosPaginados.map((asiento) => {
               const totalDebe = asiento.detalles.reduce((sum, d) => sum + (d.debe || 0), 0);
               const totalHaber = asiento.detalles.reduce((sum, d) => sum + (d.haber || 0), 0);
+              const isExpandido = logic.isAsientoExpandido(asiento.id);
               
               return (
-                <tr key={asiento.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                  <td style={{ padding: '12px', fontSize: '14px' }}>
-                    {new Date(asiento.fecha).toLocaleDateString('es-PE')}
-                  </td>
-                  <td style={{ padding: '12px', fontSize: '14px', fontWeight: '500' }}>
-                    {asiento.numero}
-                  </td>
-                  <td style={{ padding: '12px', fontSize: '14px' }}>
-                    <div style={{ maxWidth: '300px' }}>
-                      <div style={{ fontWeight: '500', color: '#111827' }}>
-                        {asiento.descripcion}
-                      </div>
-                      <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px' }}>
-                        {asiento.detalles.length} cuenta(s)
-                      </div>
-                    </div>
-                  </td>
-                  <td style={{ 
-                    padding: '12px', 
-                    textAlign: 'right', 
-                    fontSize: '14px',
-                    fontWeight: '500',
-                    color: totalDebe > 0 ? '#059669' : '#9ca3af'
-                  }}>
-                    {totalDebe > 0 ? `S/ ${totalDebe.toFixed(2)}` : '-'}
-                  </td>
-                  <td style={{ 
-                    padding: '12px', 
-                    textAlign: 'right', 
-                    fontSize: '14px',
-                    fontWeight: '500',
-                    color: totalHaber > 0 ? '#dc2626' : '#9ca3af'
-                  }}>
-                    {totalHaber > 0 ? `S/ ${totalHaber.toFixed(2)}` : '-'}
-                  </td>
-                  <td style={{ padding: '12px', textAlign: 'center' }}>
-                    <div style={{ display: 'flex', gap: '4px', justifyContent: 'center' }}>
-                      <button
-                        onClick={() => logic.handleEditarAsiento(asiento)}
-                        style={{
-                          background: '#3b82f6',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '4px',
-                          padding: '4px 8px',
+                <React.Fragment key={asiento.id}>
+                  {/* Fila principal del asiento */}
+                  <tr 
+                    style={{ 
+                      borderBottom: '1px solid #f3f4f6',
+                      cursor: 'pointer',
+                      backgroundColor: isExpandido ? '#f8fafc' : 'transparent'
+                    }}
+                    onClick={() => logic.toggleExpandirAsiento(asiento.id)}
+                  >
+                    <td style={{ padding: '12px', fontSize: '14px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ 
+                          fontSize: '12px',
+                          color: '#6b7280',
                           cursor: 'pointer',
-                          fontSize: '12px'
-                        }}
-                        title="Editar"
-                      >
-                        ✏️
-                      </button>
-                      <button
-                        onClick={() => logic.handleEliminarAsiento(asiento.id)}
-                        style={{
-                          background: '#ef4444',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '4px',
-                          padding: '4px 8px',
-                          cursor: 'pointer',
-                          fontSize: '12px'
-                        }}
-                        title="Eliminar"
-                      >
-                        🗑️
-                      </button>
-                    </div>
-                  </td>
-                </tr>
+                          transition: 'transform 0.2s'
+                        }}>
+                          {isExpandido ? '▼' : '▶'}
+                        </span>
+                        {new Date(asiento.fecha).toLocaleDateString('es-PE')}
+                      </div>
+                    </td>
+                    <td style={{ padding: '12px', fontSize: '14px', fontWeight: '500' }}>
+                      {asiento.numero}
+                    </td>
+                    <td style={{ padding: '12px', fontSize: '14px' }}>
+                      <div style={{ maxWidth: '300px' }}>
+                        <div style={{ fontWeight: '500', color: '#111827' }}>
+                          {asiento.descripcion}
+                        </div>
+                        <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px' }}>
+                          {asiento.detalles.length} cuenta(s)
+                        </div>
+                      </div>
+                    </td>
+                    <td style={{ 
+                      padding: '12px', 
+                      textAlign: 'right', 
+                      fontSize: '14px',
+                      fontWeight: '500',
+                      color: totalDebe > 0 ? '#059669' : '#9ca3af'
+                    }}>
+                      {totalDebe > 0 ? `S/ ${totalDebe.toFixed(2)}` : '-'}
+                    </td>
+                    <td style={{ 
+                      padding: '12px', 
+                      textAlign: 'right', 
+                      fontSize: '14px',
+                      fontWeight: '500',
+                      color: totalHaber > 0 ? '#dc2626' : '#9ca3af'
+                    }}>
+                      {totalHaber > 0 ? `S/ ${totalHaber.toFixed(2)}` : '-'}
+                    </td>
+                    <td style={{ padding: '12px', textAlign: 'center' }}>
+                      <div style={{ display: 'flex', gap: '4px', justifyContent: 'center' }}>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            logic.handleEditarAsiento(asiento);
+                          }}
+                          style={{
+                            background: '#3b82f6',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '4px',
+                            padding: '4px 8px',
+                            cursor: 'pointer',
+                            fontSize: '12px'
+                          }}
+                          title="Editar"
+                        >
+                          ✏️
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            logic.handleEliminarAsiento(asiento.id);
+                          }}
+                          style={{
+                            background: '#ef4444',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '4px',
+                            padding: '4px 8px',
+                            cursor: 'pointer',
+                            fontSize: '12px'
+                          }}
+                          title="Eliminar"
+                        >
+                          🗑️
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                  
+                  {/* Fila expandida con detalles */}
+                  {isExpandido && (
+                    <tr>
+                      <td colSpan={6} style={{ 
+                        padding: '0',
+                        background: '#f8fafc',
+                        borderBottom: '2px solid #e2e8f0'
+                      }}>
+                        <div style={{ 
+                          padding: '16px 24px',
+                          background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)'
+                        }}>
+                          <h4 style={{ 
+                            margin: '0 0 12px 0',
+                            fontSize: '14px',
+                            fontWeight: '600',
+                            color: '#475569'
+                          }}>
+                            📋 Detalle del Asiento #{asiento.numero}
+                          </h4>
+                          
+                          <div style={{ 
+                            background: 'white',
+                            borderRadius: '8px',
+                            overflow: 'hidden',
+                            border: '1px solid #e2e8f0'
+                          }}>
+                            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                              <thead>
+                                <tr style={{ background: '#f1f5f9' }}>
+                                  <th style={{ 
+                                    padding: '8px 12px',
+                                    textAlign: 'left',
+                                    fontSize: '12px',
+                                    fontWeight: '600',
+                                    color: '#475569',
+                                    borderBottom: '1px solid #e2e8f0'
+                                  }}>
+                                    Código
+                                  </th>
+                                  <th style={{ 
+                                    padding: '8px 12px',
+                                    textAlign: 'left',
+                                    fontSize: '12px',
+                                    fontWeight: '600',
+                                    color: '#475569',
+                                    borderBottom: '1px solid #e2e8f0'
+                                  }}>
+                                    Denominación
+                                  </th>
+                                  <th style={{ 
+                                    padding: '8px 12px',
+                                    textAlign: 'right',
+                                    fontSize: '12px',
+                                    fontWeight: '600',
+                                    color: '#475569',
+                                    borderBottom: '1px solid #e2e8f0'
+                                  }}>
+                                    Debe
+                                  </th>
+                                  <th style={{ 
+                                    padding: '8px 12px',
+                                    textAlign: 'right',
+                                    fontSize: '12px',
+                                    fontWeight: '600',
+                                    color: '#475569',
+                                    borderBottom: '1px solid #e2e8f0'
+                                  }}>
+                                    Haber
+                                  </th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {asiento.detalles.map((detalle, index) => (
+                                  <tr key={index} style={{ 
+                                    borderBottom: index < asiento.detalles.length - 1 ? '1px solid #f1f5f9' : 'none'
+                                  }}>
+                                    <td style={{ 
+                                      padding: '8px 12px',
+                                      fontSize: '13px',
+                                      fontFamily: 'monospace',
+                                      color: '#374151'
+                                    }}>
+                                      {detalle.codigoCuenta}
+                                    </td>
+                                    <td style={{ 
+                                      padding: '8px 12px',
+                                      fontSize: '13px',
+                                      color: '#374151'
+                                    }}>
+                                      {detalle.denominacionCuenta}
+                                    </td>
+                                    <td style={{ 
+                                      padding: '8px 12px',
+                                      textAlign: 'right',
+                                      fontSize: '13px',
+                                      fontWeight: '500',
+                                      color: detalle.debe && detalle.debe > 0 ? '#059669' : '#9ca3af'
+                                    }}>
+                                      {detalle.debe && detalle.debe > 0 ? `S/ ${detalle.debe.toFixed(2)}` : '-'}
+                                    </td>
+                                    <td style={{ 
+                                      padding: '8px 12px',
+                                      textAlign: 'right',
+                                      fontSize: '13px',
+                                      fontWeight: '500',
+                                      color: detalle.haber && detalle.haber > 0 ? '#dc2626' : '#9ca3af'
+                                    }}>
+                                      {detalle.haber && detalle.haber > 0 ? `S/ ${detalle.haber.toFixed(2)}` : '-'}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                          
+                          <div style={{ 
+                            marginTop: '8px',
+                            fontSize: '12px',
+                            color: '#6b7280',
+                            textAlign: 'right'
+                          }}>
+                            Total: S/ {totalDebe.toFixed(2)} (Debe) | S/ {totalHaber.toFixed(2)} (Haber)
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
               );
             })}
           </tbody>
@@ -557,6 +713,7 @@ const AsientosManager: React.FC<AsientosManagerProps> = (props) => {
             <FormularioAsiento
               libroId={libroId}
               asientoEditando={logic.asientoEditando}
+              asientosExistentes={props.asientos}
               onGuardar={async (asiento) => {
                 if (logic.asientoEditando && props.onEditarAsiento) {
                   await props.onEditarAsiento(logic.asientoEditando.id, asiento);

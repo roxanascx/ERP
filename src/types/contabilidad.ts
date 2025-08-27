@@ -164,7 +164,8 @@ export type ModuloContabilidad =
   | 'estados-financieros'
   | 'registro-ventas'
   | 'registro-compras'
-  | 'activos-fijos';
+  | 'activos-fijos'
+  | 'ple';
 
 export interface LibroContableConfig {
   modulo: ModuloContabilidad;

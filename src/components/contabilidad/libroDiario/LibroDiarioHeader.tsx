@@ -35,7 +35,7 @@ const LibroDiarioHeader: React.FC<LibroDiarioHeaderProps> = ({
 
   const añosDisponibles = () => {
     const añoActual = new Date().getFullYear();
-    const años = [];
+    const años: string[] = [];
     for (let i = añoActual; i >= añoActual - 5; i--) {
       años.push(i.toString());
     }

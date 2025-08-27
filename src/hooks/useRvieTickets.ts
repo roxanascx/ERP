@@ -68,8 +68,8 @@ export function useRvieTickets(options: UseRvieTicketsOptions): UseRvieTicketsRe
   const [verificandoSesion, setVerificandoSesion] = useState(false);
 
   // ========== REFERENCIAS ==========
-  const intervalRef = useRef<number | null>(null);
-  const monitoringRefs = useRef<Map<string, number>>(new Map());
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const monitoringRefs = useRef<Map<string, NodeJS.Timeout>>(new Map());
 
   // ========== UTILIDADES ==========
   const setErrorSafe = useCallback((errorMsg: string) => {

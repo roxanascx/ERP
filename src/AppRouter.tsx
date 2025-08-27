@@ -20,8 +20,10 @@ import SociosNegocioPage from './pages/socios-negocio/SociosNegocioPage';
 import ContabilidadPage from './pages/contabilidad/ContabilidadPage';
 import PlanContablePage from './pages/contabilidad/PlanContablePage';
 import LibroDiarioPage from './pages/contabilidad/LibroDiarioPage';
+import PLEPage from './pages/contabilidad/PLEPage';
 import TestLogoutPage from './pages/TestLogoutPage';
 import PLETestPage from './pages/PLETestPage';
+import PLEIntegrationTest from './pages/test/PLEIntegrationTest';
 import EmpresaProtectedRoute from './components/EmpresaProtectedRoute';
 import { RceDataProvider } from './contexts/RceDataContext';
 import RceIntegrationTest from './pages/test/RceIntegrationTest';
@@ -272,6 +274,7 @@ const AppRouter: React.FC = () => {
           {/* Rutas anidadas de contabilidad */}
           <Route path="plan-contable" element={<PlanContablePage />} />
           <Route path="libro-diario/:empresaId" element={<LibroDiarioPage />} />
+          <Route path="ple" element={<PLEPage />} />
         </Route>
 
         {/* SIRE Legacy - mantener compatibilidad temporal */}
@@ -315,6 +318,14 @@ const AppRouter: React.FC = () => {
           path="/test-ple" 
           element={
             isSignedIn ? <PLETestPage /> : <Navigate to="/" replace />
+          } 
+        />
+
+        {/* 🧪 Página de prueba integración PLE */}
+        <Route 
+          path="/test-ple-integration" 
+          element={
+            isSignedIn ? <PLEIntegrationTest /> : <Navigate to="/" replace />
           } 
         />
         

@@ -147,7 +147,7 @@ export const useRce = (options: UseRceOptions): UseRceReturn => {
   
   // Control
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
-  const intervalRef = useRef<number | null>(null);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const abortController = useRef<AbortController | null>(null);
 
   // ========================================

@@ -9,6 +9,7 @@ import SelectorPlantillas from './SelectorPlantillas';
 interface FormularioAsientoProps {
   libroId: string;
   asientoEditando?: AsientoContable | null;
+  asientosExistentes?: AsientoContable[];
   onGuardar: (asiento: Omit<AsientoContable, 'id'>) => Promise<void>;
   onCerrar: () => void;
 }
@@ -16,9 +17,17 @@ interface FormularioAsientoProps {
 const FormularioAsiento: React.FC<FormularioAsientoProps> = ({
   libroId,
   asientoEditando,
+  asientosExistentes = [],
   onGuardar,
   onCerrar
 }) => {
+  console.log('🏗️ FormularioAsiento - Renderizando con props:', {
+    libroId,
+    asientoEditando: asientoEditando?.numero || 'NUEVO',
+    asientosExistentesCount: asientosExistentes.length,
+    asientosExistentesNumeros: asientosExistentes.map(a => a.numero)
+  });
+
   const [formData, setFormData] = useState({
     numero: '',
     fecha: new Date().toISOString().split('T')[0],
@@ -35,8 +44,60 @@ const FormularioAsiento: React.FC<FormularioAsientoProps> = ({
   // ❌ ELIMINADO: mostrarEjemplos ya no es necesario
   const [cuentasDisponibles, setCuentasDisponibles] = useState<CuentaContable[]>([]);
 
+  // Función para calcular el siguiente número correlativo
+  const calcularSiguienteNumero = (): string => {
+    console.log('🔢 Calculando siguiente número correlativo');
+    console.log('📋 Asientos existentes recibidos:', asientosExistentes?.length || 0);
+    
+    // Verificar si hay asientos existentes
+    if (!asientosExistentes || asientosExistentes.length === 0) {
+      console.log('✅ No hay asientos existentes, iniciando desde 0001');
+      return '0001';
+    }
+
+    // Obtener todos los números de asientos existentes y procesarlos
+    const numerosValidos = asientosExistentes
+      .map(asiento => {
+        console.log('🔍 Procesando asiento:', { numero: asiento.numero });
+        return asiento.numero;
+      })
+      .filter(numero => {
+        // Filtrar solo números válidos (pueden tener ceros a la izquierda)
+        const esNumerico = /^\d+$/.test(numero);
+        console.log(`🔎 Número "${numero}" es válido:`, esNumerico);
+        return esNumerico;
+      })
+      .map(numero => parseInt(numero, 10))
+      .filter(numero => !isNaN(numero) && numero > 0) // Excluir números inválidos o cero
+      .sort((a, b) => a - b); // Ordenar de menor a mayor
+
+    console.log('📊 Números válidos encontrados:', numerosValidos);
+
+    // Si no hay números válidos, empezar desde 0001
+    if (numerosValidos.length === 0) {
+      console.log('✅ No hay números válidos, iniciando desde 0001');
+      return '0001';
+    }
+
+    // Encontrar el número más alto y sumar 1
+    const numeroMasAlto = Math.max(...numerosValidos);
+    const siguienteNumero = numeroMasAlto + 1;
+    const numeroFormateado = siguienteNumero.toString().padStart(4, '0');
+
+    console.log(`✅ Siguiente número calculado: ${numeroFormateado}`);
+    console.log(`📈 Basado en número más alto existente: ${numeroMasAlto}`);
+
+    return numeroFormateado;
+  };
+
   useEffect(() => {
+    console.log('🔄 useEffect - Inicializando formulario');
+    console.log('📝 Modo edición:', !!asientoEditando);
+    console.log('📋 Asientos existentes:', asientosExistentes?.length || 0);
+    console.log('🔍 Lista de asientos existentes:', asientosExistentes?.map(a => ({ numero: a.numero, id: a.id })) || []);
+    
     if (asientoEditando) {
+      console.log('✏️ Cargando datos para edición:', asientoEditando.numero);
       setFormData({
         numero: asientoEditando.numero,
         fecha: asientoEditando.fecha,
@@ -49,11 +110,24 @@ const FormularioAsiento: React.FC<FormularioAsientoProps> = ({
             ]
       });
     } else {
+      console.log('➕ Creando nuevo asiento - calculando número correlativo');
+      
       // Generar número correlativo automático
-      const siguienteNumero = String(Date.now()).slice(-3).padStart(3, '0');
-      setFormData(prev => ({ ...prev, numero: siguienteNumero }));
+      const siguienteNumero = calcularSiguienteNumero();
+      console.log(`🎯 Número asignado al nuevo asiento: ${siguienteNumero}`);
+      
+      setFormData(prev => ({ 
+        ...prev, 
+        numero: siguienteNumero,
+        // Resetear otros campos para nuevo asiento
+        descripcion: '',
+        detalles: [
+          { codigoCuenta: '', denominacionCuenta: '', debe: 0, haber: 0 },
+          { codigoCuenta: '', denominacionCuenta: '', debe: 0, haber: 0 }
+        ]
+      }));
     }
-  }, [asientoEditando]);
+  }, [asientoEditando, asientosExistentes]);
 
   // Cargar cuentas disponibles
   useEffect(() => {
@@ -187,6 +261,19 @@ const FormularioAsiento: React.FC<FormularioAsientoProps> = ({
     if (!formData.fecha) errores.push('Fecha es requerida');
     if (!formData.descripcion) errores.push('Descripción es requerida');
     if (formData.detalles.length < 2) errores.push('Debe tener al menos 2 detalles');
+
+    // Validar que el número no esté duplicado (solo si no estamos editando)
+    if (!asientoEditando && asientosExistentes) {
+      const numeroExistente = asientosExistentes.find(asiento => asiento.numero === formData.numero);
+      if (numeroExistente) {
+        errores.push(`El número ${formData.numero} ya existe. Use un número diferente.`);
+      }
+    }
+
+    // Validar que el número sea un formato válido
+    if (formData.numero && !/^\d{4}$/.test(formData.numero)) {
+      errores.push('El número debe tener exactamente 4 dígitos (ej: 0001)');
+    }
 
     // Validar cada detalle
     formData.detalles.forEach((detalle, index) => {
@@ -391,25 +478,75 @@ const FormularioAsiento: React.FC<FormularioAsientoProps> = ({
                   <span style={{ fontSize: '16px' }}>🔢</span>
                   Número de Asiento:
                 </label>
-                <input
-                  type="text"
-                  value={formData.numero}
-                  onChange={(e) => setFormData(prev => ({ ...prev, numero: e.target.value }))}
-                  style={{
-                    width: '100%',
-                    padding: '12px 16px',
-                    border: '2px solid #e5e7eb',
-                    borderRadius: '8px',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    outline: 'none',
-                    transition: 'border-color 0.2s',
-                    fontFamily: 'monospace'
-                  }}
-                  placeholder="Ej: 001, 002, 003..."
-                  onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
-                  onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
-                />
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <input
+                    type="text"
+                    value={formData.numero}
+                    onChange={(e) => setFormData(prev => ({ ...prev, numero: e.target.value }))}
+                    style={{
+                      flex: 1,
+                      padding: '12px 16px',
+                      border: '2px solid #e5e7eb',
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      outline: 'none',
+                      transition: 'border-color 0.2s',
+                      fontFamily: 'monospace',
+                      backgroundColor: asientoEditando ? 'white' : '#f8fafc'
+                    }}
+                    placeholder={asientoEditando ? "Número del asiento" : "Auto-generado: 0001, 0002, 0003..."}
+                    onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
+                    onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
+                    readOnly={!asientoEditando} // Solo editable cuando se está editando un asiento existente
+                  />
+                  {!asientoEditando && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const nuevoNumero = calcularSiguienteNumero();
+                        setFormData(prev => ({ ...prev, numero: nuevoNumero }));
+                        console.log('🔄 Número regenerado:', nuevoNumero);
+                      }}
+                      style={{
+                        padding: '12px',
+                        background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        fontSize: '14px',
+                        fontWeight: '600',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        minWidth: 'auto',
+                        transition: 'all 0.2s'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = 'linear-gradient(135deg, #059669 0%, #047857 100%)';
+                        e.currentTarget.style.transform = 'translateY(-1px)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = 'linear-gradient(135deg, #10b981 0%, #059669 100%)';
+                        e.currentTarget.style.transform = 'translateY(0)';
+                      }}
+                      title="Regenerar número automáticamente"
+                    >
+                      🔄
+                    </button>
+                  )}
+                </div>
+                {!asientoEditando && (
+                  <div style={{
+                    fontSize: '12px',
+                    color: '#6b7280',
+                    marginTop: '4px',
+                    fontStyle: 'italic'
+                  }}>
+                    ✨ Número correlativo generado automáticamente. Haga clic en 🔄 para regenerar.
+                  </div>
+                )}
               </div>
 
               <div>
