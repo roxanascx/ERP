@@ -1,36 +1,45 @@
 import React, { useState, useEffect } from 'react';
 import type { LibroDiario } from '../../../types/libroDiario';
-import type { 
-  PLEValidationResult, 
-  PLEExportOptions, 
-  PLEProcessStatus
-} from '../../../types/pleTypes';
-import { PLE_DEFAULT_OPTIONS } from '../../../types/pleTypes';
-import { pleApiService } from '../../../services/pleApi';
+import type { AsientoContable } from '../../../types/libroDiario';
+import type { Empresa } from '../../../types/empresa';
+import { 
+  pleApiUnified, 
+  type PLEGeneracionRequest, 
+  type PLEGeneracionResponse,
+  type PLEValidacionRequest,
+  type PLEValidacionResponse,
+  type PLEContextoResponse
+} from '../../../services/pleApiUnified';
 
 interface PLEExportManagerProps {
   libro: LibroDiario;
+  empresa?: Empresa;
+  asientos?: AsientoContable[];
   onClose?: () => void;
-  onSuccess?: (mensaje: string) => void;
+  onSuccess?: (archivo: PLEGeneracionResponse) => void;
   onError?: (error: string) => void;
 }
 
 interface PLEPeriodoConfig {
-  año: number;
+  ejercicio: number;
   mes: number;
   descripcion: string;
 }
 
+type PLEProcessStatus = 'idle' | 'loading-context' | 'validating' | 'generating' | 'downloading' | 'success' | 'error';
+
 const PLEExportManager: React.FC<PLEExportManagerProps> = ({
   libro,
+  empresa,
+  asientos,
   onClose,
   onSuccess,
   onError
 }) => {
   // Estados principales
   const [estado, setEstado] = useState<PLEProcessStatus>('idle');
-  const [validacionResult, setValidacionResult] = useState<PLEValidationResult | null>(null);
-  const [opciones, setOpciones] = useState<PLEExportOptions>(PLE_DEFAULT_OPTIONS);
+  const [validacionResult, setValidacionResult] = useState<PLEValidacionResponse | null>(null);
+  const [contextoLibro, setContextoLibro] = useState<PLEContextoResponse | null>(null);
   const [mostrarOpciones, setMostrarOpciones] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
@@ -38,107 +47,90 @@ const PLEExportManager: React.FC<PLEExportManagerProps> = ({
   const [periodoConfig, setPeriodoConfig] = useState<PLEPeriodoConfig>(() => {
     const fechaActual = new Date();
     return {
-      año: fechaActual.getFullYear(),
+      ejercicio: fechaActual.getFullYear(),
       mes: fechaActual.getMonth() + 1,
       descripcion: `${fechaActual.getFullYear()}-${String(fechaActual.getMonth() + 1).padStart(2, '0')}`
     };
   });
 
-  // Auto-validar al montar el componente
+  // Auto-cargar contexto y validar al montar el componente
   useEffect(() => {
-    validarLibro();
+    cargarContextoYValidar();
   }, [libro.id]);
 
-  const validarLibro = async () => {
+  const cargarContextoYValidar = async () => {
     if (!libro.id) return;
+    setEstado('loading-context');
+    setError(null);
+
+    try {
+      // 1. Cargar contexto automático del libro
+      const contexto = await pleApiUnified.obtenerContexto(libro.id);
+      setContextoLibro(contexto);
+      
+      // 2. Actualizar configuración de período con datos del contexto
+      setPeriodoConfig({
+        ejercicio: contexto.ejercicio,
+        mes: contexto.mes,
+        descripcion: `${contexto.ejercicio}-${String(contexto.mes).padStart(2, '0')}`
+      });
+
+      // 3. Validar datos para PLE
+      await validarDatosParaPLE();
+      
+    } catch (error: any) {
+      console.error('Error cargando contexto:', error);
+      setError(error.message || 'Error al cargar contexto del libro');
+      setEstado('error');
+      onError?.(error.message || 'Error al cargar contexto del libro');
+    }
+  };
+
+  const validarDatosParaPLE = async () => {
     setEstado('validating');
     setError(null);
 
     try {
-      // Crear datos de generación a partir del libro y configuración
-      const datosGeneracion = {
-        ejercicio: periodoConfig.año,
-        mes: periodoConfig.mes,
-        ruc: libro.ruc,
-        razonSocial: libro.razonSocial || 'Empresa',
-        fechaInicio: `${periodoConfig.año}-${periodoConfig.mes.toString().padStart(2, '0')}-01`,
-        fechaFin: `${periodoConfig.año}-${periodoConfig.mes.toString().padStart(2, '0')}-31`,
-        incluirCierreEjercicio: false,
-        observaciones: ''
+      if (!libro.id) {
+        throw new Error('No hay libro diario disponible');
+      }
+
+      // Preparar datos para validación
+      const datosValidacion: PLEValidacionRequest = {
+        libro_diario_id: libro.id,
+        validar_estructura: true,
+        validar_balanceo: true,
+        validar_sunat: true
       };
 
-      const resultado = await pleApiService.validarPLE(datosGeneracion);
-      
-      // Mapear el resultado al formato esperado por este componente
-      const resultadoMapeado: PLEValidationResult = {
-        exito: resultado.success,
-        libro_id: libro.id,
-        valido: resultado.resultados.every(r => r.tipo !== 'error'),
-        validacion_basica: {
-          valido: true,
-          total_asientos: 0,
-          total_debe: '0.00',
-          total_haber: '0.00',
-          balanceado: true,
-          errores: [],
-          warnings: []
-        },
-        validacion_sunat: {
-          valido: resultado.resultados.every(r => r.tipo !== 'error'),
-          total_registros: resultado.estadisticas.totalRegistros,
-          registros_validados: resultado.estadisticas.registrosValidos,
-          errores: resultado.resultados.filter(r => r.tipo === 'error').map(r => ({
-            codigo: r.codigo,
-            tabla: '',
-            campo: r.campo || '',
-            valor: '',
-            mensaje: r.mensaje,
-            critico: r.tipo === 'error',
-            sugerencia: r.sugerencia
-          })),
-          warnings: resultado.resultados.filter(r => r.tipo === 'advertencia').map(r => ({
-            codigo: r.codigo,
-            tabla: '',
-            campo: r.campo || '',
-            valor: '',
-            mensaje: r.mensaje,
-            sugerencia: r.sugerencia
-          })),
-          datos_enriquecidos: 0,
-          estadisticas: {
-            total_errores: resultado.estadisticas.registrosConErrores,
-            total_warnings: resultado.estadisticas.registrosConAdvertencias,
-            errores_criticos: resultado.estadisticas.registrosConErrores,
-            porcentaje_validado: resultado.estadisticas.porcentajeValidez,
-            cuentas_validadas: resultado.estadisticas.registrosValidos,
-            tiempo_validacion: 0
-          },
-          tiempo_validacion: 0
-        }
-      };
-      
-      setValidacionResult(resultadoMapeado);
+      const resultado = await pleApiUnified.validarPLE(datosValidacion);
+      setValidacionResult(resultado);
       setEstado('idle');
-    } catch (err: any) {
-      const errorMsg = err.response?.data?.detail || err.message || 'Error al validar el libro';
-      setError(errorMsg);
+
+    } catch (error: any) {
+      console.error('Error validando datos:', error);
+      setError(error.message || 'Error al validar datos para PLE');
       setEstado('error');
-      onError?.(errorMsg);
+      onError?.(error.message || 'Error al validar datos para PLE');
     }
   };
 
-  const exportarPLE = async (formato: 'txt' | 'zip' = 'zip') => {
-    if (!libro.id) return;
+  const exportarPLE = async (formato: 'txt' | 'excel' = 'txt') => {
+    if (!contextoLibro) {
+      setError('No hay contexto del libro disponible');
+      return;
+    }
     setEstado('generating');
     setError(null);
 
     try {
+      // Verificar validaciones si existen
       if (validacionResult && !validacionResult.valido) {
-        const erroresCriticos = validacionResult.validacion_sunat.errores.filter(e => e.critico);
+        const tieneErrores = validacionResult.errores.length > 0;
         
-        if (erroresCriticos.length > 0 && !opciones.fallar_en_errores_criticos) {
+        if (tieneErrores) {
           const confirmar = window.confirm(
-            `Se encontraron ${erroresCriticos.length} errores críticos. ¿Desea continuar con la exportación?`
+            `Se encontraron ${validacionResult.errores.length} errores. ¿Desea continuar con la exportación?`
           );
           
           if (!confirmar) {
@@ -148,24 +140,29 @@ const PLEExportManager: React.FC<PLEExportManagerProps> = ({
         }
       }
 
-      setEstado('downloading');
-      
-      // Usar el período seleccionado por el usuario
-      const periodoFormateado = periodoConfig.descripcion.replace('-', '');
-      
-      await pleApiService.descargarConNombreAutomatico(
-        libro.id,
-        libro.ruc,
-        periodoFormateado,
-        formato
-      );
+      // Preparar datos para generación
+      const datosGeneracion: PLEGeneracionRequest = {
+        libro_diario_id: libro.id,
+        ejercicio: periodoConfig.ejercicio,
+        mes: periodoConfig.mes,
+        validar_antes_generar: true,
+        incluir_metadatos: true,
+        generar_zip: true,
+        descargar_directo: false
+      };
 
-      setEstado('success');
-      onSuccess?.(`Archivo PLE descargado exitosamente (${formato.toUpperCase()}) para el período ${periodoConfig.descripcion}`);
-      
-      setTimeout(() => {
-        if (onClose) onClose();
-      }, 2000);
+      const resultado = await pleApiUnified.generarPLE(datosGeneracion);
+
+      if (resultado.success && resultado.archivo_nombre) {
+        setEstado('success');
+        onSuccess?.(resultado);
+        
+        setTimeout(() => {
+          if (onClose) onClose();
+        }, 2000);
+      } else {
+        throw new Error('Error al generar archivo PLE');
+      }
 
     } catch (err: any) {
       const errorMsg = err.response?.data?.detail || err.message || 'Error al exportar PLE';
@@ -175,7 +172,45 @@ const PLEExportManager: React.FC<PLEExportManagerProps> = ({
     }
   };
 
-  const renderIndicadorProgreso = () => {
+  const descargarPLEDirecto = async () => {
+    if (!libro.id) {
+      setError('No hay libro diario disponible');
+      return;
+    }
+    setEstado('downloading');
+    setError(null);
+
+    try {
+      // Descargar archivo ZIP directamente
+      const blob = await pleApiUnified.descargarPLE(
+        libro.id,
+        periodoConfig.ejercicio,
+        periodoConfig.mes
+      );
+      
+      // Crear nombre del archivo basado en el contexto
+      const ruc = contextoLibro?.ruc || '00000000000';
+      const ejercicio = periodoConfig.ejercicio;
+      const mes = String(periodoConfig.mes).padStart(2, '0');
+      const nombreArchivo = `LE${ruc}${ejercicio}${mes}050100001.zip`;
+      
+      // Descargar archivo
+      pleApiUnified.descargarArchivo(blob, nombreArchivo);
+
+      setEstado('success');
+      setTimeout(() => {
+        if (onClose) onClose();
+      }, 1500);
+
+    } catch (err: any) {
+      const errorMsg = err.response?.data?.detail || err.message || 'Error al descargar PLE';
+      setError(errorMsg);
+      setEstado('error');
+      onError?.(errorMsg);
+    }
+  };
+
+  const renderEstadoProgress = () => {
     const estadoTexto = {
       idle: 'Listo',
       validating: 'Validando...',
@@ -228,9 +263,15 @@ const PLEExportManager: React.FC<PLEExportManagerProps> = ({
   const renderEstadoGeneral = () => {
     if (!validacionResult) return null;
 
-    const { valido, validacion_basica, validacion_sunat } = validacionResult;
-    const erroresCriticos = validacion_sunat.errores.filter(e => e.critico).length;
-    const totalWarnings = validacion_basica.warnings.length + validacion_sunat.warnings.length;
+    const valido = validacionResult.valido;
+    const erroresBasicos = validacionResult.validacion_basica?.errores || [];
+    const erroresSunat = validacionResult.validacion_sunat?.errores || [];
+    const warningsBasicos = validacionResult.validacion_basica?.warnings || [];
+    const warningsSunat = validacionResult.validacion_sunat?.warnings || [];
+    
+    const erroresCriticos = erroresSunat.filter(e => e.critico).length;
+    const totalWarnings = warningsBasicos.length + warningsSunat.length;
+    const totalErrores = erroresBasicos.length + erroresSunat.length;
 
     return (
       <div style={{
@@ -251,10 +292,13 @@ const PLEExportManager: React.FC<PLEExportManagerProps> = ({
         </div>
         
         <div style={{ fontSize: '14px', color: '#374151' }}>
-          <p>📊 <strong>Asientos:</strong> {validacion_basica.total_asientos}</p>
-          <p>💰 <strong>Balance:</strong> {validacion_basica.balanceado ? 'Balanceado ✅' : 'Desbalanceado ❌'}</p>
+          <p>📊 <strong>Asientos:</strong> {validacionResult.validacion_basica?.total_asientos || 0}</p>
+          <p>💰 <strong>Balance:</strong> {validacionResult.validacion_basica?.balanceado ? 'Balanceado ✅' : 'Desbalanceado ❌'}</p>
           {erroresCriticos > 0 && (
             <p style={{ color: '#dc2626' }}>🚨 <strong>Errores críticos:</strong> {erroresCriticos}</p>
+          )}
+          {totalErrores > 0 && (
+            <p style={{ color: '#dc2626' }}>❌ <strong>Total errores:</strong> {totalErrores}</p>
           )}
           {totalWarnings > 0 && (
             <p style={{ color: '#d97706' }}>⚠️ <strong>Advertencias:</strong> {totalWarnings}</p>
@@ -267,7 +311,20 @@ const PLEExportManager: React.FC<PLEExportManagerProps> = ({
   const renderValidacionDetallada = () => {
     if (!validacionResult || !mostrarOpciones) return null;
 
-    const { validacion_basica, validacion_sunat } = validacionResult;
+    const erroresBasicos = validacionResult.validacion_basica?.errores || [];
+    const erroresSunat = validacionResult.validacion_sunat?.errores || [];
+    const warningsBasicos = validacionResult.validacion_basica?.warnings || [];
+    const warningsSunat = validacionResult.validacion_sunat?.warnings || [];
+    
+    const todosLosErrores = [
+      ...erroresBasicos,
+      ...erroresSunat.map(e => e.mensaje)
+    ];
+    
+    const todasLasAdvertencias = [
+      ...warningsBasicos,
+      ...warningsSunat.map(w => w.mensaje)
+    ];
 
     return (
       <div style={{
@@ -282,47 +339,39 @@ const PLEExportManager: React.FC<PLEExportManagerProps> = ({
           fontSize: '14px',
           fontWeight: '600'
         }}>
-          📋 Detalle de Validación
+          � Detalles de Validación
         </div>
         
         <div style={{ padding: '16px' }}>
-          {validacion_basica.errores.length > 0 && (
+          {todosLosErrores.length > 0 && (
             <div style={{ marginBottom: '12px' }}>
-              <h5 style={{ color: '#dc2626', marginBottom: '8px' }}>❌ Errores Básicos:</h5>
-              {validacion_basica.errores.map((error, index) => (
+              <h5 style={{ color: '#dc2626', marginBottom: '8px' }}>❌ Errores ({todosLosErrores.length}):</h5>
+              {todosLosErrores.slice(0, 5).map((error, index) => (
                 <p key={index} style={{ margin: '4px 0', fontSize: '13px', color: '#dc2626' }}>
                   • {error}
                 </p>
               ))}
-            </div>
-          )}
-
-          {validacion_sunat.errores.length > 0 && (
-            <div style={{ marginBottom: '12px' }}>
-              <h5 style={{ color: '#dc2626', marginBottom: '8px' }}>🚨 Errores SUNAT:</h5>
-              {validacion_sunat.errores.slice(0, 5).map((error, index) => (
-                <p key={index} style={{ margin: '4px 0', fontSize: '13px', color: error.critico ? '#dc2626' : '#d97706' }}>
-                  • <strong>{error.tabla}:</strong> {error.mensaje} {error.critico ? '(Crítico)' : ''}
-                </p>
-              ))}
-              {validacion_sunat.errores.length > 5 && (
+              {todosLosErrores.length > 5 && (
                 <p style={{ fontSize: '12px', color: '#6b7280' }}>
-                  ... y {validacion_sunat.errores.length - 5} errores más
+                  ... y {todosLosErrores.length - 5} errores más
                 </p>
               )}
             </div>
           )}
 
-          {(validacion_basica.warnings.length > 0 || validacion_sunat.warnings.length > 0) && (
+          {todasLasAdvertencias.length > 0 && (
             <div>
-              <h5 style={{ color: '#d97706', marginBottom: '8px' }}>⚠️ Advertencias:</h5>
-              {[...validacion_basica.warnings, ...validacion_sunat.warnings.map(w => w.mensaje)]
-                .slice(0, 3)
-                .map((warning, index) => (
-                  <p key={index} style={{ margin: '4px 0', fontSize: '13px', color: '#d97706' }}>
-                    • {warning}
-                  </p>
-                ))}
+              <h5 style={{ color: '#d97706', marginBottom: '8px' }}>⚠️ Advertencias ({todasLasAdvertencias.length}):</h5>
+              {todasLasAdvertencias.slice(0, 3).map((warning, index) => (
+                <p key={index} style={{ margin: '4px 0', fontSize: '13px', color: '#d97706' }}>
+                  • {warning}
+                </p>
+              ))}
+              {todasLasAdvertencias.length > 3 && (
+                <p style={{ fontSize: '12px', color: '#6b7280' }}>
+                  ... y {todasLasAdvertencias.length - 3} advertencias más
+                </p>
+              )}
             </div>
           )}
         </div>
@@ -331,85 +380,131 @@ const PLEExportManager: React.FC<PLEExportManagerProps> = ({
   };
 
   const renderBotonesAccion = () => {
-    const puedeExportar = validacionResult?.valido || !opciones.fallar_en_errores_criticos;
+    const puedeGenerar = estado === 'idle' && validacionResult?.valido;
+    const puedeDescargar = estado === 'idle';
 
     return (
-      <div style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
+      <div style={{
+        display: 'flex',
+        gap: '12px',
+        marginTop: '20px',
+        flexWrap: 'wrap'
+      }}>
+        {/* Botón de Descarga Directa - PRINCIPAL */}
+        <button
+          onClick={descargarPLEDirecto}
+          disabled={!puedeDescargar}
+          style={{
+            flex: '1',
+            minWidth: '200px',
+            padding: '14px 20px',
+            backgroundColor: puedeDescargar ? '#10b981' : '#d1d5db',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            fontSize: '16px',
+            fontWeight: '600',
+            cursor: puedeDescargar ? 'pointer' : 'not-allowed',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '8px',
+            transition: 'all 0.2s ease'
+          }}
+          title="Descargar archivo PLE ZIP directamente"
+        >
+          {estado === 'downloading' ? (
+            <>
+              <div style={{
+                width: '16px',
+                height: '16px',
+                border: '2px solid white',
+                borderTop: '2px solid transparent',
+                borderRadius: '50%',
+                animation: 'spin 1s linear infinite'
+              }} />
+              Descargando...
+            </>
+          ) : (
+            <>
+              📥 Descargar ZIP PLE
+            </>
+          )}
+        </button>
+
+        {/* Botón de Generar (proceso en 2 pasos) */}
         <button
           onClick={() => exportarPLE('txt')}
-          disabled={estado !== 'idle' || !puedeExportar}
+          disabled={!puedeGenerar}
           style={{
-            flex: 1,
-            padding: '12px 16px',
-            borderRadius: '8px',
-            border: 'none',
-            backgroundColor: puedeExportar ? '#3b82f6' : '#9ca3af',
+            padding: '12px 18px',
+            backgroundColor: puedeGenerar ? '#3b82f6' : '#d1d5db',
             color: 'white',
+            border: 'none',
+            borderRadius: '8px',
             fontSize: '14px',
             fontWeight: '500',
-            cursor: puedeExportar ? 'pointer' : 'not-allowed',
+            cursor: puedeGenerar ? 'pointer' : 'not-allowed',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center',
-            gap: '8px'
+            gap: '6px'
           }}
+          title="Generar archivo PLE (2 pasos)"
         >
-          📄 Descargar TXT
+          {estado === 'generating' ? (
+            <>
+              <div style={{
+                width: '14px',
+                height: '14px',
+                border: '2px solid white',
+                borderTop: '2px solid transparent',
+                borderRadius: '50%',
+                animation: 'spin 1s linear infinite'
+              }} />
+              Generando...
+            </>
+          ) : (
+            <>
+              🔄 Generar PLE
+            </>
+          )}
         </button>
 
+        {/* Botón de Re-validación */}
         <button
-          onClick={() => exportarPLE('zip')}
-          disabled={estado !== 'idle' || !puedeExportar}
-          style={{
-            flex: 1,
-            padding: '12px 16px',
-            borderRadius: '8px',
-            border: 'none',
-            backgroundColor: puedeExportar ? '#10b981' : '#9ca3af',
-            color: 'white',
-            fontSize: '14px',
-            fontWeight: '500',
-            cursor: puedeExportar ? 'pointer' : 'not-allowed',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '8px'
-          }}
-        >
-          📦 Descargar ZIP
-        </button>
-
-        <button
-          onClick={() => setMostrarOpciones(!mostrarOpciones)}
-          style={{
-            padding: '12px',
-            borderRadius: '8px',
-            border: '1px solid #d1d5db',
-            backgroundColor: mostrarOpciones ? '#f3f4f6' : 'white',
-            color: '#374151',
-            fontSize: '14px',
-            cursor: 'pointer'
-          }}
-          title="Ver detalles de validación"
-        >
-          📋
-        </button>
-
-        <button
-          onClick={validarLibro}
+          onClick={() => validarDatosParaPLE()}
           disabled={estado !== 'idle'}
           style={{
-            padding: '12px',
-            borderRadius: '8px',
-            border: '1px solid #d1d5db',
-            backgroundColor: 'white',
+            padding: '12px 18px',
+            backgroundColor: estado === 'idle' ? '#f3f4f6' : '#e5e7eb',
             color: '#374151',
+            border: '1px solid #d1d5db',
+            borderRadius: '8px',
             fontSize: '14px',
-            cursor: estado === 'idle' ? 'pointer' : 'not-allowed'
+            cursor: estado === 'idle' ? 'pointer' : 'not-allowed',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px'
           }}
-          title="Re-validar libro"
+          title="Re-validar datos del libro"
         >
-          🔄
+          {estado === 'validating' ? (
+            <>
+              <div style={{
+                width: '14px',
+                height: '14px',
+                border: '2px solid #374151',
+                borderTop: '2px solid transparent',
+                borderRadius: '50%',
+                animation: 'spin 1s linear infinite'
+              }} />
+              Validando...
+            </>
+          ) : (
+            <>
+              🔍 Re-validar
+            </>
+          )}
         </button>
       </div>
     );
@@ -503,13 +598,13 @@ const PLEExportManager: React.FC<PLEExportManagerProps> = ({
                 Año
               </label>
               <select
-                value={periodoConfig.año}
+                value={periodoConfig.ejercicio}
                 onChange={(e) => {
-                  const nuevoAño = parseInt(e.target.value);
+                  const nuevoEjercicio = parseInt(e.target.value);
                   setPeriodoConfig(prev => ({
                     ...prev,
-                    año: nuevoAño,
-                    descripcion: `${nuevoAño}-${String(prev.mes).padStart(2, '0')}`
+                    ejercicio: nuevoEjercicio,
+                    descripcion: `${nuevoEjercicio}-${String(prev.mes).padStart(2, '0')}`
                   }));
                 }}
                 style={{
@@ -549,7 +644,7 @@ const PLEExportManager: React.FC<PLEExportManagerProps> = ({
                   setPeriodoConfig(prev => ({
                     ...prev,
                     mes: nuevoMes,
-                    descripcion: `${prev.año}-${String(nuevoMes).padStart(2, '0')}`
+                    descripcion: `${prev.ejercicio}-${String(nuevoMes).padStart(2, '0')}`
                   }));
                 }}
                 style={{
@@ -586,7 +681,7 @@ const PLEExportManager: React.FC<PLEExportManagerProps> = ({
           </div>
         </div>
 
-        {renderIndicadorProgreso()}
+        {renderEstadoProgress()}
 
         {error && (
           <div style={{
@@ -604,6 +699,7 @@ const PLEExportManager: React.FC<PLEExportManagerProps> = ({
 
         {renderEstadoGeneral()}
         {renderValidacionDetallada()}
+        {renderEstadoProgress()}
         {renderBotonesAccion()}
       </div>
     </>

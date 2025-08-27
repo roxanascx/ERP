@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { PLEFormGeneracion } from './components/PLEFormGeneracionUnified';
 import { PLEPreview } from './components/PLEPreview';
 import { PLEValidacionPanel } from './components/PLEValidacionPanel';
-import { pleApiService, PLEApiService } from '../../../services/pleApiUnified';
-import type { PLEGeneracionData } from '../../../services/pleApiUnified';
+import { pleApiService, PLEApiService } from '../../../services/pleApi';
+import type { PLEGeneracionData } from '../../../services/pleApi';
 import './PLEGeneratorV3.css';
 
 interface PLEGeneratorV3Props {

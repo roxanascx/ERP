@@ -23,7 +23,7 @@ export type {
   PLEGeneracionResponse,
   PLEPreviewResponse,
   PLEValidacionResponse
-} from '../../../services/pleApiUnified';
+} from '../../../services/pleApi';
 
 // Exportar servicios unificados
-export { pleApiService, PLEApiService, PLEUtils } from '../../../services/pleApiUnified';
+export { pleApiService, PLEApiService, PLEUtils } from '../../../services/pleApi';

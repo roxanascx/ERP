@@ -259,7 +259,20 @@ const AsientosManager: React.FC<AsientosManagerProps> = (props) => {
             {libro && (
               <button
                 onClick={() => {
-                  console.log('Clic en PLE SUNAT');
+                  // Validación previa antes de mostrar PLE manager
+                  if (logic.asientosFiltrados.length === 0) {
+                    logic.showToast('No hay asientos para exportar a PLE', 'error');
+                    return;
+                  }
+                  
+                  if (!logic.isBalanceado) {
+                    const continuar = window.confirm(
+                      'El libro no está balanceado. ¿Desea continuar con la exportación PLE?'
+                    );
+                    if (!continuar) return;
+                  }
+                  
+                  console.log('Abriendo PLE SUNAT para libro:', libro.id);
                   logic.setMostrarPLEManager(true);
                 }}
                 disabled={isLoading}
@@ -277,8 +290,9 @@ const AsientosManager: React.FC<AsientosManagerProps> = (props) => {
                   alignItems: 'center',
                   gap: '4px'
                 }}
+                title={`Exportar ${logic.asientosFiltrados.length} asientos a PLE SUNAT`}
               >
-                🇵🇪 PLE SUNAT
+                🇵🇪 PLE SUNAT ({logic.asientosFiltrados.length})
               </button>
             )}
           </div>
@@ -750,9 +764,18 @@ const AsientosManager: React.FC<AsientosManagerProps> = (props) => {
       {logic.mostrarPLEManager && libro && (
         <PLEExportManager
           libro={libro}
+          asientos={logic.asientosFiltrados}
           onClose={() => logic.setMostrarPLEManager(false)}
-          onSuccess={(mensaje) => logic.showToast(mensaje, 'success')}
-          onError={(error) => logic.showToast(error, 'error')}
+          onSuccess={(response) => {
+            logic.showToast(
+              `Archivo PLE generado exitosamente: ${response.archivo_nombre || 'archivo.txt'}`, 
+              'success'
+            );
+            logic.setMostrarPLEManager(false);
+          }}
+          onError={(error) => {
+            logic.showToast(`Error al generar PLE: ${error}`, 'error');
+          }}
         />
       )}
     </div>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import type { PLEGeneracionData } from '../../../../services/pleApiUnified';
+import type { PLEGeneracionData } from '../../../../services/pleApi';
 import './PLEFormGeneracion.css';
 
 interface PLEFormGeneracionProps {
