@@ -32,13 +32,22 @@ const ContabilidadPage: React.FC = () => {
       ruta: `/contabilidad/libro-diario/${empresa?.ruc || 'empresa_demo'}`,
       implementado: true
     },
-      {
-      modulo: 'ple',
-      titulo: 'PLE SUNAT',
-      descripcion: 'Programa de Libros Electrónicos - Generación y validación conforme SUNAT V3',
-      icono: '🏛️',
-      color: '#4f46e5',
-      ruta: '/contabilidad/ple',
+    {
+      modulo: 'registro-compras',
+      titulo: 'Registro de Compras',
+      descripcion: 'Registro de facturas y documentos de compras según PLE 080000',
+      icono: '🛒',
+      color: '#ea580c',
+      ruta: '/contabilidad/registro-compras',
+      implementado: true
+    },
+    {
+      modulo: 'registro-ventas',
+      titulo: 'Registro de Ventas',
+      descripcion: 'Registro de comprobantes de venta según PLE 140000',
+      icono: '💰',
+      color: '#16a34a',
+      ruta: '/contabilidad/registro-ventas',
       implementado: true
     },
     {
@@ -48,7 +57,7 @@ const ContabilidadPage: React.FC = () => {
       icono: '📊',
       color: '#2563eb',
       ruta: '/contabilidad/libro-mayor',
-      implementado: false
+      implementado: true
     },
     {
       modulo: 'balance-comprobacion',
@@ -64,7 +73,7 @@ const ContabilidadPage: React.FC = () => {
       titulo: 'Estados Financieros',
       descripcion: 'Balance general, estado de resultados y flujo de efectivo',
       icono: '📈',
-      color: '#ea580c',
+      color: '#8b5cf6',
       ruta: '/contabilidad/estados-financieros',
       implementado: false
     },
@@ -73,7 +82,7 @@ const ContabilidadPage: React.FC = () => {
       titulo: 'Activos Fijos',
       descripcion: 'Gestión de bienes de capital y depreciación',
       icono: '🏢',
-      color: '#8b5cf6',
+      color: '#0891b2',
       ruta: '/contabilidad/activos-fijos',
       implementado: false
     }

@@ -1,7 +1,11 @@
 import axios from 'axios';
 
-// Configuración base de Axios
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+// Configuración base de Axios - Siguiendo el patrón de otros módulos
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API_URL = `${API_BASE_URL}/api/v1`;
+
+// Cache busting para forzar reload completo
+console.log('🔄 [API] Inicializando con baseURL:', API_URL, '- Cache ID:', Date.now());
 
 const apiClient = axios.create({
   baseURL: API_URL,
@@ -28,10 +32,18 @@ apiClient.interceptors.response.use(
     return response;
   },
   (error) => {
-    // Log solo errores importantes
+    // Log detallado para debugging
+    console.error('❌ [API] Error completo:', error);
+    console.error('❌ [API] Config:', error.config);
+    console.error('❌ [API] Response:', error.response);
+    console.error('❌ [API] URL construida:', error.config?.url);
+    console.error('❌ [API] BaseURL:', error.config?.baseURL);
+    
+    // Log resumido
     console.error('❌ [API] Error:', {
       status: error.response?.status,
       url: error.config?.url,
+      fullURL: `${error.config?.baseURL}${error.config?.url}`,
       message: error.response?.data?.detail || error.message
     });
     return Promise.reject(error);

@@ -219,6 +219,7 @@ export class EmpresaApiService {
       
       // Convertir a formato Empresa
       return {
+        id: response.data.ruc, // Usar RUC como ID para compatibilidad
         ruc: response.data.ruc,
         razon_social: response.data.razon_social || '',
         direccion: '',

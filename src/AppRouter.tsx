@@ -20,7 +20,9 @@ import SociosNegocioPage from './pages/socios-negocio/SociosNegocioPage';
 import ContabilidadPage from './pages/contabilidad/ContabilidadPage';
 import PlanContablePage from './pages/contabilidad/PlanContablePage';
 import LibroDiarioPage from './pages/contabilidad/LibroDiarioPage';
-import PLEPage from './pages/contabilidad/PLEPage';
+import RegistroComprasPage from './pages/contabilidad/compras/RegistroComprasPage';
+import RegistroVentasPage from './pages/contabilidad/ventas/RegistroVentasPage';
+import LibroMayorPage from './pages/contabilidad/mayor/LibroMayorPage';
 import TestLogoutPage from './pages/TestLogoutPage';
 import PLETestPage from './pages/PLETestPage';
 import PLEIntegrationTest from './pages/test/PLEIntegrationTest';
@@ -274,7 +276,9 @@ const AppRouter: React.FC = () => {
           {/* Rutas anidadas de contabilidad */}
           <Route path="plan-contable" element={<PlanContablePage />} />
           <Route path="libro-diario/:empresaId" element={<LibroDiarioPage />} />
-          <Route path="ple" element={<PLEPage />} />
+          <Route path="registro-compras" element={<RegistroComprasPage />} />
+          <Route path="registro-ventas" element={<RegistroVentasPage />} />
+          <Route path="libro-mayor" element={<LibroMayorPage />} />
         </Route>
 
         {/* SIRE Legacy - mantener compatibilidad temporal */}
