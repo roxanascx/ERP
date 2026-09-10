@@ -1,19 +1,18 @@
 /**
- * Página específica para Gestión de Tickets RVIE
+ * Gestión de Tickets RVIE
  * URL: /sire/rvie/tickets
  */
 
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Loader2, RefreshCw } from 'lucide-react';
 import { useRvie } from '../../../hooks/useRvie';
 import { useEmpresaValidation } from '../../../hooks/useEmpresaValidation';
 import { RvieTickets } from '../../../components/sire/rvie/components';
+import SunatAuthBanner from '../../../components/common/SunatAuthBanner';
 
 const RvieTicketsPage: React.FC = () => {
-  const navigate = useNavigate();
   const { empresaActual } = useEmpresaValidation();
-  
-  // Hook RVIE
+
   const {
     authStatus,
     tickets,
@@ -21,222 +20,77 @@ const RvieTicketsPage: React.FC = () => {
     consultarTicket,
     descargarArchivo,
     cargarTickets,
-    cargarTodosTickets
+    cargarTodosTickets,
   } = useRvie({ ruc: empresaActual?.ruc || '' });
 
-  // Estado para mostrar todos los tickets o solo con archivos
-  const [mostrarTodos, setMostrarTodos] = useState(true); // ✅ CAMBIADO: Por defecto mostrar todos
+  const [mostrarTodos, setMostrarTodos] = useState(true);
 
-  if (!empresaActual) {
-    return (
-      <div style={{
-        minHeight: '100vh',
-        background: 'linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)',
-        padding: '20px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center'
-      }}>
-        <div style={{ background: 'white', padding: '2rem', borderRadius: '12px', textAlign: 'center' }}>
-          <h2>🏢 Empresa no encontrada</h2>
-          <button onClick={() => navigate('/empresas')}>
-            Seleccionar Empresa
-          </button>
-        </div>
-      </div>
-    );
-  }
+  // RequireEmpresa garantiza que hay empresa: esta guarda solo estrecha el tipo.
+  if (!empresaActual) return null;
 
-  // Wrappers para las funciones async
   const handleConsultarTicket = async (ticketId: string): Promise<void> => {
-    try {
-      await consultarTicket(ticketId);
-    } catch (error) {
-      // ...
-    }
+    await consultarTicket(ticketId);
   };
 
   const handleDescargarArchivo = async (ticketId: string): Promise<void> => {
-    try {
-      await descargarArchivo(ticketId);
-    } catch (error) {
-      // ...
-    }
+    await descargarArchivo(ticketId);
   };
 
   const handleToggleTodos = async () => {
-    setMostrarTodos(!mostrarTodos);
-    if (mostrarTodos) {
-      // Si actualmente mostramos todos, cambiar a solo con archivos
-      await cargarTickets();
-    } else {
-      // Si actualmente mostramos solo con archivos, cambiar a todos
-      await cargarTodosTickets();
-    }
+    const siguiente = !mostrarTodos;
+    setMostrarTodos(siguiente);
+    await (siguiente ? cargarTodosTickets() : cargarTickets());
   };
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: 'linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)',
-      padding: '20px'
-    }}>
-      {/* Header de navegación */}
-      <div style={{
-        background: 'white',
-        padding: '1rem 2rem',
-        borderRadius: '12px',
-        marginBottom: '2rem',
-        boxShadow: '0 2px 10px rgba(0, 0, 0, 0.1)'
-      }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+    <div className="space-y-6">
+      <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+        <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            {/* Breadcrumbs */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-              <button
-                onClick={() => navigate('/sire')}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: '#3b82f6',
-                  cursor: 'pointer',
-                  fontSize: '0.9rem'
-                }}
-              >
-                SIRE
-              </button>
-              <span style={{ color: '#6b7280' }}>›</span>
-              <button
-                onClick={() => navigate('/sire/rvie')}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: '#3b82f6',
-                  cursor: 'pointer',
-                  fontSize: '0.9rem'
-                }}
-              >
-                RVIE
-              </button>
-              <span style={{ color: '#6b7280' }}>›</span>
-              <span style={{ color: '#374151', fontWeight: 'bold', fontSize: '0.9rem' }}>
-                Gestión de Tickets
-              </span>
-            </div>
-            
-            {/* Título */}
-            <h1 style={{ 
-              fontSize: '1.5rem', 
-              fontWeight: 'bold', 
-              color: '#1f2937',
-              margin: 0
-            }}>
-              🎫 Gestión de Tickets RVIE
-            </h1>
-          </div>
-
-          {/* Botón volver */}
-          <button
-            onClick={() => navigate('/sire/rvie')}
-            style={{
-              background: '#6b7280',
-              color: 'white',
-              border: 'none',
-              padding: '8px 1rem',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px'
-            }}
-          >
-            ← Volver a RVIE
-          </button>
-        </div>
-      </div>
-
-      {/* Controles de tickets */}
-      <div style={{
-        background: 'white',
-        padding: '1.5rem',
-        borderRadius: '12px',
-        marginBottom: '2rem',
-        boxShadow: '0 2px 10px rgba(0, 0, 0, 0.1)'
-      }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
-            <h3 style={{ margin: '0 0 8px 0', color: '#374151' }}>📋 Tickets Disponibles</h3>
-            <p style={{ margin: 0, color: '#6b7280' }}>
-              Total: {tickets?.length || 0} tickets
+            <h2 className="text-sm font-semibold text-slate-900">Tickets disponibles</h2>
+            <p className="text-sm text-slate-500 tabular-nums">
+              {tickets?.length || 0} en total
             </p>
           </div>
-          
-          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-            {/* Toggle para filtrar tickets */}
-            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+
+          <div className="flex flex-wrap items-center gap-4">
+            <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-700">
               <input
                 type="checkbox"
                 checked={!mostrarTodos}
                 onChange={handleToggleTodos}
-                style={{ cursor: 'pointer' }}
+                className="size-4 cursor-pointer accent-blue-600"
               />
-              <span style={{ fontSize: '0.9rem', color: '#374151' }}>
-                Solo tickets con archivos
-              </span>
+              Solo tickets con archivos
             </label>
 
-            {/* Botón refrescar */}
             <button
-              onClick={() => mostrarTodos ? cargarTodosTickets() : cargarTickets()}
+              type="button"
+              onClick={() => (mostrarTodos ? cargarTodosTickets() : cargarTickets())}
               disabled={loading}
-              style={{
-                background: '#3b82f6',
-                color: 'white',
-                border: 'none',
-                padding: '8px 1rem',
-                borderRadius: '6px',
-                cursor: loading ? 'not-allowed' : 'pointer',
-                opacity: loading ? 0.7 : 1,
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px'
-              }}
+              className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3.5 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
             >
-              🔄 {loading ? 'Cargando...' : 'Refrescar'}
+              {loading ? (
+                <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+              ) : (
+                <RefreshCw className="size-4" aria-hidden="true" />
+              )}
+              {loading ? 'Cargando…' : 'Refrescar'}
             </button>
           </div>
         </div>
-      </div>
+      </section>
 
-      {/* Información de autenticación */}
-      {!authStatus?.authenticated && (
-        <div style={{
-          background: '#fef3c7',
-          border: '1px solid #f59e0b',
-          padding: '1rem',
-          borderRadius: '8px',
-          marginBottom: '2rem'
-        }}>
-          <p style={{ margin: 0, color: '#92400e' }}>
-            ⚠️ <strong>No autenticado con SUNAT.</strong> Algunas funciones pueden estar limitadas.
-          </p>
-        </div>
-      )}
+      {!authStatus?.authenticated && <SunatAuthBanner authenticated={false} />}
 
-      {/* Componente de tickets */}
-      <div style={{
-        background: 'white',
-        borderRadius: '12px',
-        boxShadow: '0 2px 10px rgba(0, 0, 0, 0.1)',
-        overflow: 'hidden'
-      }}>
+      <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         <RvieTickets
           tickets={tickets || []}
           loading={loading}
           onConsultarTicket={handleConsultarTicket}
           onDescargarArchivo={handleDescargarArchivo}
         />
-      </div>
+      </section>
     </div>
   );
 };

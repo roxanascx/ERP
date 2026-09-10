@@ -29,24 +29,11 @@ export const PLEArchivosTable: React.FC<PLEArchivosTableProps> = ({
   dashboardData,
   onRefresh
 }) => {
-  // Mock data for demonstration
-  const archivos: PLEArchivo[] = [
-    {
-      id: '1',
-      ejercicio: 2025,
-      mes: 8,
-      ruc: '20123456789',
-      razonSocial: 'EMPRESA DEMO SAC',
-      fechaGeneracion: '2025-08-27',
-      fechaInicio: '2025-08-01',
-      fechaFin: '2025-08-31',
-      estado: 'validado',
-      nombreArchivo: 'LE20123456789202508.zip',
-      tamanoArchivo: 2048576,
-      totalRegistros: 150,
-      observaciones: 'Archivo generado correctamente'
-    }
-  ];
+  // Antes esto era un array simulado con una empresa inventada
+  // ("EMPRESA DEMO SAC", RUC 20123456789) que se mostraba como si fueran
+  // archivos reales. Ahora sale de los datos del dashboard; si no hay, la
+  // tabla muestra su estado vacio.
+  const archivos: PLEArchivo[] = dashboardData?.archivos ?? [];
 
   const getEstadoColor = (estado: string) => {
     switch (estado) {
@@ -86,17 +73,14 @@ export const PLEArchivosTable: React.FC<PLEArchivosTableProps> = ({
   };
 
   const handleDownload = (archivo: PLEArchivo) => {
-    console.log('Descargando archivo:', archivo.nombreArchivo);
     // Implementar lógica de descarga
   };
 
   const handlePreview = (archivo: PLEArchivo) => {
-    console.log('Vista previa del archivo:', archivo.nombreArchivo);
     // Implementar lógica de vista previa
   };
 
   const handleValidate = (archivo: PLEArchivo) => {
-    console.log('Validando archivo:', archivo.nombreArchivo);
     // Implementar lógica de validación
   };
 

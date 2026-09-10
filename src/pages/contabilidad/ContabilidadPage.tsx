@@ -1,315 +1,130 @@
-import React, { useState } from 'react';
-import { Link, Outlet, useLocation } from 'react-router-dom';
-import MainLayout from '../../components/MainLayout';
-import useEmpresaActual from '../../hooks/useEmpresaActual';
-import type { LibroContableConfig } from '../../types/contabilidad';
+import React from 'react';
+import { Link } from 'react-router-dom';
+import { ArrowRight, Clock } from 'lucide-react';
+import { CONTABILIDAD_MODULES } from '../../config/navigation';
+import { cn } from '../../lib/cn';
 
+/**
+ * Indice del modulo de Contabilidad.
+ *
+ * Ya NO es un layout: el sidebar y la cabecera los aporta MainLayout, la barra
+ * de modulos la aporta ContabilidadShell, y las subrutas se renderizan en el
+ * <Outlet /> del router. Antes esta pagina montaba su propio MainLayout Y
+ * renderizaba las subrutas dentro, lo que producia dos sidebars superpuestos.
+ */
 const ContabilidadPage: React.FC = () => {
-  const [activeModule, setActiveModule] = useState<string>('plan-contable');
-  const location = useLocation();
-  const { empresa } = useEmpresaActual();
-  
-  // Verificar si estamos en una subruta
-  const isSubRoute = location.pathname !== '/contabilidad';
-
-  // Configuración de libros contables disponibles
-  const librosContables: LibroContableConfig[] = [
-    {
-      modulo: 'plan-contable',
-      titulo: 'Plan Contable',
-      descripcion: 'Catálogo general de cuentas contables según normativa peruana',
-      icono: '📋',
-      color: '#059669',
-      ruta: '/contabilidad/plan-contable',
-      implementado: true
-    },
-    {
-      modulo: 'libro-diario',
-      titulo: 'Libro Diario',
-      descripcion: 'Registro cronológico de todas las operaciones contables',
-      icono: '📖',
-      color: '#dc2626',
-      ruta: `/contabilidad/libro-diario/${empresa?.ruc || 'empresa_demo'}`,
-      implementado: true
-    },
-    {
-      modulo: 'registro-compras',
-      titulo: 'Registro de Compras',
-      descripcion: 'Registro de facturas y documentos de compras según PLE 080000',
-      icono: '🛒',
-      color: '#ea580c',
-      ruta: '/contabilidad/registro-compras',
-      implementado: true
-    },
-    {
-      modulo: 'registro-ventas',
-      titulo: 'Registro de Ventas',
-      descripcion: 'Registro de comprobantes de venta según PLE 140000',
-      icono: '💰',
-      color: '#16a34a',
-      ruta: '/contabilidad/registro-ventas',
-      implementado: true
-    },
-    {
-      modulo: 'libro-mayor',
-      titulo: 'Libro Mayor',
-      descripcion: 'Movimientos por cuenta contable y saldos acumulados',
-      icono: '📊',
-      color: '#2563eb',
-      ruta: '/contabilidad/libro-mayor',
-      implementado: true
-    },
-    {
-      modulo: 'balance-comprobacion',
-      titulo: 'Balance de Comprobación',
-      descripcion: 'Estado de saldos deudores y acreedores del período',
-      icono: '⚖️',
-      color: '#7c3aed',
-      ruta: '/contabilidad/balance-comprobacion',
-      implementado: false
-    },
-    {
-      modulo: 'estados-financieros',
-      titulo: 'Estados Financieros',
-      descripcion: 'Balance general, estado de resultados y flujo de efectivo',
-      icono: '📈',
-      color: '#8b5cf6',
-      ruta: '/contabilidad/estados-financieros',
-      implementado: false
-    },
-    {
-      modulo: 'activos-fijos',
-      titulo: 'Activos Fijos',
-      descripcion: 'Gestión de bienes de capital y depreciación',
-      icono: '🏢',
-      color: '#0891b2',
-      ruta: '/contabilidad/activos-fijos',
-      implementado: false
-    }
-  ];
+  const disponibles = CONTABILIDAD_MODULES.filter((m) => m.enabled);
+  const pendientes = CONTABILIDAD_MODULES.filter((m) => !m.enabled);
 
   return (
-    <MainLayout 
-      title="💰 Contabilidad" 
-      subtitle="Gestión financiera y libros contables"
-    >
-      <div style={{
-        minHeight: '100vh',
-        background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 25%, #e2e8f0 50%, #cbd5e1 75%, #94a3b8 100%)',
-        backgroundSize: '400% 400%',
-        animation: 'subtleShift 20s ease infinite'
-      }}>
-        {/* Mostrar subrutas si existe */}
-        {isSubRoute ? (
-          <Outlet />
-        ) : (
-          /* Grid de módulos - mostrar solo en la ruta base */
-          <div style={{ padding: '1rem' }}>
-            {/* Navigation Tabs compacto */}
-            <div style={{
-              background: 'rgba(255, 255, 255, 0.95)',
-              backdropFilter: 'blur(10px)',
-              borderBottom: '1px solid rgba(229, 231, 235, 0.8)',
-              borderRadius: '0.75rem',
-              padding: '0 1rem',
-              marginBottom: '1rem',
-              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.06)'
-            }}>
-              <nav style={{ display: 'flex', gap: '1rem', overflowX: 'auto' }} aria-label="Tabs">
-                {librosContables.map((libro) => (
-                  <Link
-                    key={libro.modulo}
-                    to={libro.implementado ? libro.ruta : '#'}
-                    style={{
-                      padding: '0.5rem 0.25rem',
-                      borderBottom: activeModule === libro.modulo ? '2px solid #3b82f6' : '2px solid transparent',
-                      fontSize: '0.8rem',
-                      fontWeight: '600',
-                      whiteSpace: 'nowrap',
-                      transition: 'all 0.2s ease',
-                      color: activeModule === libro.modulo ? '#3b82f6' : '#6b7280',
-                      textDecoration: 'none',
-                      opacity: !libro.implementado ? '0.5' : '1',
-                      cursor: !libro.implementado ? 'not-allowed' : 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.25rem'
-                    }}
-                    onMouseEnter={(e) => {
-                      if (libro.implementado && activeModule !== libro.modulo) {
-                        e.currentTarget.style.color = '#374151';
-                        e.currentTarget.style.borderBottom = '2px solid #d1d5db';
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (libro.implementado && activeModule !== libro.modulo) {
-                        e.currentTarget.style.color = '#6b7280';
-                        e.currentTarget.style.borderBottom = '2px solid transparent';
-                      }
-                    }}
-                    onClick={() => libro.implementado && setActiveModule(libro.modulo)}
-                  >
-                    <span style={{ fontSize: '1rem' }}>{libro.icono}</span>
-                    <span>{libro.titulo}</span>
-                    {!libro.implementado && (
-                      <span style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        padding: '0.125rem 0.5rem',
-                        borderRadius: '9999px',
-                        fontSize: '0.75rem',
-                        fontWeight: '500',
-                        background: 'linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%)',
-                        color: '#6b7280',
-                        border: '1px solid #d1d5db'
-                      }}>
-                        Próximamente
-                      </span>
-                    )}
-                  </Link>
-                ))}
-              </nav>
-            </div>
+    <div className="space-y-8">
+      <section aria-labelledby="modulos-disponibles">
+        <h2
+          id="modulos-disponibles"
+          className="mb-3 text-xs font-semibold tracking-wider text-slate-500 uppercase"
+        >
+          Módulos disponibles
+        </h2>
 
-            {/* Grid de módulos compacto */}
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-              gap: '1rem'
-            }}>
-              {librosContables.map((libro) => (
-                <div
-                  key={libro.modulo}
-                  style={{
-                    position: 'relative',
-                    overflow: 'hidden',
-                    borderRadius: '0.75rem',
-                    padding: '1.25rem',
-                    transition: 'all 0.3s ease',
-                    background: 'rgba(255, 255, 255, 0.98)',
-                    border: `2px solid ${libro.implementado ? libro.color + '40' : '#e5e7eb'}`,
-                    boxShadow: libro.implementado 
-                      ? `0 4px 16px rgba(0, 0, 0, 0.08), 0 0 0 1px ${libro.color}20`
-                      : '0 2px 8px rgba(0, 0, 0, 0.06)',
-                    opacity: libro.implementado ? 1 : 0.7,
-                    cursor: libro.implementado ? 'pointer' : 'not-allowed'
-                  }}
-                  onMouseEnter={(e) => {
-                    if (libro.implementado) {
-                      e.currentTarget.style.transform = 'translateY(-4px)';
-                      e.currentTarget.style.boxShadow = `0 8px 24px rgba(0, 0, 0, 0.12), 0 0 0 1px ${libro.color}30`;
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (libro.implementado) {
-                      e.currentTarget.style.transform = 'translateY(0)';
-                      e.currentTarget.style.boxShadow = `0 4px 16px rgba(0, 0, 0, 0.08), 0 0 0 1px ${libro.color}20`;
-                    }
-                  }}
-                >
-                  <div style={{ position: 'relative', zIndex: 1 }}>
-                    <div style={{ display: 'flex', alignItems: 'start', justifyContent: 'space-between', marginBottom: '1rem' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                        <div style={{
-                          fontSize: '2rem',
-                          transition: 'transform 0.3s ease',
-                          filter: `drop-shadow(0 2px 4px ${libro.color}40)`
-                        }}>
-                          {libro.icono}
-                        </div>
-                        <div>
-                          <h3 style={{
-                            fontSize: '1.1rem',
-                            fontWeight: '700',
-                            color: '#111827',
-                            marginBottom: '0.25rem'
-                          }}>
-                            {libro.titulo}
-                          </h3>
-                          <div style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            padding: '0.2rem 0.5rem',
-                            borderRadius: '9999px',
-                            fontSize: '0.75rem',
-                            fontWeight: '600',
-                            background: libro.implementado 
-                              ? 'linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(16, 185, 129, 0.1) 100%)'
-                              : 'linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%)',
-                            color: libro.implementado ? '#15803d' : '#6b7280',
-                            border: libro.implementado ? '1px solid rgba(34, 197, 94, 0.2)' : '1px solid #d1d5db'
-                          }}>
-                            {libro.implementado ? '✓ Disponible' : '⏳ Pendiente'}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <p style={{
-                      color: '#6b7280',
-                      fontSize: '0.8rem',
-                      marginBottom: '1rem',
-                      lineHeight: '1.5'
-                    }}>
-                      {libro.descripcion}
-                    </p>
-                    
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      {libro.implementado ? (
-                        <Link
-                          to={libro.ruta}
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            padding: '0.5rem 0.8rem',
-                            fontSize: '0.8rem',
-                            fontWeight: '600',
-                            borderRadius: '0.5rem',
-                            color: 'white',
-                            textDecoration: 'none',
-                            background: `linear-gradient(135deg, ${libro.color} 0%, ${libro.color}CC 100%)`,
-                            boxShadow: `0 2px 8px ${libro.color}40`,
-                            transition: 'all 0.2s ease'
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.transform = 'scale(1.05)';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.transform = 'scale(1)';
-                          }}
-                        >
-                          Abrir módulo
-                          <svg style={{ marginLeft: '0.5rem', marginRight: '-0.125rem', width: '1rem', height: '1rem' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                          </svg>
-                        </Link>
-                      ) : (
-                        <span style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          padding: '0.625rem 1rem',
-                          fontSize: '0.875rem',
-                          fontWeight: '600',
-                          borderRadius: '0.75rem',
-                          color: '#6b7280',
-                          background: 'linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%)',
-                          border: '1px solid #d1d5db'
-                        }}>
-                          En desarrollo
-                          <svg style={{ marginLeft: '0.5rem', marginRight: '-0.125rem', width: '1rem', height: '1rem' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {disponibles.map((modulo) => {
+            const Icon = modulo.icon;
+            return (
+              <article
+                key={modulo.id}
+                className={cn(
+                  'group flex flex-col rounded-xl border border-slate-200 bg-white p-5 shadow-sm',
+                  'transition-all duration-200 hover:-translate-y-1 hover:shadow-md',
+                  modulo.accent.ring
+                )}
+              >
+                <div className="mb-3 flex items-start gap-3">
+                  <div
+                    className={cn(
+                      'grid size-11 shrink-0 place-items-center rounded-xl',
+                      modulo.accent.soft
+                    )}
+                  >
+                    <Icon className={cn('size-5', modulo.accent.text)} aria-hidden="true" />
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="text-base font-semibold text-slate-900">
+                      {modulo.label}
+                      {modulo.badge && (
+                        <span className="ml-2 rounded-full bg-teal-100 px-1.5 py-0.5 align-middle text-[10px] font-bold text-teal-700">
+                          {modulo.badge}
                         </span>
                       )}
-                    </div>
+                    </h3>
+                    <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700">
+                      <span className="size-1.5 rounded-full bg-green-500" aria-hidden="true" />
+                      Disponible
+                    </span>
                   </div>
                 </div>
-              ))}
-            </div>
+
+                <p className="mb-5 flex-1 text-sm leading-relaxed text-slate-500">
+                  {modulo.descripcion}
+                </p>
+
+                <Link
+                  to={modulo.path}
+                  className={cn(
+                    'inline-flex w-fit items-center gap-2 rounded-lg px-3.5 py-2 text-sm font-semibold text-white no-underline hover:no-underline',
+                    'transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900',
+                    modulo.accent.solid
+                  )}
+                >
+                  Abrir módulo
+                  <ArrowRight
+                    className="size-4 transition-transform group-hover:translate-x-0.5"
+                    aria-hidden="true"
+                  />
+                </Link>
+              </article>
+            );
+          })}
+        </div>
+      </section>
+
+      {pendientes.length > 0 && (
+        <section aria-labelledby="modulos-pendientes">
+          <h2
+            id="modulos-pendientes"
+            className="mb-3 text-xs font-semibold tracking-wider text-slate-500 uppercase"
+          >
+            En desarrollo
+          </h2>
+
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {pendientes.map((modulo) => {
+              const Icon = modulo.icon;
+              return (
+                <article
+                  key={modulo.id}
+                  className="flex flex-col rounded-xl border border-dashed border-slate-300 bg-slate-50/60 p-5"
+                >
+                  <div className="mb-3 flex items-start gap-3">
+                    <div className="grid size-11 shrink-0 place-items-center rounded-xl bg-slate-200/60">
+                      <Icon className="size-5 text-slate-400" aria-hidden="true" />
+                    </div>
+                    <div className="min-w-0">
+                      <h3 className="text-base font-semibold text-slate-600">{modulo.label}</h3>
+                      <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-slate-200/70 px-2 py-0.5 text-xs font-medium text-slate-600">
+                        <Clock className="size-3" aria-hidden="true" />
+                        Pendiente
+                      </span>
+                    </div>
+                  </div>
+
+                  <p className="text-sm leading-relaxed text-slate-500">{modulo.descripcion}</p>
+                </article>
+              );
+            })}
           </div>
-        )}
-      </div>
-    </MainLayout>
+        </section>
+      )}
+    </div>
   );
 };
 

@@ -5,7 +5,6 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 const API_URL = `${API_BASE_URL}/api/v1`;
 
 // Cache busting para forzar reload completo
-console.log('🔄 [API] Inicializando con baseURL:', API_URL, '- Cache ID:', Date.now());
 
 const apiClient = axios.create({
   baseURL: API_URL,

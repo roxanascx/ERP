@@ -59,7 +59,7 @@ export interface ConsultarComprobantesResponse {
 }
 
 export class RceComprobantesService {
-  private baseUrl = '/api/v1/sire/rce/bd';
+  private baseUrl = '/sire/rce/bd';
 
   /**
    * Consultar comprobantes almacenados en BD
@@ -107,9 +107,7 @@ export class RceComprobantesService {
     // Si hay datos en cache, enviarlos para evitar consulta a SUNAT
     if (datosCache?.comprobantes && datosCache.comprobantes.length > 0) {
       payload.comprobantes = datosCache.comprobantes;
-      console.log(`🚀 Guardando desde cache: ${datosCache.comprobantes.length} comprobantes`);
     } else {
-      console.log(`📡 Sin cache disponible, consultará SUNAT para período ${periodo}`);
     }
     
     const response = await api.post(`${this.baseUrl}/${ruc}/comprobantes/guardar`, payload);

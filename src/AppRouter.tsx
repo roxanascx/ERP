@@ -1,343 +1,166 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { useUser } from '@clerk/clerk-react';
-import { 
-  HomePage, 
-  DashboardPage, 
-  EmpresaPage, 
-  SirePage,
-  SireHomePage,
-  RvieHomePage,
-  RvieVentasPage,
-  RvieTicketsPage,
-  RvieOperacionesPage,
-  RceHomePage,
-  RceOperacionesPage,
-  RceTicketsPage,
-  RceResumenPage
-} from './pages';
-import SociosNegocioPage from './pages/socios-negocio/SociosNegocioPage';
-import ContabilidadPage from './pages/contabilidad/ContabilidadPage';
-import PlanContablePage from './pages/contabilidad/PlanContablePage';
-import LibroDiarioPage from './pages/contabilidad/LibroDiarioPage';
-import RegistroComprasPage from './pages/contabilidad/compras/RegistroComprasPage';
-import RegistroVentasPage from './pages/contabilidad/ventas/RegistroVentasPage';
-import LibroMayorPage from './pages/contabilidad/mayor/LibroMayorPage';
-import TestLogoutPage from './pages/TestLogoutPage';
-import PLETestPage from './pages/PLETestPage';
-import PLEIntegrationTest from './pages/test/PLEIntegrationTest';
-import EmpresaProtectedRoute from './components/EmpresaProtectedRoute';
+import React, { Suspense, lazy } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom';
+
+import MainLayout from './components/MainLayout';
+import ContabilidadShell from './components/contabilidad/ContabilidadShell';
+import RequireAuth from './components/routing/RequireAuth';
+import PublicOnly from './components/routing/PublicOnly';
+import RequireEmpresa from './components/routing/RequireEmpresa';
+import AppLoading from './components/routing/AppLoading';
 import { RceDataProvider } from './contexts/RceDataContext';
-import RceIntegrationTest from './pages/test/RceIntegrationTest';
 
-const AppRouter: React.FC = () => {
-  const { isLoaded, isSignedIn } = useUser();
+// Eager: es lo primero que ve un usuario sin sesion.
+import HomePage from './pages/HomePage';
+import NotFoundPage from './pages/NotFoundPage';
 
-  // Mientras Clerk se carga, mostrar un loader
-  if (!isLoaded) {
-    return (
-      <div style={{
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        height: '100vh',
-        background: '#f8fafc'
-      }}>
-        <div style={{
-          padding: '40px',
-          background: 'white',
-          borderRadius: '12px',
-          boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
-          textAlign: 'center'
-        }}>
-          <div style={{
-            width: '50px',
-            height: '50px',
-            border: '4px solid #e5e7eb',
-            borderTop: '4px solid #3b82f6',
-            borderRadius: '50%',
-            animation: 'spin 1s linear infinite',
-            margin: '0 auto 20px'
-          }}></div>
-          <p style={{ 
-            color: '#6b7280',
-            fontSize: '16px',
-            margin: 0
-          }}>
-            Cargando aplicación...
-          </p>
-          <style>
-            {`
-              @keyframes spin {
-                0% { transform: rotate(0deg); }
-                100% { transform: rotate(360deg); }
-              }
-            `}
-          </style>
-        </div>
-      </div>
-    );
-  }
+// ---------------------------------------------------------------------------
+// Carga diferida por ruta.
+// Antes AppRouter importaba las 20 paginas de forma estatica, asi que los 7
+// chunks de manualChunks se descargaban igual en el primer paint (~846 kB).
+// ---------------------------------------------------------------------------
+const DashboardPage = lazy(() => import('./pages/DashboardPage'));
+const EmpresaPage = lazy(() => import('./pages/EmpresaPage'));
 
-  return (
-    <Router>
+const SireHomePage = lazy(() => import('./pages/sire/SireHomePage'));
+const RvieHomePage = lazy(() => import('./pages/sire/rvie/RvieHomePage'));
+const RvieOperacionesPage = lazy(() => import('./pages/sire/rvie/RvieOperacionesPage'));
+const RvieTicketsPage = lazy(() => import('./pages/sire/rvie/RvieTicketsPage'));
+const RvieVentasPage = lazy(() => import('./pages/sire/rvie/RvieVentasPage'));
+const RceHomePage = lazy(() => import('./pages/sire/rce/RceHomePage'));
+const RceOperacionesPage = lazy(() => import('./pages/sire/rce/RceOperacionesPage'));
+const RceTicketsPage = lazy(() => import('./pages/sire/rce/RceTicketsPage'));
+const RceResumenPage = lazy(() => import('./pages/sire/rce/RceResumenPage'));
+
+const SociosNegocioPage = lazy(() => import('./pages/socios-negocio/SociosNegocioPage'));
+const ContabilidadPage = lazy(() => import('./pages/contabilidad/ContabilidadPage'));
+const PlanContablePage = lazy(() => import('./pages/contabilidad/PlanContablePage'));
+const LibroDiarioPage = lazy(() => import('./pages/contabilidad/LibroDiarioPage'));
+const RegistroComprasPage = lazy(() => import('./pages/contabilidad/compras/RegistroComprasPage'));
+const RegistroVentasPage = lazy(() => import('./pages/contabilidad/ventas/RegistroVentasPage'));
+const LibroMayorPage = lazy(() => import('./pages/contabilidad/mayor/LibroMayorPage'));
+const PLEPage = lazy(() => import('./pages/contabilidad/PLEPage'));
+
+const TestLogoutPage = lazy(() => import('./pages/TestLogoutPage'));
+const PLETestPage = lazy(() => import('./pages/PLETestPage'));
+const PLEIntegrationTest = lazy(() => import('./pages/test/PLEIntegrationTest'));
+const RceIntegrationTest = lazy(() => import('./pages/test/RceIntegrationTest'));
+
+/**
+ * ============================================================================
+ * MAPA DE RUTAS
+ * ============================================================================
+ *
+ * Jerarquia:
+ *
+ *   /                          publica (PublicOnly: con sesion redirige a /empresas)
+ *   RequireAuth                sesion iniciada
+ *     /empresas                seleccion de empresa (sin empresa activa aun)
+ *     RequireEmpresa           empresa seleccionada
+ *       pantallas propias      Dashboard / SIRE / RVIE / RCE (traen su propio chrome)
+ *       MainLayout             sidebar + cabecera compartidos
+ *         /socios-negocio
+ *         /contabilidad/*
+ *
+ * Las guardias son rutas padre con <Outlet />, no envoltorios por pagina: eso
+ * elimina los 15 ternarios `isSignedIn ? ... : <Navigate />` que existian antes.
+ */
+
+/** Envuelve el arbol RCE en su provider una sola vez, en vez de 5. */
+const RceProviderLayout: React.FC = () => (
+  <RceDataProvider>
+    <Outlet />
+  </RceDataProvider>
+);
+
+const AppRouter: React.FC = () => (
+  <Router>
+    <Suspense fallback={<AppLoading />}>
       <Routes>
-        {/* Ruta principal - decide entre HomePage o Empresas */}
-        <Route 
-          path="/" 
-          element={
-            isSignedIn ? <Navigate to="/empresas" replace /> : <HomePage />
-          } 
-        />
-        
-        {/* Dashboard - requiere empresa seleccionada */}
-        <Route 
-          path="/dashboard" 
-          element={
-            isSignedIn ? (
-              <EmpresaProtectedRoute>
-                <DashboardPage />
-              </EmpresaProtectedRoute>
-            ) : (
-              <Navigate to="/" replace />
-            )
-          } 
-        />
-        
-        {/* Empresas - solo accesible si está autenticado */}
-        <Route 
-          path="/empresas" 
-          element={
-            isSignedIn ? <EmpresaPage /> : <Navigate to="/" replace />
-          } 
-        />
-        
-        {/* SIRE - requiere empresa seleccionada */}
-        <Route 
-          path="/sire" 
-          element={
-            isSignedIn ? (
-              <EmpresaProtectedRoute>
-                <SireHomePage />
-              </EmpresaProtectedRoute>
-            ) : (
-              <Navigate to="/" replace />
-            )
-          } 
-        />
-
-        {/* RVIE Dashboard */}
-        <Route 
-          path="/sire/rvie" 
-          element={
-            isSignedIn ? (
-              <EmpresaProtectedRoute>
-                <RvieHomePage />
-              </EmpresaProtectedRoute>
-            ) : (
-              <Navigate to="/" replace />
-            )
-          } 
-        />
-
-        {/* RVIE Operaciones */}
-        <Route 
-          path="/sire/rvie/operaciones" 
-          element={
-            isSignedIn ? (
-              <EmpresaProtectedRoute>
-                <RvieOperacionesPage />
-              </EmpresaProtectedRoute>
-            ) : (
-              <Navigate to="/" replace />
-            )
-          } 
-        />
-
-        {/* RVIE Tickets */}
-        <Route 
-          path="/sire/rvie/tickets" 
-          element={
-            isSignedIn ? (
-              <EmpresaProtectedRoute>
-                <RvieTicketsPage />
-              </EmpresaProtectedRoute>
-            ) : (
-              <Navigate to="/" replace />
-            )
-          } 
-        />
-
-        {/* RVIE Ventas */}
-        <Route 
-          path="/sire/rvie/ventas" 
-          element={
-            isSignedIn ? (
-              <EmpresaProtectedRoute>
-                <RvieVentasPage />
-              </EmpresaProtectedRoute>
-            ) : (
-              <Navigate to="/" replace />
-            )
-          } 
-        />
-
-        {/* RCE Dashboard */}
-        <Route 
-          path="/sire/rce" 
-          element={
-            isSignedIn ? (
-              <EmpresaProtectedRoute>
-                <RceDataProvider>
-                  <RceHomePage />
-                </RceDataProvider>
-              </EmpresaProtectedRoute>
-            ) : (
-              <Navigate to="/" replace />
-            )
-          } 
-        />
-
-        {/* RCE Operaciones */}
-        <Route 
-          path="/sire/rce/operaciones" 
-          element={
-            isSignedIn ? (
-              <EmpresaProtectedRoute>
-                <RceDataProvider>
-                  <RceOperacionesPage />
-                </RceDataProvider>
-              </EmpresaProtectedRoute>
-            ) : (
-              <Navigate to="/" replace />
-            )
-          } 
-        />
-
-        {/* RCE Tickets */}
-        <Route 
-          path="/sire/rce/tickets" 
-          element={
-            isSignedIn ? (
-              <EmpresaProtectedRoute>
-                <RceDataProvider>
-                  <RceTicketsPage />
-                </RceDataProvider>
-              </EmpresaProtectedRoute>
-            ) : (
-              <Navigate to="/" replace />
-            )
-          } 
-        />
-
-        {/* RCE Resumen */}
-        <Route 
-          path="/sire/rce/resumen" 
-          element={
-            isSignedIn ? (
-              <EmpresaProtectedRoute>
-                <RceDataProvider>
-                  <RceResumenPage />
-                </RceDataProvider>
-              </EmpresaProtectedRoute>
-            ) : (
-              <Navigate to="/" replace />
-            )
-          } 
-        />
-
-        {/* Socios de Negocio - MÓDULO INDEPENDIENTE */}
-        <Route 
-          path="/socios-negocio" 
-          element={
-            isSignedIn ? (
-              <EmpresaProtectedRoute>
-                <SociosNegocioPage />
-              </EmpresaProtectedRoute>
-            ) : (
-              <Navigate to="/" replace />
-            )
-          } 
-        />
-
-        {/* CONTABILIDAD - MÓDULO INDEPENDIENTE */}
-        <Route 
-          path="/contabilidad" 
-          element={
-            isSignedIn ? (
-              <EmpresaProtectedRoute>
-                <ContabilidadPage />
-              </EmpresaProtectedRoute>
-            ) : (
-              <Navigate to="/" replace />
-            )
-          } 
-        >
-          {/* Rutas anidadas de contabilidad */}
-          <Route path="plan-contable" element={<PlanContablePage />} />
-          <Route path="libro-diario/:empresaId" element={<LibroDiarioPage />} />
-          <Route path="registro-compras" element={<RegistroComprasPage />} />
-          <Route path="registro-ventas" element={<RegistroVentasPage />} />
-          <Route path="libro-mayor" element={<LibroMayorPage />} />
+        {/* ---------------------------------------------------------------- */}
+        {/* Publica                                                           */}
+        {/* ---------------------------------------------------------------- */}
+        <Route element={<PublicOnly />}>
+          <Route path="/" element={<HomePage />} />
         </Route>
 
-        {/* SIRE Legacy - mantener compatibilidad temporal */}
-        <Route 
-          path="/sire-legacy" 
-          element={
-            isSignedIn ? (
-              <EmpresaProtectedRoute>
-                <SirePage />
-              </EmpresaProtectedRoute>
-            ) : (
-              <Navigate to="/" replace />
-            )
-          } 
-        />
-        
-        {/* Página de prueba de logout - solo accesible si está autenticado */}
-        <Route 
-          path="/test-logout" 
-          element={
-            isSignedIn ? <TestLogoutPage /> : <Navigate to="/" replace />
-          } 
-        />
+        {/* ---------------------------------------------------------------- */}
+        {/* Requiere sesion                                                   */}
+        {/* ---------------------------------------------------------------- */}
+        <Route element={<RequireAuth />}>
+          <Route path="/empresas" element={<EmpresaPage />} />
 
-        {/* 🧪 Página de prueba integración RCE */}
-        <Route 
-          path="/test-rce" 
-          element={
-            isSignedIn ? (
-              <RceDataProvider>
-                <RceIntegrationTest />
-              </RceDataProvider>
-            ) : (
-              <Navigate to="/" replace />
-            )
-          } 
-        />
-        
-        {/* 🧪 Página de prueba PLE SUNAT */}
-        <Route 
-          path="/test-ple" 
-          element={
-            isSignedIn ? <PLETestPage /> : <Navigate to="/" replace />
-          } 
-        />
+          {/* -------------------------------------------------------------- */}
+          {/* Requiere ademas empresa seleccionada                            */}
+          {/* -------------------------------------------------------------- */}
+          <Route element={<RequireEmpresa />}>
+            {/* ------------------------------------------------------------ */}
+            {/* Pantallas con el chrome compartido (sidebar + cabecera)       */}
+            {/* ------------------------------------------------------------ */}
+            <Route element={<MainLayout />}>
+              <Route path="/dashboard" element={<DashboardPage />} />
 
-        {/* 🧪 Página de prueba integración PLE */}
-        <Route 
-          path="/test-ple-integration" 
-          element={
-            isSignedIn ? <PLEIntegrationTest /> : <Navigate to="/" replace />
-          } 
-        />
-        
-        {/* Ruta catch-all - redirige a home */}
-        <Route path="*" element={<Navigate to="/" replace />} />
+              <Route path="/sire" element={<SireHomePage />} />
+              <Route path="/sire/rvie" element={<RvieHomePage />} />
+              <Route path="/sire/rvie/operaciones" element={<RvieOperacionesPage />} />
+              <Route path="/sire/rvie/tickets" element={<RvieTicketsPage />} />
+              <Route path="/sire/rvie/ventas" element={<RvieVentasPage />} />
+
+              <Route path="/sire/rce" element={<RceProviderLayout />}>
+                <Route index element={<RceHomePage />} />
+                <Route path="operaciones" element={<RceOperacionesPage />} />
+                <Route path="tickets" element={<RceTicketsPage />} />
+                <Route path="resumen" element={<RceResumenPage />} />
+              </Route>
+
+              <Route path="/socios-negocio" element={<SociosNegocioPage />} />
+
+              <Route path="/contabilidad" element={<ContabilidadShell />}>
+                <Route index element={<ContabilidadPage />} />
+                <Route path="plan-contable" element={<PlanContablePage />} />
+                {/* La ruta canonica ya no exige el RUC: LibroDiarioPage lo
+                    resuelve desde la empresa activa. Se mantiene la variante
+                    con parametro por compatibilidad con enlaces existentes. */}
+                <Route path="libro-diario" element={<LibroDiarioPage />} />
+                <Route path="libro-diario/:empresaId" element={<LibroDiarioPage />} />
+                <Route path="registro-compras" element={<RegistroComprasPage />} />
+                <Route path="registro-ventas" element={<RegistroVentasPage />} />
+                <Route path="libro-mayor" element={<LibroMayorPage />} />
+                <Route path="ple" element={<PLEPage />} />
+              </Route>
+            </Route>
+          </Route>
+
+          {/* -------------------------------------------------------------- */}
+          {/* Utilidades de desarrollo: fuera del bundle de produccion        */}
+          {/* -------------------------------------------------------------- */}
+          {import.meta.env.DEV && (
+            <Route path="/test">
+              <Route path="logout" element={<TestLogoutPage />} />
+              <Route path="ple" element={<PLETestPage />} />
+              <Route path="ple-integration" element={<PLEIntegrationTest />} />
+              <Route
+                path="rce"
+                element={
+                  <RceDataProvider>
+                    <RceIntegrationTest />
+                  </RceDataProvider>
+                }
+              />
+            </Route>
+          )}
+        </Route>
+
+        {/* Compatibilidad: rutas antiguas que ya circulan en marcadores */}
+        <Route path="/test-logout" element={<Navigate to="/test/logout" replace />} />
+        <Route path="/test-ple" element={<Navigate to="/test/ple" replace />} />
+        <Route path="/test-ple-integration" element={<Navigate to="/test/ple-integration" replace />} />
+        <Route path="/test-rce" element={<Navigate to="/test/rce" replace />} />
+
+        {/* 404 explicito en vez de un rebote silencioso a "/" */}
+        <Route path="*" element={<NotFoundPage />} />
       </Routes>
-    </Router>
-  );
-};
+    </Suspense>
+  </Router>
+);
 
 export default AppRouter;

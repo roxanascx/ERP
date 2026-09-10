@@ -1,202 +1,175 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { AlertCircle, Loader2, RefreshCw } from 'lucide-react';
 import { ContabilidadProvider } from '../../contexts/ContabilidadContext';
 import PlanContableTable from '../../components/contabilidad/planContable/PlanContableTable';
 import EstadisticasCard from '../../components/contabilidad/planContable/EstadisticasCard';
-import FiltrosContabilidad from '../../components/contabilidad/planContable/FiltrosContabilidad';
+import FiltrosContabilidad, {
+  type Filtros,
+} from '../../components/contabilidad/planContable/FiltrosContabilidad';
 import CuentaModal from '../../components/contabilidad/planContable/CuentaModal';
 import PlanContableManager from '../../components/contabilidad/planContable/PlanContableManager';
 import ContabilidadApiService from '../../services/contabilidadApi';
-import type { CuentaContable, CuentaContableCreate, EstadisticasPlanContable } from '../../types/contabilidad';
+import useEmpresaActual from '../../hooks/useEmpresaActual';
+import type {
+  CuentaContable,
+  CuentaContableCreate,
+  EstadisticasPlanContable,
+} from '../../types/contabilidad';
 
-const PlanContablePage: React.FC = () => {
-  return (
-    <ContabilidadProvider>
-      <PlanContablePageContent />
-    </ContabilidadProvider>
-  );
-};
+const PlanContablePage: React.FC = () => (
+  <ContabilidadProvider>
+    <PlanContablePageContent />
+  </ContabilidadProvider>
+);
 
 const PlanContablePageContent: React.FC = () => {
-  const navigate = useNavigate();
+  const { empresa } = useEmpresaActual();
+
   const [cuentas, setCuentas] = useState<CuentaContable[]>([]);
   const [estadisticas, setEstadisticas] = useState<EstadisticasPlanContable | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
-  // Nuevos estados para gestión de planes personalizados
+
   const [tipoPlanActivo, setTipoPlanActivo] = useState<'estandar' | 'personalizado'>('estandar');
-  const [empresaId] = useState('empresa_demo'); // En una app real, esto vendría del contexto de usuario
-  
-  const [filtros, setFiltros] = useState({
+
+  // Antes esto era la constante 'empresa_demo', asi que la pantalla consultaba
+  // siempre una empresa inexistente en vez de la que el usuario tiene activa.
+  const empresaId = empresa?.ruc ?? '';
+
+  const [filtros, setFiltros] = useState<Filtros>({
     busqueda: '',
-    clase_contable: undefined as number | undefined,
-    nivel: undefined as number | undefined,
-    solo_activas: true
+    clase_contable: undefined,
+    nivel: undefined,
+    solo_activas: true,
   });
 
-  // Estados para el modal de cuenta
   const [modalAbierto, setModalAbierto] = useState(false);
   const [cuentaEditando, setCuentaEditando] = useState<CuentaContable | undefined>(undefined);
   const [modoModal, setModoModal] = useState<'crear' | 'editar'>('crear');
 
-  // Referencias para debouncing
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isInitialLoad = useRef(true);
 
-  // Cargar datos iniciales
-  useEffect(() => {
-    cargarDatos();
-  }, []);
+  // ---------------------------------------------------------------------------
+  // Carga de datos
+  // ---------------------------------------------------------------------------
 
-  // Aplicar filtros con debouncing para búsquedas
-  useEffect(() => {
-    // Limpiar timeout anterior
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-    }
+  const cargarDatos = useCallback(async () => {
+    if (!empresaId) return;
 
-    // Si es la carga inicial, cargar inmediatamente
-    if (isInitialLoad.current) {
-      cargarCuentas();
-      isInitialLoad.current = false;
-      return;
-    }
-
-    // Para búsquedas de texto, aplicar debouncing de 300ms
-    if (filtros.busqueda.trim()) {
-      timeoutRef.current = setTimeout(() => {
-        cargarCuentas();
-      }, 300);
-    } else {
-      // Para otros filtros, aplicar inmediatamente
-      cargarCuentas();
-    }
-
-    // Cleanup
-    return () => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
-    };
-  }, [filtros]);
-
-  const cargarDatos = async () => {
+    setLoading(true);
+    setError(null);
     try {
-      setLoading(true);
-      setError(null);
-      
-      // Incluir parámetros de empresa y tipo de plan en las consultas
       const [cuentasData, estadisticasData] = await Promise.all([
-        ContabilidadApiService.getCuentas({ 
+        ContabilidadApiService.getCuentas({
           activos_solo: filtros.solo_activas,
           empresa_id: empresaId,
-          tipo_plan: tipoPlanActivo
+          tipo_plan: tipoPlanActivo,
         }),
-        ContabilidadApiService.getEstadisticas()
+        ContabilidadApiService.getEstadisticas(),
       ]);
-      
+
       setCuentas(cuentasData);
       setEstadisticas(estadisticasData);
     } catch (err: any) {
-      console.error('Error cargando datos:', err);
       setError(err.response?.data?.detail || 'Error cargando datos del plan contable');
     } finally {
       setLoading(false);
     }
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [empresaId, tipoPlanActivo]);
 
-  const cargarCuentas = async () => {
+  const cargarCuentas = useCallback(async () => {
+    if (!empresaId) return;
+
+    setError(null);
     try {
-      setError(null);
-      
-      // Construir parámetros incluyendo empresa y tipo de plan
-      const params: any = {
+      const params: Record<string, unknown> = {
         activos_solo: filtros.solo_activas,
         empresa_id: empresaId,
-        tipo_plan: tipoPlanActivo
+        tipo_plan: tipoPlanActivo,
       };
 
       if (filtros.clase_contable) params.clase_contable = filtros.clase_contable;
       if (filtros.nivel) params.nivel = filtros.nivel;
       if (filtros.busqueda?.trim()) params.busqueda = filtros.busqueda.trim();
 
-      const cuentasData = await ContabilidadApiService.getCuentas(params);
-      setCuentas(cuentasData);
+      setCuentas(await ContabilidadApiService.getCuentas(params as any));
     } catch (err: any) {
-      console.error('Error cargando cuentas:', err);
       setError(err.response?.data?.detail || 'Error cargando cuentas');
     }
+  }, [empresaId, tipoPlanActivo, filtros]);
+
+  useEffect(() => {
+    void cargarDatos();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [empresaId]);
+
+  // Las busquedas de texto esperan 300 ms; el resto de filtros se aplican ya.
+  useEffect(() => {
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+
+    if (isInitialLoad.current) {
+      isInitialLoad.current = false;
+      return;
+    }
+
+    if (filtros.busqueda.trim()) {
+      timeoutRef.current = setTimeout(() => void cargarCuentas(), 300);
+    } else {
+      void cargarCuentas();
+    }
+
+    return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filtros]);
+
+  // ---------------------------------------------------------------------------
+  // Acciones
+  // ---------------------------------------------------------------------------
+
+  const refrescarEstadisticas = async () => {
+    setEstadisticas(await ContabilidadApiService.getEstadisticas());
   };
 
-  // Handlers para el gestor de planes
   const handlePlanChanged = (nuevoTipoPlan: 'estandar' | 'personalizado') => {
     setTipoPlanActivo(nuevoTipoPlan);
-    // Recargar datos con el nuevo tipo de plan
-    cargarDatos();
-  };
-
-  const handleImportSuccess = () => {
-    // Recargar todos los datos después de una importación exitosa
-    cargarDatos();
   };
 
   const handleEliminarCuenta = async (cuenta: CuentaContable) => {
+    const confirmado = window.confirm(
+      `¿Desactivar la cuenta ${cuenta.codigo} — ${cuenta.descripcion}?`
+    );
+    if (!confirmado) return;
+
     try {
       await ContabilidadApiService.deleteCuenta(cuenta.codigo);
-      setCuentas(prev => prev.map(c =>
-        c.codigo === cuenta.codigo ? { ...c, activa: false } : c
-      ));
-      
-      // Recargar estadísticas
-      const nuevasEstadisticas = await ContabilidadApiService.getEstadisticas();
-      setEstadisticas(nuevasEstadisticas);
+      setCuentas((prev) =>
+        prev.map((c) => (c.codigo === cuenta.codigo ? { ...c, activa: false } : c))
+      );
+      await refrescarEstadisticas();
     } catch (err: any) {
-      throw new Error(err.response?.data?.detail || 'Error eliminando cuenta');
+      setError(err.response?.data?.detail || 'Error eliminando la cuenta');
     }
   };
 
   const handleToggleActivarCuenta = async (cuenta: CuentaContable) => {
     const accion = cuenta.activa ? 'desactivar' : 'activar';
-    const mensaje = `¿Está seguro de ${accion} la cuenta ${cuenta.codigo} - ${cuenta.descripcion}?`;
-    
-    if (!window.confirm(mensaje)) {
+    if (!window.confirm(`¿${accion[0].toUpperCase()}${accion.slice(1)} la cuenta ${cuenta.codigo}?`)) {
       return;
     }
 
     try {
-      // Actualizar solo el estado activo
-      const cuentaActualizada = await ContabilidadApiService.updateCuenta(
-        cuenta.codigo, 
-        { activa: !cuenta.activa }
-      );
-      
-      setCuentas(prev => prev.map(c => 
-        c.codigo === cuenta.codigo ? cuentaActualizada : c
-      ));
-      
-      // Recargar estadísticas
-      const nuevasEstadisticas = await ContabilidadApiService.getEstadisticas();
-      setEstadisticas(nuevasEstadisticas);
-      
-      console.log(`Cuenta ${cuenta.codigo} ${accion}da exitosamente`);
+      const cuentaActualizada = await ContabilidadApiService.updateCuenta(cuenta.codigo, {
+        activa: !cuenta.activa,
+      });
+      setCuentas((prev) => prev.map((c) => (c.codigo === cuenta.codigo ? cuentaActualizada : c)));
+      await refrescarEstadisticas();
     } catch (err: any) {
-      console.error(`Error ${accion}ndo cuenta:`, err);
-      setError(err.response?.data?.detail || `Error ${accion}ndo cuenta`);
+      setError(err.response?.data?.detail || `Error al ${accion} la cuenta`);
     }
-  };
-
-  // Funciones del modal
-  const abrirModalCrear = () => {
-    setModoModal('crear');
-    setCuentaEditando(undefined);
-    setModalAbierto(true);
-  };
-
-  const abrirModalEditar = (cuenta: CuentaContable) => {
-    setModoModal('editar');
-    setCuentaEditando(cuenta);
-    setModalAbierto(true);
   };
 
   const cerrarModal = () => {
@@ -207,7 +180,6 @@ const PlanContablePageContent: React.FC = () => {
   const handleSubmitCuenta = async (datosFormulario: Partial<CuentaContable>) => {
     try {
       if (modoModal === 'crear') {
-        // Convertir datos parciales a formato de creación
         const datosCreacion: CuentaContableCreate = {
           codigo: datosFormulario.codigo!,
           descripcion: datosFormulario.descripcion!,
@@ -220,256 +192,96 @@ const PlanContablePageContent: React.FC = () => {
           acepta_movimiento: datosFormulario.acepta_movimiento,
           naturaleza: datosFormulario.naturaleza,
           moneda: datosFormulario.moneda,
-          activa: datosFormulario.activa
+          activa: datosFormulario.activa,
         };
         const nuevaCuenta = await ContabilidadApiService.createCuenta(datosCreacion);
-        setCuentas(prev => [...prev, nuevaCuenta]);
+        setCuentas((prev) => [...prev, nuevaCuenta]);
       } else if (modoModal === 'editar' && cuentaEditando) {
         const cuentaActualizada = await ContabilidadApiService.updateCuenta(
-          cuentaEditando.codigo, 
+          cuentaEditando.codigo,
           datosFormulario
         );
-        setCuentas(prev => prev.map(c => 
-          c.codigo === cuentaEditando.codigo ? cuentaActualizada : c
-        ));
+        setCuentas((prev) =>
+          prev.map((c) => (c.codigo === cuentaEditando.codigo ? cuentaActualizada : c))
+        );
       }
-      
-      // Recargar estadísticas
-      const nuevasEstadisticas = await ContabilidadApiService.getEstadisticas();
-      setEstadisticas(nuevasEstadisticas);
-      
+
+      await refrescarEstadisticas();
       cerrarModal();
     } catch (err: any) {
       throw new Error(err.response?.data?.detail || 'Error guardando cuenta');
     }
   };
 
+  // ---------------------------------------------------------------------------
+  // Render
+  // ---------------------------------------------------------------------------
+
   if (loading) {
     return (
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        minHeight: '24rem'
-      }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{
-            width: '3rem',
-            height: '3rem',
-            border: '2px solid #e5e7eb',
-            borderTop: '2px solid #3b82f6',
-            borderRadius: '50%',
-            margin: '0 auto',
-            animation: 'spin 1s linear infinite'
-          }}></div>
-          <p style={{
-            marginTop: '1rem',
-            color: '#6b7280'
-          }}>
-            Cargando plan contable...
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div style={{
-        background: 'rgba(254, 242, 242, 1)',
-        border: '1px solid rgba(252, 165, 165, 1)',
-        borderRadius: '0.375rem',
-        padding: '1rem'
-      }}>
-        <div style={{ display: 'flex' }}>
-          <div style={{ marginLeft: '0.75rem' }}>
-            <h3 style={{
-              fontSize: '0.875rem',
-              fontWeight: '500',
-              color: '#991b1b'
-            }}>
-              Error
-            </h3>
-            <div style={{
-              marginTop: '0.5rem',
-              fontSize: '0.875rem',
-              color: '#b91c1c'
-            }}>
-              <p>{error}</p>
-            </div>
-            <div style={{ marginTop: '1rem' }}>
-              <button
-                onClick={cargarDatos}
-                style={{
-                  background: 'rgba(254, 242, 242, 1)',
-                  padding: '0.5rem 0.75rem',
-                  borderRadius: '0.375rem',
-                  fontSize: '0.875rem',
-                  fontWeight: '500',
-                  color: '#991b1b',
-                  border: 'none',
-                  cursor: 'pointer'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = 'rgba(252, 165, 165, 0.3)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = 'rgba(254, 242, 242, 1)';
-                }}
-              >
-                Reintentar
-              </button>
-            </div>
-          </div>
-        </div>
+      <div className="flex items-center justify-center py-20" role="status">
+        <Loader2 className="size-6 animate-spin text-blue-600" aria-hidden="true" />
+        <span className="ml-3 text-sm text-slate-500">Cargando plan contable…</span>
       </div>
     );
   }
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 25%, #e2e8f0 50%, #cbd5e1 75%, #94a3b8 100%)',
-      backgroundSize: '400% 400%',
-      animation: 'subtleShift 20s ease infinite'
-    }}>
-      <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-        {/* Header */}
-        <div style={{
-          borderRadius: '1rem',
-          padding: '2rem',
-          backdropFilter: 'blur(20px) saturate(180%)',
-          border: '1px solid rgba(255, 255, 255, 0.2)',
-          background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 250, 252, 0.9) 100%)',
-          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.5)'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-              {/* Botón de regreso */}
-              <button
-                onClick={() => navigate('/contabilidad')}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem',
-                  padding: '0.75rem 1rem',
-                  borderRadius: '0.5rem',
-                  border: '1px solid #e5e7eb',
-                  background: 'linear-gradient(135deg, #ffffff 0%, #f9fafb 100%)',
-                  color: '#374151',
-                  cursor: 'pointer',
-                  fontSize: '0.875rem',
-                  fontWeight: '500',
-                  transition: 'all 0.2s ease',
-                  boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = 'linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%)';
-                  e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.15)';
-                  e.currentTarget.style.transform = 'translateY(-1px)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = 'linear-gradient(135deg, #ffffff 0%, #f9fafb 100%)';
-                  e.currentTarget.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.1)';
-                  e.currentTarget.style.transform = 'translateY(0)';
-                }}
-              >
-                <span style={{ fontSize: '1rem' }}>←</span>
-                Contabilidad
-              </button>
-              
-              {/* Información del plan contable */}
-              <div>
-                <h2 style={{
-                  fontSize: '1.875rem',
-                  fontWeight: '700',
-                  margin: 0,
-                  background: 'linear-gradient(135deg, #111827 0%, #6b7280 100%)',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
-                  backgroundClip: 'text'
-                }}>
-                  📋 Plan Contable
-                </h2>
-                <p style={{
-                  marginTop: '0.5rem',
-                  color: '#6b7280',
-                  fontWeight: '500'
-                }}>
-                  Gestión del catálogo de cuentas contables • 
-                  <span style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    marginLeft: '0.5rem',
-                    padding: '0.25rem 0.625rem',
-                    borderRadius: '9999px',
-                    fontSize: '0.75rem',
-                    fontWeight: '600',
-                    background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(99, 102, 241, 0.1) 100%)',
-                    color: '#1e40af'
-                  }}>
-                    {cuentas.length} cuentas encontradas
-                  </span>
-                </p>
-              </div>
-            </div>
-          </div>
-          
-          {/* Estadísticas */}
-          {estadisticas && (
-            <EstadisticasCard estadisticas={estadisticas} />
-          )}
+    <div className="space-y-6">
+      {error && (
+        <div
+          role="alert"
+          className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3"
+        >
+          <AlertCircle className="mt-0.5 size-5 shrink-0 text-red-600" aria-hidden="true" />
+          <p className="flex-1 text-sm font-medium text-red-800">{error}</p>
+          <button
+            type="button"
+            onClick={cargarDatos}
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-red-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-50"
+          >
+            <RefreshCw className="size-3.5" aria-hidden="true" />
+            Reintentar
+          </button>
         </div>
+      )}
 
-        {/* Gestión de Planes Contables */}
-        <PlanContableManager
-          empresaId={empresaId}
-          planActual={tipoPlanActivo}
-          onPlanChanged={handlePlanChanged}
-          onImportSuccess={handleImportSuccess}
+      {estadisticas && <EstadisticasCard estadisticas={estadisticas} />}
+
+      <PlanContableManager
+        empresaId={empresaId}
+        planActual={tipoPlanActivo}
+        onPlanChanged={handlePlanChanged}
+        onImportSuccess={cargarDatos}
+      />
+
+      <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+        <FiltrosContabilidad
+          filtros={filtros}
+          onFiltrosChange={setFiltros}
+          onCrearCuenta={() => {
+            setModoModal('crear');
+            setCuentaEditando(undefined);
+            setModalAbierto(true);
+          }}
+          totalCuentas={cuentas.length}
         />
-
-        {/* Filtros y controles */}
-        <div style={{
-          borderRadius: '1rem',
-          padding: '1.5rem',
-          backdropFilter: 'blur(10px) saturate(160%)',
-          border: '1px solid rgba(255, 255, 255, 0.2)',
-          background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(248, 250, 252, 0.85) 100%)',
-          boxShadow: '0 4px 16px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.4)'
-        }}>
-          <FiltrosContabilidad
-            filtros={filtros}
-            onFiltrosChange={setFiltros}
-            onCrearCuenta={abrirModalCrear}
-            totalCuentas={cuentas.length}
-          />
-        </div>
-
-        {/* Tabla principal */}
-        <div style={{
-          borderRadius: '1rem',
-          backdropFilter: 'blur(20px) saturate(180%)',
-          border: '1px solid rgba(255, 255, 255, 0.2)',
-          background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 250, 252, 0.9) 100%)',
-          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.5)'
-        }}>
-          <PlanContableTable
-            cuentas={cuentas}
-            loading={loading}
-            onEditarCuenta={abrirModalEditar}
-            onEliminarCuenta={handleEliminarCuenta}
-            onToggleActivarCuenta={handleToggleActivarCuenta}
-            cuentaSeleccionada={undefined}
-            onCuentaSelect={(cuenta: CuentaContable) => console.log('Cuenta seleccionada:', cuenta)}
-            searchTerm={filtros.busqueda}
-          />
-        </div>
-
-        {/* Modal será renderizado por PlanContableTable cuando sea necesario */}
       </div>
 
-      {/* Modal para crear/editar cuentas */}
+      <PlanContableTable
+        cuentas={cuentas}
+        loading={false}
+        searchTerm={filtros.busqueda}
+        onEditarCuenta={(cuenta) => {
+          setModoModal('editar');
+          setCuentaEditando(cuenta);
+          setModalAbierto(true);
+        }}
+        onEliminarCuenta={handleEliminarCuenta}
+        onToggleActivarCuenta={handleToggleActivarCuenta}
+        onCuentaSelect={() => {}}
+      />
+
       <CuentaModal
         isOpen={modalAbierto}
         onClose={cerrarModal}
@@ -477,15 +289,6 @@ const PlanContablePageContent: React.FC = () => {
         cuenta={cuentaEditando}
         modo={modoModal}
       />
-      
-      {/* Modern CSS Animations */}
-      <style>{`
-        @keyframes subtleShift {
-          0% { background-position: 0% 50%; }
-          50% { background-position: 100% 50%; }
-          100% { background-position: 0% 50%; }
-        }
-      `}</style>
     </div>
   );
 };

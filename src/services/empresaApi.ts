@@ -130,12 +130,8 @@ export class EmpresaApiService {
    */
   static async configurarSire(ruc: string, config: SireConfig): Promise<Empresa> {
     try {
-      console.log('🔐 Configurando SIRE para empresa:', ruc);
-      console.log('📝 Datos de configuración SIRE:', config);
-      console.log('🌐 URL del endpoint:', `/${ruc}/sire`);
       
       const response = await apiClient.post<Empresa>(`/${ruc}/sire`, config);
-      console.log('✅ SIRE configurado exitosamente:', response.data);
       return response.data;
     } catch (error: any) {
       console.error('❌ Error configurando SIRE:', error);

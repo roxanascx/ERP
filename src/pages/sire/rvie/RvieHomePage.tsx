@@ -1,351 +1,88 @@
-/**
- * Página principal del módulo RVIE
- * Dashboard con acceso a todas las funcionalidades RVIE
- * URL: /sire/rvie
- */
-
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { CheckCircle2, Clock, Loader2, ShieldAlert, ShieldCheck, Ticket } from 'lucide-react';
+import ModuleGrid from '../../../components/common/ModuleGrid';
 import { useRvie } from '../../../hooks/useRvie';
 import { useEmpresaValidation } from '../../../hooks/useEmpresaValidation';
+import { RVIE_MODULES } from '../../../config/navigation';
+import { cn } from '../../../lib/cn';
 
+/**
+ * Portada de RVIE.
+ *
+ * Sin layout propio (lo aporta MainLayout) y sin el bloque
+ * "Empresa no encontrada", que era inalcanzable: RequireEmpresa ya redirige.
+ * Tampoco repite RUC y razon social, que la cabecera ya muestra.
+ */
 const RvieHomePage: React.FC = () => {
-  const navigate = useNavigate();
   const { empresaActual } = useEmpresaValidation();
-  
-  // Hook RVIE para obtener información general
-  const {
-    authStatus,
-    tickets,
-    loading
-  } = useRvie({ ruc: empresaActual?.ruc || '' });
+  const { authStatus, tickets, loading } = useRvie({ ruc: empresaActual?.ruc || '' });
 
-  if (!empresaActual) {
-    return (
-      <div style={{
-        minHeight: '100vh',
-        background: 'linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)',
-        padding: '20px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center'
-      }}>
-        <div style={{ background: 'white', padding: '2rem', borderRadius: '12px', textAlign: 'center' }}>
-          <h2>🏢 Empresa no encontrada</h2>
-          <button onClick={() => navigate('/empresas')}>
-            Seleccionar Empresa
-          </button>
-        </div>
-      </div>
-    );
-  }
+  const total = tickets?.length ?? 0;
+  const terminados = tickets?.filter((t) => t.status === 'TERMINADO').length ?? 0;
+  const procesando = tickets?.filter((t) => t.status === 'PROCESANDO').length ?? 0;
+  const autenticado = Boolean(authStatus?.authenticated);
 
-  // Estadísticas rápidas
-  const ticketsActivos = tickets?.filter(t => t.status === 'TERMINADO').length || 0;
-  const ticketsPendientes = tickets?.filter(t => t.status === 'PROCESANDO').length || 0;
+  const stats = [
+    { id: 'total', label: 'Tickets', value: total, icon: Ticket, tone: 'text-slate-600 bg-slate-100' },
+    { id: 'ok', label: 'Terminados', value: terminados, icon: CheckCircle2, tone: 'text-green-600 bg-green-50' },
+    { id: 'wip', label: 'Procesando', value: procesando, icon: Clock, tone: 'text-amber-600 bg-amber-50' },
+  ];
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: 'linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)',
-      padding: '20px'
-    }}>
-      {/* Header de navegación */}
-      <div style={{
-        background: 'white',
-        padding: '1rem 2rem',
-        borderRadius: '12px',
-        marginBottom: '2rem',
-        boxShadow: '0 2px 10px rgba(0, 0, 0, 0.1)'
-      }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
-            {/* Breadcrumbs */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-              <button
-                onClick={() => navigate('/sire')}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: '#3b82f6',
-                  cursor: 'pointer',
-                  fontSize: '0.9rem'
-                }}
-              >
-                SIRE
-              </button>
-              <span style={{ color: '#6b7280' }}>›</span>
-              <span style={{ color: '#374151', fontWeight: 'bold', fontSize: '0.9rem' }}>
-                RVIE
-              </span>
-            </div>
-            
-            {/* Título */}
-            <h1 style={{ 
-              fontSize: '1.8rem', 
-              fontWeight: 'bold', 
-              color: '#1f2937',
-              margin: 0
-            }}>
-              📊 RVIE - Registro de Ventas e Ingresos Electrónico
-            </h1>
+    <div className="space-y-8">
+      {/* Estado de la conexion con SUNAT */}
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div
+          className={cn(
+            'flex items-center gap-3 rounded-xl border p-4',
+            autenticado ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'
+          )}
+        >
+          <div className="grid size-10 shrink-0 place-items-center rounded-lg bg-white/70">
+            {autenticado ? (
+              <ShieldCheck className="size-5 text-green-600" aria-hidden="true" />
+            ) : (
+              <ShieldAlert className="size-5 text-red-600" aria-hidden="true" />
+            )}
           </div>
+          <div className="min-w-0">
+            <p
+              className={cn(
+                'text-xs font-medium tracking-wide uppercase',
+                autenticado ? 'text-green-700' : 'text-red-700'
+              )}
+            >
+              Estado SUNAT
+            </p>
+            <p
+              className={cn(
+                'flex items-center gap-1.5 text-sm font-semibold',
+                autenticado ? 'text-green-800' : 'text-red-800'
+              )}
+            >
+              {loading && <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />}
+              {autenticado ? 'Autenticado' : 'No autenticado'}
+            </p>
+          </div>
+        </div>
 
-          {/* Botón volver */}
-          <button
-            onClick={() => navigate('/sire')}
-            style={{
-              background: '#6b7280',
-              color: 'white',
-              border: 'none',
-              padding: '8px 1rem',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px'
-            }}
+        {stats.map(({ id, label, value, icon: Icon, tone }) => (
+          <div
+            key={id}
+            className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
           >
-            ← Volver a SIRE
-          </button>
-        </div>
-      </div>
-
-      {/* Información de la empresa y estado */}
-      <div style={{
-        background: 'white',
-        padding: '1.5rem',
-        borderRadius: '12px',
-        marginBottom: '2rem',
-        boxShadow: '0 2px 10px rgba(0, 0, 0, 0.1)'
-      }}>
-        <h3 style={{ margin: '0 0 1rem 0', color: '#374151' }}>📋 Información de la Empresa</h3>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
-          <div>
-            <strong>RUC:</strong> {empresaActual.ruc}
-          </div>
-          <div>
-            <strong>Razón Social:</strong> {empresaActual.razon_social}
-          </div>
-          <div>
-            <strong>Estado SUNAT:</strong> 
-            <span style={{ 
-              color: authStatus?.authenticated ? '#059669' : '#dc2626',
-              fontWeight: 'bold',
-              marginLeft: '8px'
-            }}>
-              {authStatus?.authenticated ? '✅ Autenticado' : '❌ No autenticado'}
-            </span>
-          </div>
-          <div>
-            <strong>Total Tickets:</strong> {tickets?.length || 0}
-          </div>
-        </div>
-      </div>
-
-      {/* Estadísticas rápidas */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-        gap: '1rem',
-        marginBottom: '2rem'
-      }}>
-        <div style={{
-          background: 'white',
-          padding: '1.5rem',
-          borderRadius: '12px',
-          boxShadow: '0 2px 10px rgba(0, 0, 0, 0.1)',
-          textAlign: 'center'
-        }}>
-          <div style={{ fontSize: '2rem', color: '#059669', marginBottom: '8px' }}>
-            {ticketsActivos}
-          </div>
-          <div style={{ color: '#6b7280', fontSize: '0.9rem' }}>Tickets Completados</div>
-        </div>
-
-        <div style={{
-          background: 'white',
-          padding: '1.5rem',
-          borderRadius: '12px',
-          boxShadow: '0 2px 10px rgba(0, 0, 0, 0.1)',
-          textAlign: 'center'
-        }}>
-          <div style={{ fontSize: '2rem', color: '#f59e0b', marginBottom: '8px' }}>
-            {ticketsPendientes}
-          </div>
-          <div style={{ color: '#6b7280', fontSize: '0.9rem' }}>Tickets en Proceso</div>
-        </div>
-
-        <div style={{
-          background: 'white',
-          padding: '1.5rem',
-          borderRadius: '12px',
-          boxShadow: '0 2px 10px rgba(0, 0, 0, 0.1)',
-          textAlign: 'center'
-        }}>
-          <div style={{ fontSize: '2rem', color: '#3b82f6', marginBottom: '8px' }}>
-            {loading ? '⏳' : '✅'}
-          </div>
-          <div style={{ color: '#6b7280', fontSize: '0.9rem' }}>Estado del Sistema</div>
-        </div>
-      </div>
-
-      {/* Módulos RVIE */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))',
-        gap: '2rem'
-      }}>
-        {/* Operaciones RVIE */}
-        <div
-          onClick={() => navigate('/sire/rvie/operaciones')}
-          style={{
-            background: 'white',
-            padding: '2rem',
-            borderRadius: '12px',
-            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
-            cursor: 'pointer',
-            transition: 'transform 0.3s ease, box-shadow 0.3s ease',
-            border: '2px solid transparent'
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.transform = 'translateY(-4px)';
-            e.currentTarget.style.boxShadow = '0 8px 30px rgba(0, 0, 0, 0.15)';
-            e.currentTarget.style.borderColor = '#10b981';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.transform = 'translateY(0)';
-            e.currentTarget.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.1)';
-            e.currentTarget.style.borderColor = 'transparent';
-          }}
-        >
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>⚙️</div>
-            <h3 style={{ 
-              color: '#10b981', 
-              fontSize: '1.3rem', 
-              margin: '0 0 1rem 0' 
-            }}>
-              Operaciones RVIE
-            </h3>
-            <p style={{ 
-              color: '#6b7280', 
-              fontSize: '1rem', 
-              margin: '0 0 1.5rem 0' 
-            }}>
-              Gestionar propuestas y procesos RVIE
-            </p>
-            <div style={{ textAlign: 'left', color: '#374151' }}>
-              <ul style={{ margin: 0, paddingLeft: '1.5rem' }}>
-                <li>Descargar propuestas SUNAT</li>
-                <li>Aceptar propuestas</li>
-                <li>Reemplazar con archivos</li>
-                <li>Registrar preliminares</li>
-              </ul>
+            <div className={cn('grid size-10 shrink-0 place-items-center rounded-lg', tone)}>
+              <Icon className="size-5" aria-hidden="true" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-medium tracking-wide text-slate-500 uppercase">{label}</p>
+              <p className="text-xl font-bold text-slate-900 tabular-nums">{value}</p>
             </div>
           </div>
-        </div>
+        ))}
+      </section>
 
-        {/* Gestión de Tickets */}
-        <div
-          onClick={() => navigate('/sire/rvie/tickets')}
-          style={{
-            background: 'white',
-            padding: '2rem',
-            borderRadius: '12px',
-            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
-            cursor: 'pointer',
-            transition: 'transform 0.3s ease, box-shadow 0.3s ease',
-            border: '2px solid transparent'
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.transform = 'translateY(-4px)';
-            e.currentTarget.style.boxShadow = '0 8px 30px rgba(0, 0, 0, 0.15)';
-            e.currentTarget.style.borderColor = '#f59e0b';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.transform = 'translateY(0)';
-            e.currentTarget.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.1)';
-            e.currentTarget.style.borderColor = 'transparent';
-          }}
-        >
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🎫</div>
-            <h3 style={{ 
-              color: '#f59e0b', 
-              fontSize: '1.3rem', 
-              margin: '0 0 1rem 0' 
-            }}>
-              Gestión de Tickets
-            </h3>
-            <p style={{ 
-              color: '#6b7280', 
-              fontSize: '1rem', 
-              margin: '0 0 1.5rem 0' 
-            }}>
-              Consultar y descargar archivos procesados
-            </p>
-            <div style={{ textAlign: 'left', color: '#374151' }}>
-              <ul style={{ margin: 0, paddingLeft: '1.5rem' }}>
-                <li>Consultar estado de tickets</li>
-                <li>Descargar archivos generados</li>
-                <li>Historial de operaciones</li>
-                <li>Seguimiento de procesos</li>
-              </ul>
-            </div>
-          </div>
-        </div>
-
-        {/* Gestión de Ventas */}
-        <div
-          onClick={() => navigate('/sire/rvie/ventas')}
-          style={{
-            background: 'white',
-            padding: '2rem',
-            borderRadius: '12px',
-            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
-            cursor: 'pointer',
-            transition: 'transform 0.3s ease, box-shadow 0.3s ease',
-            border: '2px solid transparent'
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.transform = 'translateY(-4px)';
-            e.currentTarget.style.boxShadow = '0 8px 30px rgba(0, 0, 0, 0.15)';
-            e.currentTarget.style.borderColor = '#3b82f6';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.transform = 'translateY(0)';
-            e.currentTarget.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.1)';
-            e.currentTarget.style.borderColor = 'transparent';
-          }}
-        >
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>💰</div>
-            <h3 style={{ 
-              color: '#3b82f6', 
-              fontSize: '1.3rem', 
-              margin: '0 0 1rem 0' 
-            }}>
-              Gestión de Ventas
-            </h3>
-            <p style={{ 
-              color: '#6b7280', 
-              fontSize: '1rem', 
-              margin: '0 0 1.5rem 0' 
-            }}>
-              Analizar comprobantes y estadísticas
-            </p>
-            <div style={{ textAlign: 'left', color: '#374151' }}>
-              <ul style={{ margin: 0, paddingLeft: '1.5rem' }}>
-                <li>Visualizar comprobantes</li>
-                <li>Estadísticas por período</li>
-                <li>Filtros avanzados</li>
-                <li>Exportar reportes</li>
-              </ul>
-            </div>
-          </div>
-        </div>
-      </div>
+      <ModuleGrid modules={RVIE_MODULES} title="Operaciones RVIE" />
     </div>
   );
 };

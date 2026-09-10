@@ -165,7 +165,6 @@ class ApiClient {
     };
 
     try {
-      console.log(`🌐 [PLE API] ${config.method || 'GET'} ${url}`);
       
       const response = await fetch(url, config);
       
@@ -187,7 +186,6 @@ class ApiClient {
       }
 
       const data = await response.json();
-      console.log(`✅ [PLE API] Response:`, data);
       return data;
       
     } catch (error) {

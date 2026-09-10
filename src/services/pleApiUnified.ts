@@ -111,16 +111,14 @@ export interface PLEContextData {
 
 // ✅ Servicio API unificado para PLE - Actualizado
 class PLEApiUnified {
-  private baseUrl = '/api/v1/accounting/ple';
+  private baseUrl = '/accounting/ple';
 
   /**
    * Obtiene el contexto automático del libro diario para PLE
    */
   async obtenerContexto(libroId: string): Promise<PLEContextoResponse> {
     try {
-      console.log('🔍 Obteniendo contexto PLE para libro:', libroId);
       const response = await api.get(`${this.baseUrl}/contexto/${libroId}`);
-      console.log('✅ Contexto PLE obtenido:', response.data);
       return response.data;
     } catch (error) {
       console.error('❌ Error obteniendo contexto PLE:', error);
@@ -133,9 +131,7 @@ class PLEApiUnified {
    */
   async generarPLE(data: PLEGeneracionRequest): Promise<PLEGeneracionResponse> {
     try {
-      console.log('🚀 Generando PLE:', data);
       const response = await api.post(`${this.baseUrl}/generar`, data);
-      console.log('✅ PLE generado:', response.data);
       return response.data;
     } catch (error) {
       console.error('❌ Error generando PLE:', error);
@@ -148,7 +144,6 @@ class PLEApiUnified {
    */
   async descargarPLE(libroId: string, ejercicio: number, mes: number): Promise<Blob> {
     try {
-      console.log(`📥 Descargando PLE: libro=${libroId}, ejercicio=${ejercicio}, mes=${mes}`);
       
       const response = await api.get(`${this.baseUrl}/descargar/${libroId}`, {
         params: {
@@ -161,7 +156,6 @@ class PLEApiUnified {
         }
       });
       
-      console.log('✅ Archivo PLE descargado:', response.data.size, 'bytes');
       return response.data;
     } catch (error) {
       console.error('❌ Error descargando PLE:', error);
@@ -174,9 +168,7 @@ class PLEApiUnified {
    */
   async validarPLE(data: PLEValidacionRequest): Promise<PLEValidacionResponse> {
     try {
-      console.log('🔍 Validando PLE:', data);
       const response = await api.post(`${this.baseUrl}/validar`, data);
-      console.log('✅ Validación PLE completada:', response.data);
       return response.data;
     } catch (error) {
       console.error('❌ Error validando PLE:', error);
@@ -197,7 +189,6 @@ class PLEApiUnified {
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
-      console.log('📁 Archivo descargado:', nombreArchivo);
     } catch (error) {
       console.error('❌ Error descargando archivo:', error);
       throw new Error(`Error descargando archivo: ${error}`);

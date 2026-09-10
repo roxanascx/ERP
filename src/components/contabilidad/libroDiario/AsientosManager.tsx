@@ -1,9 +1,27 @@
 import React from 'react';
+import {
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  FileDown,
+  FileSpreadsheet,
+  Landmark,
+  Pencil,
+  RotateCcw,
+  Search,
+  Trash2,
+  TriangleAlert,
+  CheckCircle2,
+} from 'lucide-react';
 import type { AsientoContable, LibroDiario } from '../../../types/libroDiario';
 import FormularioAsiento from './FormularioAsiento';
 import EstadisticasAsientos from './EstadisticasAsientos';
 import PLEExportManager from './PLEExportManager';
 import { useAsientosLogic, type EstadoAsiento } from './AsientosLogic';
+import Modal from '../../common/Modal';
+import Toast from '../../common/Toast';
+import EmptyState from '../../common/EmptyState';
+import { cn } from '../../../lib/cn';
 
 interface AsientosManagerProps {
   libroId: string;
@@ -17,151 +35,112 @@ interface AsientosManagerProps {
   isLoading?: boolean;
 }
 
-const AsientosManager: React.FC<AsientosManagerProps> = (props) => {
-  const {
-    libroId,
-    libro,
-    isLoading = false
-  } = props;
+const soles = (n: number): string =>
+  `S/ ${n.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-  // Usar el hook de lógica
+const control = cn(
+  'w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900',
+  'placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none'
+);
+
+const labelClass = 'mb-1.5 block text-xs font-medium tracking-wide text-slate-500 uppercase';
+const th = 'px-3 py-2.5 text-left text-xs font-semibold tracking-wide text-slate-600 uppercase';
+const td = 'px-3 py-3 text-sm text-slate-700';
+
+/**
+ * Gestion de asientos de un libro diario.
+ *
+ * Toda la logica vive en `useAsientosLogic`; aqui solo esta la presentacion,
+ * migrada a Tailwind (antes 785 lineas con 79 estilos inline).
+ */
+const AsientosManager: React.FC<AsientosManagerProps> = (props) => {
+  const { libroId, libro, isLoading = false } = props;
   const logic = useAsientosLogic(props);
 
-  return (
-    <div style={{ background: 'white', borderRadius: '12px', padding: '24px' }}>
-      {/* Header con filtros y acciones */}
-      <div style={{
-        borderBottom: '2px solid #e5e7eb',
-        paddingBottom: '20px',
-        marginBottom: '24px'
-      }}>
-        <div style={{ 
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'flex-start',
-          marginBottom: '16px'
-        }}>
-          <div>
-            <h3 style={{ 
-              margin: '0 0 8px 0',
-              fontSize: '1.5rem',
-              fontWeight: '600',
-              color: '#111827',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '12px'
-            }}>
-              <span style={{ fontSize: '1.5rem' }}>📝</span>
-              Gestión de Asientos Contables
-            </h3>
-            <p style={{ 
-              margin: '0',
-              color: '#6b7280',
-              fontSize: '14px'
-            }}>
-              {logic.asientosFiltrados.length} asiento(s) encontrado(s)
-            </p>
-          </div>
-          
-          <button
-            onClick={logic.handleCrearAsiento}
-            disabled={isLoading}
-            style={{
-              background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
-              color: 'white',
-              border: 'none',
-              borderRadius: '8px',
-              padding: '12px 20px',
-              cursor: isLoading ? 'not-allowed' : 'pointer',
-              fontSize: '14px',
-              fontWeight: '600',
-              opacity: isLoading ? 0.6 : 1,
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              boxShadow: '0 2px 4px rgba(59, 130, 246, 0.3)'
-            }}
-          >
-            ➕ Crear Asiento
-          </button>
-        </div>
+  const columnas: { id: 'fecha' | 'numero' | 'descripcion' | 'debe' | 'haber'; label: string; align?: string }[] = [
+    { id: 'fecha', label: 'Fecha' },
+    { id: 'numero', label: 'Número' },
+    { id: 'descripcion', label: 'Descripción' },
+    { id: 'debe', label: 'Debe', align: 'text-right' },
+    { id: 'haber', label: 'Haber', align: 'text-right' },
+  ];
 
-        {/* Filtros */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-          gap: '12px',
-          marginBottom: '16px'
-        }}>
+  const abrirPLE = () => {
+    if (logic.asientosFiltrados.length === 0) {
+      logic.showToast('No hay asientos para exportar a PLE', 'error');
+      return;
+    }
+    if (!logic.isBalanceado) {
+      const continuar = window.confirm(
+        'El libro no está balanceado. ¿Deseas continuar con la exportación PLE?'
+      );
+      if (!continuar) return;
+    }
+    logic.setMostrarPLEManager(true);
+  };
+
+  return (
+    <div className="space-y-5">
+      {/* ------------------------------------------------------------------ */}
+      {/* Filtros y acciones                                                 */}
+      {/* ------------------------------------------------------------------ */}
+      <section className="space-y-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
           <div>
-            <label style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px', display: 'block' }}>
-              📅 Fecha desde:
+            <label htmlFor="as-desde" className={labelClass}>
+              Fecha desde
             </label>
             <input
+              id="as-desde"
               type="date"
               value={logic.filtroFecha}
               onChange={(e) => logic.setFiltroFecha(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '8px',
-                borderRadius: '6px',
-                border: '1px solid #d1d5db',
-                fontSize: '14px'
-              }}
+              className={control}
             />
           </div>
 
           <div>
-            <label style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px', display: 'block' }}>
-              📅 Fecha hasta:
+            <label htmlFor="as-hasta" className={labelClass}>
+              Fecha hasta
             </label>
             <input
+              id="as-hasta"
               type="date"
               value={logic.filtroFechaHasta}
               onChange={(e) => logic.setFiltroFechaHasta(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '8px',
-                borderRadius: '6px',
-                border: '1px solid #d1d5db',
-                fontSize: '14px'
-              }}
+              className={control}
             />
           </div>
 
           <div>
-            <label style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px', display: 'block' }}>
-              🔍 Buscar descripción:
+            <label htmlFor="as-descripcion" className={labelClass}>
+              Descripción
             </label>
-            <input
-              type="text"
-              placeholder="Buscar en descripciones..."
-              value={logic.filtroDescripcion}
-              onChange={(e) => logic.setFiltroDescripcion(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '8px',
-                borderRadius: '6px',
-                border: '1px solid #d1d5db',
-                fontSize: '14px'
-              }}
-            />
+            <div className="relative">
+              <Search
+                className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-slate-400"
+                aria-hidden="true"
+              />
+              <input
+                id="as-descripcion"
+                type="search"
+                value={logic.filtroDescripcion}
+                onChange={(e) => logic.setFiltroDescripcion(e.target.value)}
+                placeholder="Buscar…"
+                className={cn(control, 'pl-9')}
+              />
+            </div>
           </div>
 
           <div>
-            <label style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px', display: 'block' }}>
-              🏷️ Estado:
+            <label htmlFor="as-estado" className={labelClass}>
+              Estado
             </label>
             <select
+              id="as-estado"
               value={logic.filtroEstado}
               onChange={(e) => logic.setFiltroEstado(e.target.value as EstadoAsiento | '')}
-              style={{
-                width: '100%',
-                padding: '8px',
-                borderRadius: '6px',
-                border: '1px solid #d1d5db',
-                fontSize: '14px'
-              }}
+              className={control}
             >
               <option value="">Todos los estados</option>
               <option value="borrador">Borrador</option>
@@ -171,596 +150,372 @@ const AsientosManager: React.FC<AsientosManagerProps> = (props) => {
           </div>
 
           <div>
-            <label style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px', display: 'block' }}>
-              💰 Buscar cuenta:
+            <label htmlFor="as-cuenta" className={labelClass}>
+              Cuenta
             </label>
             <input
+              id="as-cuenta"
               type="text"
-              placeholder="Código o nombre de cuenta..."
               value={logic.filtroCuenta}
               onChange={(e) => logic.setFiltroCuenta(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '8px',
-                borderRadius: '6px',
-                border: '1px solid #d1d5db',
-                fontSize: '14px'
-              }}
+              placeholder="Código"
+              className={cn(control, 'font-mono')}
             />
           </div>
         </div>
 
-        {/* Botones de acción */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div className="flex flex-wrap items-center gap-2">
           <button
+            type="button"
             onClick={logic.limpiarFiltros}
-            style={{
-              background: '#6b7280',
-              color: 'white',
-              border: 'none',
-              borderRadius: '6px',
-              padding: '8px 12px',
-              cursor: 'pointer',
-              fontSize: '12px',
-              fontWeight: '500'
-            }}
+            className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
           >
-            🔄 Limpiar Filtros
+            <RotateCcw className="size-4" aria-hidden="true" />
+            Limpiar filtros
           </button>
 
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          <div className="ml-auto flex flex-wrap gap-2">
             {props.onExportarExcel && (
               <button
+                type="button"
                 onClick={() => logic.handleExportar('excel')}
                 disabled={isLoading}
-                style={{
-                  background: 'linear-gradient(135deg, #059669 0%, #065f46 100%)',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  padding: '8px 12px',
-                  cursor: isLoading ? 'not-allowed' : 'pointer',
-                  fontSize: '12px',
-                  fontWeight: '500',
-                  opacity: isLoading ? 0.6 : 1,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px'
-                }}
+                className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
               >
-                📊 Exportar Excel
+                <FileSpreadsheet className="size-4 text-emerald-600" aria-hidden="true" />
+                Excel
               </button>
             )}
-            
+
             {props.onExportarPDF && (
               <button
+                type="button"
                 onClick={() => logic.handleExportar('pdf')}
                 disabled={isLoading}
-                style={{
-                  background: 'linear-gradient(135deg, #dc2626 0%, #991b1b 100%)',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  padding: '8px 12px',
-                  cursor: isLoading ? 'not-allowed' : 'pointer',
-                  fontSize: '12px',
-                  fontWeight: '500',
-                  opacity: isLoading ? 0.6 : 1,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px'
-                }}
+                className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
               >
-                📄 Exportar PDF
+                <FileDown className="size-4 text-red-600" aria-hidden="true" />
+                PDF
               </button>
             )}
-            
-            {/* Botón PLE SUNAT */}
+
             {libro && (
               <button
-                onClick={() => {
-                  // Validación previa antes de mostrar PLE manager
-                  if (logic.asientosFiltrados.length === 0) {
-                    logic.showToast('No hay asientos para exportar a PLE', 'error');
-                    return;
-                  }
-                  
-                  if (!logic.isBalanceado) {
-                    const continuar = window.confirm(
-                      'El libro no está balanceado. ¿Desea continuar con la exportación PLE?'
-                    );
-                    if (!continuar) return;
-                  }
-                  
-                  console.log('Abriendo PLE SUNAT para libro:', libro.id);
-                  logic.setMostrarPLEManager(true);
-                }}
+                type="button"
+                onClick={abrirPLE}
                 disabled={isLoading}
-                style={{
-                  background: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  padding: '8px 12px',
-                  cursor: isLoading ? 'not-allowed' : 'pointer',
-                  fontSize: '12px',
-                  fontWeight: '500',
-                  opacity: isLoading ? 0.6 : 1,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px'
-                }}
                 title={`Exportar ${logic.asientosFiltrados.length} asientos a PLE SUNAT`}
+                className="inline-flex items-center gap-2 rounded-lg bg-teal-600 px-3.5 py-2 text-sm font-semibold text-white hover:bg-teal-700 disabled:opacity-50"
               >
-                🇵🇪 PLE SUNAT ({logic.asientosFiltrados.length})
+                <Landmark className="size-4" aria-hidden="true" />
+                PLE SUNAT
+                <span className="rounded-full bg-white/20 px-1.5 text-xs tabular-nums">
+                  {logic.asientosFiltrados.length}
+                </span>
               </button>
             )}
           </div>
         </div>
-      </div>
+      </section>
 
-      {/* Resumen de totales */}
-      <div style={{
-        background: logic.isBalanceado 
-          ? 'linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%)'
-          : 'linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)',
-        borderRadius: '8px',
-        padding: '16px',
-        marginBottom: '24px',
-        border: `2px solid ${logic.isBalanceado ? '#16a34a' : '#dc2626'}`
-      }}>
-        <div style={{ 
-          display: 'grid', 
-          gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', 
-          gap: '16px',
-          textAlign: 'center'
-        }}>
-          <div>
-            <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#059669' }}>
-              S/ {logic.totales.totalDebe.toFixed(2)}
-            </div>
-            <div style={{ fontSize: '12px', color: '#6b7280' }}>Total Debe</div>
-          </div>
-          <div>
-            <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#dc2626' }}>
-              S/ {logic.totales.totalHaber.toFixed(2)}
-            </div>
-            <div style={{ fontSize: '12px', color: '#6b7280' }}>Total Haber</div>
-          </div>
-          <div>
-            <div style={{ 
-              fontSize: '20px', 
-              fontWeight: 'bold', 
-              color: logic.isBalanceado ? '#16a34a' : '#dc2626' 
-            }}>
-              {logic.isBalanceado ? '✅ Balanceado' : '❌ Desbalanceado'}
-            </div>
-            <div style={{ fontSize: '12px', color: '#6b7280' }}>Estado</div>
-          </div>
+      {/* ------------------------------------------------------------------ */}
+      {/* Totales                                                            */}
+      {/* ------------------------------------------------------------------ */}
+      <section
+        className={cn(
+          'flex flex-wrap items-center gap-x-8 gap-y-3 rounded-xl border px-4 py-3.5',
+          logic.isBalanceado ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'
+        )}
+      >
+        <div className="flex items-center gap-2">
+          {logic.isBalanceado ? (
+            <CheckCircle2 className="size-5 text-green-600" aria-hidden="true" />
+          ) : (
+            <TriangleAlert className="size-5 text-red-600" aria-hidden="true" />
+          )}
+          <span
+            className={cn(
+              'text-sm font-semibold',
+              logic.isBalanceado ? 'text-green-800' : 'text-red-800'
+            )}
+          >
+            {logic.isBalanceado ? 'Libro balanceado' : 'Libro desbalanceado'}
+          </span>
         </div>
-      </div>
 
-      {/* Estadísticas */}
-      <EstadisticasAsientos asientos={logic.asientosFiltrados} />
+        <dl className="flex flex-wrap gap-x-8 gap-y-2">
+          <div>
+            <dt className="text-xs font-medium tracking-wide text-slate-500 uppercase">Debe</dt>
+            <dd className="text-base font-bold text-slate-900 tabular-nums">
+              {soles(logic.totales.totalDebe)}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-xs font-medium tracking-wide text-slate-500 uppercase">Haber</dt>
+            <dd className="text-base font-bold text-slate-900 tabular-nums">
+              {soles(logic.totales.totalHaber)}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-xs font-medium tracking-wide text-slate-500 uppercase">
+              Diferencia
+            </dt>
+            <dd
+              className={cn(
+                'text-base font-bold tabular-nums',
+                logic.isBalanceado ? 'text-green-700' : 'text-red-700'
+              )}
+            >
+              {soles(Math.abs(logic.totales.totalDebe - logic.totales.totalHaber))}
+            </dd>
+          </div>
+        </dl>
+      </section>
 
-      {/* Tabla de asientos */}
-      <div style={{
-        marginTop: '24px',
-        border: '1px solid #e5e7eb',
-        borderRadius: '8px',
-        overflow: 'hidden'
-      }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr style={{ background: '#f9fafb' }}>
-              <th style={{ 
-                padding: '12px', 
-                textAlign: 'left', 
-                fontWeight: '600',
-                color: '#374151',
-                borderBottom: '1px solid #e5e7eb',
-                cursor: 'pointer'
-              }}
-              onClick={() => logic.handleOrdenar('fecha')}>
-                📅 Fecha {logic.orden.columna === 'fecha' && (logic.orden.direccion === 'asc' ? '↑' : '↓')}
-              </th>
-              <th style={{ 
-                padding: '12px', 
-                textAlign: 'left', 
-                fontWeight: '600',
-                color: '#374151',
-                borderBottom: '1px solid #e5e7eb',
-                cursor: 'pointer'
-              }}
-              onClick={() => logic.handleOrdenar('numero')}>
-                🔢 Número {logic.orden.columna === 'numero' && (logic.orden.direccion === 'asc' ? '↑' : '↓')}
-              </th>
-              <th style={{ 
-                padding: '12px', 
-                textAlign: 'left', 
-                fontWeight: '600',
-                color: '#374151',
-                borderBottom: '1px solid #e5e7eb',
-                cursor: 'pointer'
-              }}
-              onClick={() => logic.handleOrdenar('descripcion')}>
-                📝 Descripción {logic.orden.columna === 'descripcion' && (logic.orden.direccion === 'asc' ? '↑' : '↓')}
-              </th>
-              <th style={{ 
-                padding: '12px', 
-                textAlign: 'right', 
-                fontWeight: '600',
-                color: '#374151',
-                borderBottom: '1px solid #e5e7eb',
-                cursor: 'pointer'
-              }}
-              onClick={() => logic.handleOrdenar('debe')}>
-                💚 Debe {logic.orden.columna === 'debe' && (logic.orden.direccion === 'asc' ? '↑' : '↓')}
-              </th>
-              <th style={{ 
-                padding: '12px', 
-                textAlign: 'right', 
-                fontWeight: '600',
-                color: '#374151',
-                borderBottom: '1px solid #e5e7eb',
-                cursor: 'pointer'
-              }}
-              onClick={() => logic.handleOrdenar('haber')}>
-                ❤️ Haber {logic.orden.columna === 'haber' && (logic.orden.direccion === 'asc' ? '↑' : '↓')}
-              </th>
-              <th style={{ 
-                padding: '12px', 
-                textAlign: 'center', 
-                fontWeight: '600',
-                color: '#374151',
-                borderBottom: '1px solid #e5e7eb'
-              }}>
-                ⚙️ Acciones
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {logic.asientosPaginados.map((asiento) => {
-              const totalDebe = asiento.detalles.reduce((sum, d) => sum + (d.debe || 0), 0);
-              const totalHaber = asiento.detalles.reduce((sum, d) => sum + (d.haber || 0), 0);
-              const isExpandido = logic.isAsientoExpandido(asiento.id);
-              
-              return (
-                <React.Fragment key={asiento.id}>
-                  {/* Fila principal del asiento */}
-                  <tr 
-                    style={{ 
-                      borderBottom: '1px solid #f3f4f6',
-                      cursor: 'pointer',
-                      backgroundColor: isExpandido ? '#f8fafc' : 'transparent'
-                    }}
-                    onClick={() => logic.toggleExpandirAsiento(asiento.id)}
-                  >
-                    <td style={{ padding: '12px', fontSize: '14px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span style={{ 
-                          fontSize: '12px',
-                          color: '#6b7280',
-                          cursor: 'pointer',
-                          transition: 'transform 0.2s'
-                        }}>
-                          {isExpandido ? '▼' : '▶'}
-                        </span>
-                        {new Date(asiento.fecha).toLocaleDateString('es-PE')}
-                      </div>
-                    </td>
-                    <td style={{ padding: '12px', fontSize: '14px', fontWeight: '500' }}>
-                      {asiento.numero}
-                    </td>
-                    <td style={{ padding: '12px', fontSize: '14px' }}>
-                      <div style={{ maxWidth: '300px' }}>
-                        <div style={{ fontWeight: '500', color: '#111827' }}>
-                          {asiento.descripcion}
-                        </div>
-                        <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px' }}>
-                          {asiento.detalles.length} cuenta(s)
-                        </div>
-                      </div>
-                    </td>
-                    <td style={{ 
-                      padding: '12px', 
-                      textAlign: 'right', 
-                      fontSize: '14px',
-                      fontWeight: '500',
-                      color: totalDebe > 0 ? '#059669' : '#9ca3af'
-                    }}>
-                      {totalDebe > 0 ? `S/ ${totalDebe.toFixed(2)}` : '-'}
-                    </td>
-                    <td style={{ 
-                      padding: '12px', 
-                      textAlign: 'right', 
-                      fontSize: '14px',
-                      fontWeight: '500',
-                      color: totalHaber > 0 ? '#dc2626' : '#9ca3af'
-                    }}>
-                      {totalHaber > 0 ? `S/ ${totalHaber.toFixed(2)}` : '-'}
-                    </td>
-                    <td style={{ padding: '12px', textAlign: 'center' }}>
-                      <div style={{ display: 'flex', gap: '4px', justifyContent: 'center' }}>
+      <EstadisticasAsientos asientos={logic.asientosFiltrados} periodo={libro?.periodo} />
+
+      {/* ------------------------------------------------------------------ */}
+      {/* Tabla                                                              */}
+      {/* ------------------------------------------------------------------ */}
+      {logic.asientosPaginados.length === 0 ? (
+        <EmptyState
+          title="No hay asientos"
+          description="No se encontraron asientos con los filtros aplicados."
+        />
+      ) : (
+        <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse">
+              <thead className="bg-slate-50">
+                <tr className="border-b border-slate-200">
+                  {columnas.map((col) => {
+                    const activo = logic.orden.columna === col.id;
+                    return (
+                      <th key={col.id} scope="col" className={cn(th, col.align)}>
                         <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            logic.handleEditarAsiento(asiento);
-                          }}
-                          style={{
-                            background: '#3b82f6',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '4px',
-                            padding: '4px 8px',
-                            cursor: 'pointer',
-                            fontSize: '12px'
-                          }}
-                          title="Editar"
+                          type="button"
+                          onClick={() => logic.handleOrdenar(col.id)}
+                          aria-sort={
+                            activo
+                              ? logic.orden.direccion === 'asc'
+                                ? 'ascending'
+                                : 'descending'
+                              : 'none'
+                          }
+                          className="inline-flex items-center gap-1 border-0 bg-transparent p-0 text-xs font-semibold tracking-wide text-slate-600 uppercase hover:text-slate-900"
                         >
-                          ✏️
+                          {col.label}
+                          {activo && (
+                            <ChevronDown
+                              className={cn(
+                                'size-3.5 text-blue-600 transition-transform',
+                                logic.orden.direccion === 'asc' && 'rotate-180'
+                              )}
+                              aria-hidden="true"
+                            />
+                          )}
                         </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            logic.handleEliminarAsiento(asiento.id);
-                          }}
-                          style={{
-                            background: '#ef4444',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '4px',
-                            padding: '4px 8px',
-                            cursor: 'pointer',
-                            fontSize: '12px'
-                          }}
-                          title="Eliminar"
+                      </th>
+                    );
+                  })}
+                  <th scope="col" className={cn(th, 'text-right')}>
+                    Acciones
+                  </th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {logic.asientosPaginados.map((asiento) => {
+                  const totalDebe = asiento.detalles.reduce((s, d) => s + (d.debe || 0), 0);
+                  const totalHaber = asiento.detalles.reduce((s, d) => s + (d.haber || 0), 0);
+                  const isExpandido = logic.isAsientoExpandido(asiento.id);
+
+                  return (
+                    <React.Fragment key={asiento.id}>
+                      <tr
+                        onClick={() => logic.toggleExpandirAsiento(asiento.id)}
+                        className={cn(
+                          'cursor-pointer border-b border-slate-100 transition-colors',
+                          isExpandido ? 'bg-blue-50' : 'hover:bg-slate-50'
+                        )}
+                      >
+                        <td className={td}>
+                          <div className="flex items-center gap-2">
+                            <ChevronDown
+                              className={cn(
+                                'size-4 shrink-0 text-slate-400 transition-transform',
+                                !isExpandido && '-rotate-90'
+                              )}
+                              aria-hidden="true"
+                            />
+                            <span className="tabular-nums">
+                              {new Date(asiento.fecha).toLocaleDateString('es-PE')}
+                            </span>
+                          </div>
+                        </td>
+
+                        <td className={cn(td, 'font-medium tabular-nums')}>{asiento.numero}</td>
+
+                        <td className={td}>
+                          <p className="max-w-75 truncate font-medium text-slate-900">
+                            {asiento.descripcion}
+                          </p>
+                          <p className="text-xs text-slate-500">
+                            {asiento.detalles.length} cuenta(s)
+                          </p>
+                        </td>
+
+                        <td className={cn(td, 'text-right font-semibold text-blue-700 tabular-nums')}>
+                          {totalDebe > 0 ? soles(totalDebe) : '—'}
+                        </td>
+
+                        <td
+                          className={cn(td, 'text-right font-semibold text-violet-700 tabular-nums')}
                         >
-                          🗑️
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                  
-                  {/* Fila expandida con detalles */}
-                  {isExpandido && (
-                    <tr>
-                      <td colSpan={6} style={{ 
-                        padding: '0',
-                        background: '#f8fafc',
-                        borderBottom: '2px solid #e2e8f0'
-                      }}>
-                        <div style={{ 
-                          padding: '16px 24px',
-                          background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)'
-                        }}>
-                          <h4 style={{ 
-                            margin: '0 0 12px 0',
-                            fontSize: '14px',
-                            fontWeight: '600',
-                            color: '#475569'
-                          }}>
-                            📋 Detalle del Asiento #{asiento.numero}
-                          </h4>
-                          
-                          <div style={{ 
-                            background: 'white',
-                            borderRadius: '8px',
-                            overflow: 'hidden',
-                            border: '1px solid #e2e8f0'
-                          }}>
-                            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                              <thead>
-                                <tr style={{ background: '#f1f5f9' }}>
-                                  <th style={{ 
-                                    padding: '8px 12px',
-                                    textAlign: 'left',
-                                    fontSize: '12px',
-                                    fontWeight: '600',
-                                    color: '#475569',
-                                    borderBottom: '1px solid #e2e8f0'
-                                  }}>
-                                    Código
-                                  </th>
-                                  <th style={{ 
-                                    padding: '8px 12px',
-                                    textAlign: 'left',
-                                    fontSize: '12px',
-                                    fontWeight: '600',
-                                    color: '#475569',
-                                    borderBottom: '1px solid #e2e8f0'
-                                  }}>
-                                    Denominación
-                                  </th>
-                                  <th style={{ 
-                                    padding: '8px 12px',
-                                    textAlign: 'right',
-                                    fontSize: '12px',
-                                    fontWeight: '600',
-                                    color: '#475569',
-                                    borderBottom: '1px solid #e2e8f0'
-                                  }}>
-                                    Debe
-                                  </th>
-                                  <th style={{ 
-                                    padding: '8px 12px',
-                                    textAlign: 'right',
-                                    fontSize: '12px',
-                                    fontWeight: '600',
-                                    color: '#475569',
-                                    borderBottom: '1px solid #e2e8f0'
-                                  }}>
-                                    Haber
-                                  </th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {asiento.detalles.map((detalle, index) => (
-                                  <tr key={index} style={{ 
-                                    borderBottom: index < asiento.detalles.length - 1 ? '1px solid #f1f5f9' : 'none'
-                                  }}>
-                                    <td style={{ 
-                                      padding: '8px 12px',
-                                      fontSize: '13px',
-                                      fontFamily: 'monospace',
-                                      color: '#374151'
-                                    }}>
-                                      {detalle.codigoCuenta}
-                                    </td>
-                                    <td style={{ 
-                                      padding: '8px 12px',
-                                      fontSize: '13px',
-                                      color: '#374151'
-                                    }}>
-                                      {detalle.denominacionCuenta}
-                                    </td>
-                                    <td style={{ 
-                                      padding: '8px 12px',
-                                      textAlign: 'right',
-                                      fontSize: '13px',
-                                      fontWeight: '500',
-                                      color: detalle.debe && detalle.debe > 0 ? '#059669' : '#9ca3af'
-                                    }}>
-                                      {detalle.debe && detalle.debe > 0 ? `S/ ${detalle.debe.toFixed(2)}` : '-'}
-                                    </td>
-                                    <td style={{ 
-                                      padding: '8px 12px',
-                                      textAlign: 'right',
-                                      fontSize: '13px',
-                                      fontWeight: '500',
-                                      color: detalle.haber && detalle.haber > 0 ? '#dc2626' : '#9ca3af'
-                                    }}>
-                                      {detalle.haber && detalle.haber > 0 ? `S/ ${detalle.haber.toFixed(2)}` : '-'}
-                                    </td>
+                          {totalHaber > 0 ? soles(totalHaber) : '—'}
+                        </td>
+
+                        <td className={cn(td, 'text-right')}>
+                          <div className="inline-flex gap-1">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                logic.handleEditarAsiento(asiento);
+                              }}
+                              title="Editar asiento"
+                              aria-label={`Editar asiento ${asiento.numero}`}
+                              className="grid size-8 place-items-center rounded-lg border-0 bg-transparent p-0 text-slate-400 hover:bg-blue-50 hover:text-blue-600"
+                            >
+                              <Pencil className="size-4" aria-hidden="true" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                logic.handleEliminarAsiento(asiento.id);
+                              }}
+                              title="Eliminar asiento"
+                              aria-label={`Eliminar asiento ${asiento.numero}`}
+                              className="grid size-8 place-items-center rounded-lg border-0 bg-transparent p-0 text-slate-400 hover:bg-red-50 hover:text-red-600"
+                            >
+                              <Trash2 className="size-4" aria-hidden="true" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+
+                      {/* Detalle del asiento */}
+                      {isExpandido && (
+                        <tr className="border-b border-slate-100 bg-slate-50">
+                          <td colSpan={6} className="px-4 py-4">
+                            <h4 className="mb-2 text-xs font-semibold tracking-wide text-slate-500 uppercase">
+                              Detalle del asiento #{asiento.numero}
+                            </h4>
+                            <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+                              <table className="w-full border-collapse">
+                                <thead className="bg-slate-100">
+                                  <tr>
+                                    <th className={th}>Código</th>
+                                    <th className={th}>Denominación</th>
+                                    <th className={cn(th, 'text-right')}>Debe</th>
+                                    <th className={cn(th, 'text-right')}>Haber</th>
                                   </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
-                          
-                          <div style={{ 
-                            marginTop: '8px',
-                            fontSize: '12px',
-                            color: '#6b7280',
-                            textAlign: 'right'
-                          }}>
-                            Total: S/ {totalDebe.toFixed(2)} (Debe) | S/ {totalHaber.toFixed(2)} (Haber)
-                          </div>
-                        </div>
-                      </td>
-                    </tr>
-                  )}
-                </React.Fragment>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+                                </thead>
+                                <tbody>
+                                  {asiento.detalles.map((detalle, index) => (
+                                    <tr
+                                      key={index}
+                                      className="border-b border-slate-100 last:border-0"
+                                    >
+                                      <td className={cn(td, 'font-mono')}>
+                                        {detalle.codigoCuenta}
+                                      </td>
+                                      <td className={td}>{detalle.denominacionCuenta}</td>
+                                      <td className={cn(td, 'text-right tabular-nums')}>
+                                        {detalle.debe ? soles(detalle.debe) : '—'}
+                                      </td>
+                                      <td className={cn(td, 'text-right tabular-nums')}>
+                                        {detalle.haber ? soles(detalle.haber) : '—'}
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
 
       {/* Paginación */}
       {logic.totalPaginas > 1 && (
-        <div style={{
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          gap: '8px',
-          marginTop: '20px'
-        }}>
+        <nav aria-label="Paginación" className="flex items-center justify-center gap-4">
           <button
+            type="button"
             onClick={() => logic.cambiarPagina(logic.paginaActual - 1)}
             disabled={logic.paginaActual === 1}
-            style={{
-              padding: '8px 12px',
-              border: '1px solid #d1d5db',
-              borderRadius: '6px',
-              background: 'white',
-              cursor: logic.paginaActual === 1 ? 'not-allowed' : 'pointer',
-              opacity: logic.paginaActual === 1 ? 0.5 : 1
-            }}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-40"
           >
-            ← Anterior
+            <ChevronLeft className="size-4" aria-hidden="true" />
+            Anterior
           </button>
-          
-          <span style={{ fontSize: '14px', color: '#6b7280' }}>
+
+          <span className="text-sm text-slate-500 tabular-nums">
             Página {logic.paginaActual} de {logic.totalPaginas}
           </span>
-          
+
           <button
+            type="button"
             onClick={() => logic.cambiarPagina(logic.paginaActual + 1)}
             disabled={logic.paginaActual === logic.totalPaginas}
-            style={{
-              padding: '8px 12px',
-              border: '1px solid #d1d5db',
-              borderRadius: '6px',
-              background: 'white',
-              cursor: logic.paginaActual === logic.totalPaginas ? 'not-allowed' : 'pointer',
-              opacity: logic.paginaActual === logic.totalPaginas ? 0.5 : 1
-            }}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-40"
           >
-            Siguiente →
+            Siguiente
+            <ChevronRight className="size-4" aria-hidden="true" />
           </button>
-        </div>
+        </nav>
       )}
 
-      {/* Modal Formulario Asiento */}
-      {logic.mostrarFormulario && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0, 0, 0, 0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000
-        }}>
-          <div style={{
-            background: 'white',
-            borderRadius: '12px',
-            width: '90%',
-            maxWidth: '800px',
-            maxHeight: '90vh',
-            overflow: 'auto'
-          }}>
-            <FormularioAsiento
-              libroId={libroId}
-              asientoEditando={logic.asientoEditando}
-              asientosExistentes={props.asientos}
-              onGuardar={async (asiento) => {
-                if (logic.asientoEditando && props.onEditarAsiento) {
-                  await props.onEditarAsiento(logic.asientoEditando.id, asiento);
-                } else if (props.onCrearAsiento) {
-                  await props.onCrearAsiento(asiento);
-                }
-                logic.handleCerrarFormulario();
-              }}
-              onCerrar={logic.handleCerrarFormulario}
-            />
-          </div>
-        </div>
-      )}
+      {/* Formulario de asiento */}
+      <Modal
+        isOpen={logic.mostrarFormulario}
+        onClose={logic.handleCerrarFormulario}
+        size="xl"
+        title={logic.asientoEditando ? 'Editar asiento' : 'Nuevo asiento'}
+      >
+        <FormularioAsiento
+          libroId={libroId}
+          asientoEditando={logic.asientoEditando}
+          asientosExistentes={props.asientos}
+          onGuardar={async (asiento) => {
+            if (logic.asientoEditando && props.onEditarAsiento) {
+              await props.onEditarAsiento(logic.asientoEditando.id, asiento);
+            } else if (props.onCrearAsiento) {
+              await props.onCrearAsiento(asiento);
+            }
+            logic.handleCerrarFormulario();
+          }}
+          onCerrar={logic.handleCerrarFormulario}
+        />
+      </Modal>
 
-      {/* Toast Notifications */}
       {logic.toast && (
-        <div style={{
-          position: 'fixed',
-          top: '20px',
-          right: '20px',
-          background: logic.toast.type === 'success' ? '#10b981' : logic.toast.type === 'error' ? '#ef4444' : '#3b82f6',
-          color: 'white',
-          padding: '12px 16px',
-          borderRadius: '8px',
-          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-          zIndex: 1001,
-          animation: 'slideIn 0.3s ease-out'
-        }}>
-          {logic.toast.message}
-        </div>
+        <Toast
+          message={logic.toast.message}
+          type={logic.toast.type}
+          onClose={() => logic.showToast('', 'info')}
+        />
       )}
 
-      {/* Modal PLE SUNAT */}
+      {/* Exportación PLE */}
       {logic.mostrarPLEManager && libro && (
         <PLEExportManager
           libro={libro}
@@ -768,14 +523,12 @@ const AsientosManager: React.FC<AsientosManagerProps> = (props) => {
           onClose={() => logic.setMostrarPLEManager(false)}
           onSuccess={(response) => {
             logic.showToast(
-              `Archivo PLE generado exitosamente: ${response.archivo_nombre || 'archivo.txt'}`, 
+              `Archivo PLE generado: ${response.archivo_nombre || 'archivo.txt'}`,
               'success'
             );
             logic.setMostrarPLEManager(false);
           }}
-          onError={(error) => {
-            logic.showToast(`Error al generar PLE: ${error}`, 'error');
-          }}
+          onError={(error) => logic.showToast(`Error al generar PLE: ${error}`, 'error')}
         />
       )}
     </div>

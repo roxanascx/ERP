@@ -1,112 +1,54 @@
 import React from 'react';
+import { BarChart3, Building2, TrendingUp, Wallet } from 'lucide-react';
 import { LoginButton } from '../components/auth';
 
-const HomePage: React.FC = () => {
-  return (
-    <div style={{
-      minHeight: '100vh',
-      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '20px'
-    }}>
-      <div style={{
-        background: 'white',
-        borderRadius: '20px',
-        padding: '60px 40px',
-        maxWidth: '600px',
-        width: '100%',
-        textAlign: 'center',
-        boxShadow: '0 20px 40px rgba(0,0,0,0.1)'
-      }}>
-        {/* Logo/Icono */}
-        <div style={{
-          fontSize: '72px',
-          marginBottom: '20px'
-        }}>
-          📊
-        </div>
+const CARACTERISTICAS = [
+  { icon: Wallet, title: 'Contabilidad', desc: 'Libros contables y PLE para SUNAT' },
+  { icon: BarChart3, title: 'SIRE', desc: 'Registros de compras y ventas electrónicos' },
+  { icon: TrendingUp, title: 'Reportes', desc: 'Análisis y estadísticas del periodo' },
+];
 
-        {/* Título */}
-        <h1 style={{
-          fontSize: '48px',
-          fontWeight: '700',
-          color: '#1f2937',
-          marginBottom: '20px',
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-          WebkitBackgroundClip: 'text',
-          WebkitTextFillColor: 'transparent',
-          backgroundClip: 'text'
-        }}>
-          ERP Sistema
-        </h1>
-
-        {/* Subtítulo */}
-        <p style={{
-          fontSize: '20px',
-          color: '#6b7280',
-          marginBottom: '40px',
-          lineHeight: '1.6'
-        }}>
-          Sistema de gestión empresarial completo.
-          <br />
-          Administra tu empresa de manera eficiente y moderna.
-        </p>
-
-        {/* Características */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-          gap: '30px',
-          marginBottom: '50px'
-        }}>
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: '32px', marginBottom: '10px' }}>💰</div>
-            <h3 style={{ color: '#374151', marginBottom: '5px' }}>Contabilidad</h3>
-            <p style={{ color: '#6b7280', fontSize: '14px' }}>Gestión financiera completa</p>
-          </div>
-          
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: '32px', marginBottom: '10px' }}>👥</div>
-            <h3 style={{ color: '#374151', marginBottom: '5px' }}>Usuarios</h3>
-            <p style={{ color: '#6b7280', fontSize: '14px' }}>Control de acceso y roles</p>
-          </div>
-          
-          <div style={{ fontSize: '32px', marginBottom: '10px', textAlign: 'center' }}>📈</div>
-          <div style={{ textAlign: 'center' }}>
-            <h3 style={{ color: '#374151', marginBottom: '5px' }}>Reportes</h3>
-            <p style={{ color: '#6b7280', fontSize: '14px' }}>Análisis y estadísticas</p>
-          </div>
-        </div>
-
-        {/* Call to Action */}
-        <div style={{ marginBottom: '30px' }}>
-          <h2 style={{
-            fontSize: '24px',
-            fontWeight: '600',
-            color: '#1f2937',
-            marginBottom: '20px'
-          }}>
-            ¿Listo para comenzar?
-          </h2>
-          
-          <LoginButton />
-        </div>
-
-        {/* Footer */}
-        <div style={{
-          marginTop: '40px',
-          paddingTop: '30px',
-          borderTop: '1px solid #e5e7eb',
-          color: '#9ca3af',
-          fontSize: '14px'
-        }}>
-          © 2025 ERP Sistema. Desarrollado con React + FastAPI + MongoDB
-        </div>
+/**
+ * Landing publica.
+ * La rejilla de caracteristicas tenia el icono de "Reportes" fuera de su
+ * tarjeta, lo que la convertia en un cuarto elemento y descuadraba la fila.
+ */
+const HomePage: React.FC = () => (
+  <div className="flex min-h-screen items-center justify-center bg-linear-to-br from-indigo-500 to-purple-700 p-5">
+    <div className="w-full max-w-2xl rounded-3xl bg-white p-8 text-center shadow-2xl sm:p-12">
+      <div className="mx-auto mb-5 grid size-16 place-items-center rounded-2xl bg-linear-to-br from-blue-500 to-indigo-600 text-white">
+        <Building2 className="size-8" aria-hidden="true" />
       </div>
+
+      <h1 className="mb-4 text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl">
+        Sistema ERP
+      </h1>
+
+      <p className="mx-auto mb-10 max-w-md text-lg leading-relaxed text-slate-500">
+        Gestión empresarial para contabilidad peruana: libros electrónicos, SIRE y socios de
+        negocio.
+      </p>
+
+      <ul className="mb-12 grid gap-6 sm:grid-cols-3">
+        {CARACTERISTICAS.map(({ icon: Icon, title, desc }) => (
+          <li key={title}>
+            <div className="mx-auto mb-2 grid size-11 place-items-center rounded-xl bg-slate-100">
+              <Icon className="size-5 text-slate-600" aria-hidden="true" />
+            </div>
+            <h3 className="mb-1 text-sm font-semibold text-slate-800">{title}</h3>
+            <p className="text-sm text-slate-500">{desc}</p>
+          </li>
+        ))}
+      </ul>
+
+      <h2 className="mb-5 text-xl font-semibold text-slate-900">¿Listo para comenzar?</h2>
+      <LoginButton />
+
+      <p className="mt-10 border-t border-slate-200 pt-6 text-sm text-slate-400">
+        © {new Date().getFullYear()} Sistema ERP · React + FastAPI + MongoDB
+      </p>
     </div>
-  );
-};
+  </div>
+);
 
 export default HomePage;

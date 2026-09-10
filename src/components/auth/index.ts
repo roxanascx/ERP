@@ -1,5 +1,5 @@
-// Exportar todos los componentes de autenticación
+// Componentes de autenticacion.
+// UserSync y UserProfile se eliminaron: solo eran alcanzables por este barrel
+// y no se renderizaban en ninguna pantalla.
 export { default as LoginButton } from './LoginButton';
-export { default as UserProfile } from './UserProfile';
-export { default as UserSync } from './UserSync';
 export { default as LogoutButton } from './LogoutButton';

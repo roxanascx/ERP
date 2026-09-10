@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
+import { Building2, Plus, Search, ShieldCheck, X } from 'lucide-react';
 import type { Empresa } from '../../types/empresa';
 import EmpresaCard from './EmpresaCard';
+import { cn } from '../../lib/cn';
 
 interface EmpresaListProps {
   empresas: Empresa[];
@@ -14,6 +16,15 @@ interface EmpresaListProps {
   onCreateNew: () => void;
 }
 
+/**
+ * Selector de empresas.
+ *
+ * Anade dos cosas que no existian:
+ *   - Buscador por RUC o razon social. Con 5 empresas sobra; con 50 la lista
+ *     plana era inservible.
+ *   - Estado vacio. Un usuario nuevo veia tres contadores a cero y ninguna
+ *     indicacion de que hacer, justo en el primer momento de la aplicacion.
+ */
 const EmpresaList: React.FC<EmpresaListProps> = ({
   empresas,
   empresaActual,
@@ -23,393 +34,147 @@ const EmpresaList: React.FC<EmpresaListProps> = ({
   onEditEmpresa,
   onDeleteEmpresa,
   onConfigSire,
-  onCreateNew
+  onCreateNew,
 }) => {
-  // Estadísticas
-  const totalEmpresas = empresas.length;
-  const empresasActivas = empresas.filter(emp => emp.activa).length;
-  const empresasConSire = empresas.filter(emp => emp.sire_activo).length;
+  const [query, setQuery] = useState('');
 
-  if (loading) {
+  const filtradas = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return empresas;
+    return empresas.filter(
+      (e) => e.ruc.includes(q) || e.razon_social.toLowerCase().includes(q)
+    );
+  }, [empresas, query]);
+
+  const stats = useMemo(
+    () => ({
+      total: empresas.length,
+      activas: empresas.filter((e) => e.activa).length,
+      conSire: empresas.filter((e) => e.sire_activo).length,
+    }),
+    [empresas]
+  );
+
+  // ---------------------------------------------------------------- cargando
+  if (loading && empresas.length === 0) {
     return (
-      <div style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 'clamp(40px, 10vw, 60px)',
-        textAlign: 'center'
-      }}>
-        <div style={{
-          width: 'clamp(40px, 10vw, 60px)',
-          height: 'clamp(40px, 10vw, 60px)',
-          border: '4px solid #e5e7eb',
-          borderTop: '4px solid #3b82f6',
-          borderRadius: '50%',
-          animation: 'spin 1s linear infinite',
-          marginBottom: 'clamp(16px, 4vw, 24px)'
-        }}></div>
-        <p style={{ 
-          color: '#6b7280',
-          fontSize: 'clamp(14px, 3.5vw, 18px)',
-          margin: 0,
-          fontWeight: '500'
-        }}>
-          Cargando empresas...
-        </p>
-        <style>
-          {`
-            @keyframes spin {
-              0% { transform: rotate(0deg); }
-              100% { transform: rotate(360deg); }
-            }
-          `}
-        </style>
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3" aria-busy="true">
+        {[0, 1, 2].map((i) => (
+          <div key={i} className="animate-pulse rounded-xl border border-slate-200 bg-white p-5">
+            <div className="mb-3 h-6 w-40 rounded bg-slate-200" />
+            <div className="mb-4 h-4 w-full rounded bg-slate-100" />
+            <div className="mb-2 h-3 w-3/4 rounded bg-slate-100" />
+            <div className="h-9 w-full rounded-lg bg-slate-100" />
+          </div>
+        ))}
       </div>
     );
   }
 
-  if (error) {
+  // ------------------------------------------------------------ estado vacio
+  if (empresas.length === 0 && !error) {
     return (
-      <div style={{
-        padding: 'clamp(20px, 5vw, 32px)',
-        backgroundColor: '#fef2f2',
-        color: '#991b1b',
-        border: '2px solid #fca5a5',
-        borderRadius: 'clamp(8px, 2vw, 12px)',
-        textAlign: 'center',
-        margin: 'clamp(20px, 5vw, 32px)'
-      }}>
-        <h3 style={{ 
-          margin: '0 0 clamp(8px, 2vw, 12px) 0',
-          fontSize: 'clamp(16px, 4vw, 20px)',
-          fontWeight: '700'
-        }}>
-          ❌ Error al cargar empresas
-        </h3>
-        <p style={{ 
-          margin: 0,
-          fontSize: 'clamp(14px, 3.5vw, 16px)',
-          lineHeight: '1.5'
-        }}>
-          {error}
+      <div className="rounded-xl border border-dashed border-slate-300 bg-white px-6 py-16 text-center">
+        <div className="mx-auto mb-4 grid size-14 place-items-center rounded-2xl bg-blue-50">
+          <Building2 className="size-7 text-blue-600" aria-hidden="true" />
+        </div>
+        <h2 className="mb-2 text-lg font-semibold text-slate-900">
+          Todavía no tienes ninguna empresa
+        </h2>
+        <p className="mx-auto mb-6 max-w-md text-sm text-slate-500">
+          Registra tu primera empresa con su RUC para empezar a usar el sistema. Después podrás
+          configurar sus credenciales SIRE.
         </p>
+        <button
+          type="button"
+          onClick={onCreateNew}
+          className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700"
+        >
+          <Plus className="size-4" aria-hidden="true" />
+          Registrar mi primera empresa
+        </button>
       </div>
     );
   }
 
+  // ----------------------------------------------------------------- listado
   return (
-    <div style={{ 
-      padding: 'clamp(16px, 4vw, 24px)',
-      maxWidth: '100%',
-      margin: '0 auto',
-    }}>
-      {/* Header con estadísticas - Responsive */}
-      <div style={{
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 'clamp(16px, 4vw, 24px)',
-        marginBottom: 'clamp(20px, 5vw, 32px)',
-        padding: 'clamp(16px, 4vw, 24px)',
-        backgroundColor: 'white',
-        borderRadius: 'clamp(8px, 2vw, 12px)',
-        boxShadow: '0 4px 12px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.06)',
-      }}>
-        {/* Título y estadísticas */}
-        <div style={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 'clamp(12px, 3vw, 16px)',
-        }}>
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'flex-start',
-            flexWrap: 'wrap',
-            gap: '16px',
-          }}>
-            <div style={{ flex: '1', minWidth: '280px' }}>
-              <h2 style={{
-                margin: '0 0 clamp(8px, 2vw, 12px) 0',
-                fontSize: 'clamp(20px, 5vw, 28px)',
-                fontWeight: '700',
-                color: '#1a202c',
-                letterSpacing: '-0.025em',
-                lineHeight: '1.2',
-              }}>
-                🏢 Gestión de Empresas
-              </h2>
-              
-              {/* Estadísticas responsive */}
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
-                gap: 'clamp(12px, 3vw, 20px)',
-                marginTop: 'clamp(8px, 2vw, 12px)',
-              }}>
-                <div style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  padding: 'clamp(8px, 2vw, 12px)',
-                  backgroundColor: '#f8fafc',
-                  borderRadius: 'clamp(6px, 1.5vw, 8px)',
-                  border: '1px solid #e2e8f0',
-                }}>
-                  <span style={{
-                    fontSize: 'clamp(18px, 4vw, 24px)',
-                    fontWeight: '700',
-                    color: '#2d3748',
-                  }}>
-                    {totalEmpresas}
-                  </span>
-                  <span style={{
-                    fontSize: 'clamp(11px, 2.5vw, 13px)',
-                    color: '#64748b',
-                    fontWeight: '600',
-                  }}>
-                    📊 Total
-                  </span>
-                </div>
-                
-                <div style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  padding: 'clamp(8px, 2vw, 12px)',
-                  backgroundColor: '#f0fff4',
-                  borderRadius: 'clamp(6px, 1.5vw, 8px)',
-                  border: '1px solid #9ae6b4',
-                }}>
-                  <span style={{
-                    fontSize: 'clamp(18px, 4vw, 24px)',
-                    fontWeight: '700',
-                    color: '#22543d',
-                  }}>
-                    {empresasActivas}
-                  </span>
-                  <span style={{
-                    fontSize: 'clamp(11px, 2.5vw, 13px)',
-                    color: '#2f855a',
-                    fontWeight: '600',
-                  }}>
-                    ✅ Activas
-                  </span>
-                </div>
-                
-                <div style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  padding: 'clamp(8px, 2vw, 12px)',
-                  backgroundColor: '#ebf8ff',
-                  borderRadius: 'clamp(6px, 1.5vw, 8px)',
-                  border: '1px solid #90cdf4',
-                }}>
-                  <span style={{
-                    fontSize: 'clamp(18px, 4vw, 24px)',
-                    fontWeight: '700',
-                    color: '#1e3a8a',
-                  }}>
-                    {empresasConSire}
-                  </span>
-                  <span style={{
-                    fontSize: 'clamp(11px, 2.5vw, 13px)',
-                    color: '#1d4ed8',
-                    fontWeight: '600',
-                  }}>
-                    🔐 SIRE
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Botón Nueva Empresa - Responsive */}
-            <button
-              onClick={onCreateNew}
-              style={{
-                padding: 'clamp(12px, 3vw, 16px) clamp(20px, 5vw, 28px)',
-                fontSize: 'clamp(13px, 3vw, 15px)',
-                fontWeight: '600',
-                border: 'none',
-                borderRadius: 'clamp(6px, 1.5vw, 8px)',
-                backgroundColor: '#10b981',
-                color: 'white',
-                cursor: 'pointer',
-                transition: 'all 0.2s ease',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 'clamp(6px, 1.5vw, 8px)',
-                whiteSpace: 'nowrap',
-                boxShadow: '0 4px 14px rgba(16, 185, 129, 0.25)',
-                minHeight: '44px',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = '#059669';
-                e.currentTarget.style.transform = 'translateY(-1px)';
-                e.currentTarget.style.boxShadow = '0 6px 20px rgba(16, 185, 129, 0.35)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = '#10b981';
-                e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = '0 4px 14px rgba(16, 185, 129, 0.25)';
-              }}
-            >
-              <span style={{ fontSize: 'clamp(14px, 3.5vw, 16px)' }}>➕</span>
-              Nueva Empresa
-            </button>
+    <div className="space-y-5">
+      {/* Barra: contadores + busqueda + alta */}
+      <div className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-4 sm:flex-row sm:items-center">
+        <dl className="flex shrink-0 items-center gap-5">
+          <div>
+            <dt className="text-xs font-medium tracking-wide text-slate-500 uppercase">Empresas</dt>
+            <dd className="text-xl font-bold text-slate-900 tabular-nums">{stats.total}</dd>
           </div>
+          <div>
+            <dt className="text-xs font-medium tracking-wide text-slate-500 uppercase">Activas</dt>
+            <dd className="text-xl font-bold text-green-600 tabular-nums">{stats.activas}</dd>
+          </div>
+          <div>
+            <dt className="flex items-center gap-1 text-xs font-medium tracking-wide text-slate-500 uppercase">
+              <ShieldCheck className="size-3" aria-hidden="true" />
+              SIRE
+            </dt>
+            <dd className="text-xl font-bold text-amber-600 tabular-nums">{stats.conSire}</dd>
+          </div>
+        </dl>
+
+        <div className="relative flex-1 sm:mx-2">
+          <Search
+            className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-slate-400"
+            aria-hidden="true"
+          />
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Buscar por RUC o razón social…"
+            aria-label="Buscar empresa"
+            className={cn(
+              'w-full rounded-lg border border-slate-200 bg-slate-50 py-2 pr-9 pl-9 text-sm text-slate-900',
+              'placeholder:text-slate-400 focus:border-blue-500 focus:bg-white focus:outline-none'
+            )}
+          />
+          {query && (
+            <button
+              type="button"
+              onClick={() => setQuery('')}
+              aria-label="Limpiar búsqueda"
+              className="absolute top-1/2 right-2 grid size-6 -translate-y-1/2 place-items-center rounded border-0 bg-transparent p-0 text-slate-400 hover:text-slate-700"
+            >
+              <X className="size-4" aria-hidden="true" />
+            </button>
+          )}
         </div>
+
+        <button
+          type="button"
+          onClick={onCreateNew}
+          className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+        >
+          <Plus className="size-4" aria-hidden="true" />
+          Nueva empresa
+        </button>
       </div>
 
-      {/* Empresa actual destacada - Responsive */}
-      {empresaActual && (
-        <div style={{
-          marginBottom: 'clamp(20px, 5vw, 32px)',
-          padding: 'clamp(16px, 4vw, 24px)',
-          background: 'linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%)',
-          border: '2px solid #3b82f6',
-          borderRadius: 'clamp(8px, 2vw, 12px)',
-          position: 'relative',
-          overflow: 'hidden',
-        }}>
-          {/* Elemento decorativo */}
-          <div style={{
-            position: 'absolute',
-            top: '0',
-            right: '0',
-            width: '60px',
-            height: '60px',
-            background: 'rgba(59, 130, 246, 0.1)',
-            borderRadius: '50%',
-            transform: 'translate(20px, -20px)',
-          }} />
-          
-          <h3 style={{
-            margin: '0 0 clamp(8px, 2vw, 12px) 0',
-            fontSize: 'clamp(16px, 4vw, 20px)',
-            color: '#1e3a8a',
-            fontWeight: '700',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 'clamp(6px, 1.5vw, 8px)',
-            position: 'relative',
-            zIndex: 1,
-          }}>
-            🎯 Empresa Actualmente Seleccionada
-          </h3>
-          
-          <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 'clamp(8px, 2vw, 12px)',
-            fontSize: 'clamp(14px, 3.5vw, 18px)',
-            position: 'relative',
-            zIndex: 1,
-          }}>
-            <div style={{
-              display: 'flex',
-              flexWrap: 'wrap',
-              alignItems: 'center',
-              gap: 'clamp(8px, 2vw, 12px)',
-            }}>
-              <strong style={{ color: '#1e3a8a' }}>{empresaActual.ruc}</strong>
-              <span style={{ color: '#64748b' }}>-</span>
-              <span style={{ 
-                color: '#1e3a8a',
-                wordBreak: 'break-word',
-                flex: '1',
-                minWidth: '200px',
-              }}>
-                {empresaActual.razon_social}
-              </span>
-              {empresaActual.sire_activo && (
-                <span style={{
-                  fontSize: 'clamp(10px, 2.5vw, 12px)',
-                  padding: '4px clamp(8px, 2vw, 12px)',
-                  borderRadius: 'clamp(12px, 3vw, 16px)',
-                  backgroundColor: '#22c55e',
-                  color: 'white',
-                  fontWeight: '600',
-                  boxShadow: '0 2px 8px rgba(34, 197, 94, 0.3)',
-                }}>
-                  🔐 SIRE ACTIVO
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Lista de empresas - Grid Responsivo */}
-      {totalEmpresas === 0 ? (
-        <div style={{
-          textAlign: 'center',
-          padding: 'clamp(40px, 10vw, 80px) clamp(20px, 5vw, 40px)',
-          backgroundColor: 'white',
-          borderRadius: 'clamp(8px, 2vw, 12px)',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
-        }}>
-          <div style={{
-            fontSize: 'clamp(48px, 12vw, 72px)',
-            marginBottom: 'clamp(16px, 4vw, 24px)',
-            opacity: 0.6,
-          }}>
-            🏢
-          </div>
-          <h3 style={{
-            margin: '0 0 clamp(12px, 3vw, 16px) 0',
-            fontSize: 'clamp(18px, 4.5vw, 24px)',
-            fontWeight: '700',
-            color: '#374151',
-          }}>
-            No hay empresas registradas
-          </h3>
-          <p style={{
-            margin: '0 0 clamp(24px, 6vw, 32px) 0',
-            fontSize: 'clamp(14px, 3.5vw, 16px)',
-            color: '#6b7280',
-            lineHeight: '1.5',
-          }}>
-            Comienza creando tu primera empresa para gestionar tu negocio
+      {/* Sin resultados de busqueda */}
+      {filtradas.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center">
+          <p className="text-sm text-slate-500">
+            Ninguna empresa coincide con <span className="font-semibold text-slate-700">“{query}”</span>.
           </p>
           <button
-            onClick={onCreateNew}
-            style={{
-              padding: 'clamp(14px, 3.5vw, 18px) clamp(28px, 7vw, 36px)',
-              fontSize: 'clamp(14px, 3.5vw, 16px)',
-              fontWeight: '600',
-              border: 'none',
-              borderRadius: 'clamp(6px, 1.5vw, 8px)',
-              backgroundColor: '#3b82f6',
-              color: 'white',
-              cursor: 'pointer',
-              transition: 'all 0.2s ease',
-              boxShadow: '0 4px 14px rgba(59, 130, 246, 0.25)',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = '#2563eb';
-              e.currentTarget.style.transform = 'translateY(-1px)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = '#3b82f6';
-              e.currentTarget.style.transform = 'translateY(0)';
-            }}
+            type="button"
+            onClick={() => setQuery('')}
+            className="mt-3 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
           >
-            ➕ Crear Primera Empresa
+            Limpiar búsqueda
           </button>
         </div>
       ) : (
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 380px), 1fr))',
-          gap: 'clamp(20px, 5vw, 28px)',
-          alignItems: 'start',
-          width: '100%',
-          maxWidth: '100%',
-          padding: '0 clamp(8px, 2vw, 16px)'
-        }}>
-          {empresas.map((empresa) => (
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {filtradas.map((empresa) => (
             <EmpresaCard
               key={empresa.ruc}
               empresa={empresa}
@@ -422,65 +187,6 @@ const EmpresaList: React.FC<EmpresaListProps> = ({
           ))}
         </div>
       )}
-
-      {/* Footer con información adicional - Responsive */}
-      {totalEmpresas > 0 && (
-        <div style={{
-          marginTop: 'clamp(24px, 6vw, 32px)',
-          padding: 'clamp(16px, 4vw, 24px)',
-          backgroundColor: '#f8fafc',
-          borderRadius: 'clamp(6px, 1.5vw, 8px)',
-          border: '1px solid #e2e8f0',
-          fontSize: 'clamp(12px, 3vw, 14px)',
-          color: '#64748b',
-          textAlign: 'center',
-          lineHeight: '1.6',
-        }}>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '8px',
-            marginBottom: '8px',
-          }}>
-            <span style={{ fontSize: 'clamp(16px, 4vw, 18px)' }}>💡</span>
-            <strong>Tip:</strong>
-          </div>
-          Haz clic en una empresa para seleccionarla como activa. 
-          Solo puedes tener una empresa activa a la vez.
-        </div>
-      )}
-
-      {/* CSS adicional para responsive */}
-      <style>
-        {`
-          @media (max-width: 1200px) {
-            .empresa-grid {
-              grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)) !important;
-            }
-          }
-          
-          @media (max-width: 768px) {
-            .empresa-grid {
-              grid-template-columns: 1fr !important;
-              gap: 16px !important;
-            }
-          }
-          
-          @media (max-width: 480px) {
-            .empresa-grid {
-              gap: 12px !important;
-            }
-          }
-          
-          @media (hover: none) {
-            /* Estilos para dispositivos táctiles */
-            button:hover {
-              transform: none !important;
-            }
-          }
-        `}
-      </style>
     </div>
   );
 };

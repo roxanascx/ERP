@@ -4,40 +4,25 @@ import { SignInButton, SignUpButton, useAuth } from '@clerk/clerk-react';
 const LoginButton: React.FC = () => {
   const { isSignedIn } = useAuth();
 
-  if (isSignedIn) {
-    return null; // No mostrar si ya está logueado
-  }
+  // Con sesion iniciada no hay nada que ofrecer.
+  if (isSignedIn) return null;
 
   return (
-    <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+    <div className="flex flex-wrap items-center justify-center gap-3">
       <SignInButton mode="modal">
-        <button style={{
-          background: '#2563eb',
-          color: 'white',
-          border: 'none',
-          padding: '12px 24px',
-          borderRadius: '8px',
-          cursor: 'pointer',
-          fontSize: '16px',
-          fontWeight: '500',
-          transition: 'all 0.2s'
-        }}>
-          Iniciar Sesión
+        <button
+          type="button"
+          className="rounded-lg border-0 bg-blue-600 px-6 py-3 text-base font-medium text-white transition-colors hover:bg-blue-700"
+        >
+          Iniciar sesión
         </button>
       </SignInButton>
 
       <SignUpButton mode="modal">
-        <button style={{
-          background: 'transparent',
-          color: '#2563eb',
-          border: '2px solid #2563eb',
-          padding: '12px 24px',
-          borderRadius: '8px',
-          cursor: 'pointer',
-          fontSize: '16px',
-          fontWeight: '500',
-          transition: 'all 0.2s'
-        }}>
+        <button
+          type="button"
+          className="rounded-lg border-2 border-blue-600 bg-transparent px-6 py-3 text-base font-medium text-blue-600 transition-colors hover:bg-blue-50"
+        >
           Registrarse
         </button>
       </SignUpButton>

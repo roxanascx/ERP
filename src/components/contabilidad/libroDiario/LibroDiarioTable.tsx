@@ -1,5 +1,8 @@
 import React from 'react';
+import { BookOpen, CheckCircle2, ListChecks, Trash2, TriangleAlert } from 'lucide-react';
 import type { LibroDiario } from '../../../types/libroDiario';
+import EmptyState from '../../common/EmptyState';
+import { cn } from '../../../lib/cn';
 
 interface LibroDiarioTableProps {
   libros: LibroDiario[];
@@ -7,291 +10,146 @@ interface LibroDiarioTableProps {
   onEliminar: (libroId: string) => void;
 }
 
+const ESTADO_TONE: Record<string, string> = {
+  finalizado: 'bg-green-100 text-green-800',
+  enviado: 'bg-red-100 text-red-800',
+  borrador: 'bg-amber-100 text-amber-800',
+};
+
+const soles = (n: number): string =>
+  `S/ ${n.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+const formatFecha = (fecha: string): string => {
+  try {
+    return new Date(fecha).toLocaleDateString('es-PE');
+  } catch {
+    return fecha;
+  }
+};
+
+/**
+ * Listado de libros diarios.
+ * Migrado a Tailwind; su LibroDiarioTable.css (8 kB) se elimina.
+ */
 const LibroDiarioTable: React.FC<LibroDiarioTableProps> = ({
   libros,
   onVerAsientos,
-  onEliminar
+  onEliminar,
 }) => {
-  const getEstadoColor = (estado: string) => {
-    switch (estado) {
-      case 'finalizado':
-        return { bg: '#dcfce7', text: '#166534', border: '#bbf7d0' };
-      case 'enviado':
-        return { bg: '#fee2e2', text: '#dc2626', border: '#fecaca' };
-      default: // borrador
-        return { bg: '#fef3c7', text: '#d97706', border: '#fde68a' };
-    }
-  };
-
-  const formatFecha = (fecha: string) => {
-    try {
-      return new Date(fecha).toLocaleDateString('es-PE');
-    } catch {
-      return fecha;
-    }
-  };
-
   if (libros.length === 0) {
     return (
-      <div style={{
-        background: 'white',
-        borderRadius: '12px',
-        padding: '40px',
-        textAlign: 'center',
-        border: '2px dashed #d1d5db',
-        color: '#6b7280'
-      }}>
-        <div style={{ fontSize: '48px', marginBottom: '16px' }}>📖</div>
-        <h3 style={{ margin: '0 0 8px 0', color: '#374151' }}>
-          No hay libros diarios
-        </h3>
-        <p style={{ margin: '0', fontSize: '14px' }}>
-          Comience creando su primer libro diario
-        </p>
-      </div>
+      <EmptyState
+        icon={BookOpen}
+        title="No hay libros diarios"
+        description="Empieza creando tu primer libro diario del período."
+      />
     );
   }
 
   return (
-    <div style={{
-      background: 'white',
-      borderRadius: '12px',
-      padding: '20px',
-      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
-    }}>
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: '20px',
-        paddingBottom: '16px',
-        borderBottom: '2px solid #e5e7eb'
-      }}>
-        <h3 style={{
-          margin: '0',
-          fontSize: '1.25rem',
-          fontWeight: '600',
-          color: '#111827',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px'
-        }}>
-          <span style={{ fontSize: '1.5rem' }}>📚</span>
-          Libros Diarios ({libros.length})
-        </h3>
-      </div>
+    <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+      <h3 className="mb-4 border-b border-slate-200 pb-3 text-sm font-semibold text-slate-900">
+        Libros diarios{' '}
+        <span className="font-normal text-slate-500 tabular-nums">({libros.length})</span>
+      </h3>
 
-      <div style={{
-        display: 'grid',
-        gap: '16px',
-        maxHeight: '600px',
-        overflowY: 'auto'
-      }}>
+      <ul className="max-h-150 space-y-3 overflow-y-auto">
         {libros.map((libro) => {
-          const estadoColors = getEstadoColor(libro.estado);
-          const isBalanceado = Math.abs(libro.totalDebe - libro.totalHaber) < 0.01;
+          // Un libro cuadra cuando debe y haber coinciden al centimo.
+          const balanceado = Math.abs(libro.totalDebe - libro.totalHaber) < 0.01;
 
           return (
-            <div
+            <li
               key={libro.id}
-              style={{
-                border: '1px solid #e5e7eb',
-                borderRadius: '8px',
-                padding: '16px',
-                background: '#f9fafb',
-                transition: 'all 0.2s ease',
-                cursor: 'pointer'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = '#3b82f6';
-                e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(59, 130, 246, 0.1)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = '#e5e7eb';
-                e.currentTarget.style.boxShadow = 'none';
-              }}
+              className="rounded-lg border border-slate-200 bg-slate-50 p-4 transition-colors hover:border-blue-300"
             >
-              {/* Header del libro */}
-              <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'flex-start',
-                marginBottom: '12px'
-              }}>
-                <div style={{ flex: 1 }}>
-                  <h4 style={{
-                    margin: '0 0 4px 0',
-                    fontSize: '1.1rem',
-                    fontWeight: '600',
-                    color: '#111827'
-                  }}>
+              {/* Cabecera */}
+              <div className="mb-3 flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <h4 className="truncate text-base font-semibold text-slate-900">
                     {libro.descripcion}
                   </h4>
-                  <p style={{
-                    margin: '0',
-                    fontSize: '14px',
-                    color: '#6b7280'
-                  }}>
-                    📅 Período: {libro.periodo}
+                  <p className="text-sm text-slate-500 tabular-nums">
+                    Período {libro.periodo}
                   </p>
                 </div>
-
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px'
-                }}>
-                  <span style={{
-                    padding: '4px 12px',
-                    borderRadius: '6px',
-                    fontSize: '12px',
-                    fontWeight: '500',
-                    backgroundColor: estadoColors.bg,
-                    color: estadoColors.text,
-                    border: `1px solid ${estadoColors.border}`,
-                    textTransform: 'capitalize'
-                  }}>
-                    {libro.estado}
-                  </span>
-                </div>
+                <span
+                  className={cn(
+                    'shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold capitalize',
+                    ESTADO_TONE[libro.estado] ?? 'bg-slate-100 text-slate-700'
+                  )}
+                >
+                  {libro.estado}
+                </span>
               </div>
 
-              {/* Información financiera */}
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
-                gap: '12px',
-                marginBottom: '16px',
-                padding: '12px',
-                background: 'white',
-                borderRadius: '6px',
-                border: '1px solid #e5e7eb'
-              }}>
-                <div style={{ textAlign: 'center' }}>
-                  <div style={{
-                    fontSize: '16px',
-                    fontWeight: '600',
-                    color: '#059669'
-                  }}>
-                    S/ {libro.totalDebe.toFixed(2)}
-                  </div>
-                  <div style={{ fontSize: '12px', color: '#6b7280' }}>
-                    Total Debe
-                  </div>
+              {/* Totales */}
+              <dl className="mb-3 grid grid-cols-3 gap-3 rounded-lg bg-white px-3 py-2.5">
+                <div className="text-center">
+                  <dd className="text-sm font-bold text-blue-700 tabular-nums">
+                    {soles(libro.totalDebe)}
+                  </dd>
+                  <dt className="text-xs text-slate-500">Debe</dt>
                 </div>
-
-                <div style={{ textAlign: 'center' }}>
-                  <div style={{
-                    fontSize: '16px',
-                    fontWeight: '600',
-                    color: '#dc2626'
-                  }}>
-                    S/ {libro.totalHaber.toFixed(2)}
-                  </div>
-                  <div style={{ fontSize: '12px', color: '#6b7280' }}>
-                    Total Haber
-                  </div>
+                <div className="text-center">
+                  <dd className="text-sm font-bold text-violet-700 tabular-nums">
+                    {soles(libro.totalHaber)}
+                  </dd>
+                  <dt className="text-xs text-slate-500">Haber</dt>
                 </div>
-
-                <div style={{ textAlign: 'center' }}>
-                  <div style={{
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    color: isBalanceado ? '#059669' : '#dc2626'
-                  }}>
-                    {isBalanceado ? '✅' : '⚠️'} {libro.asientos?.length || 0}
-                  </div>
-                  <div style={{ fontSize: '12px', color: '#6b7280' }}>
-                    Asientos
-                  </div>
+                <div className="text-center">
+                  <dd className="flex items-center justify-center gap-1 text-sm font-bold text-slate-900 tabular-nums">
+                    {balanceado ? (
+                      <CheckCircle2 className="size-3.5 text-green-600" aria-hidden="true" />
+                    ) : (
+                      <TriangleAlert className="size-3.5 text-amber-600" aria-hidden="true" />
+                    )}
+                    {libro.asientos?.length || 0}
+                  </dd>
+                  <dt className="text-xs text-slate-500">Asientos</dt>
                 </div>
-              </div>
+              </dl>
 
               {/* Acciones */}
-              <div style={{
-                display: 'flex',
-                gap: '8px',
-                justifyContent: 'flex-end'
-              }}>
+              <div className="flex flex-wrap gap-2">
                 {onVerAsientos && (
                   <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onVerAsientos(libro);
-                    }}
-                    style={{
-                      background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '6px',
-                      padding: '10px 16px',
-                      cursor: 'pointer',
-                      fontSize: '13px',
-                      fontWeight: '600',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      transition: 'all 0.2s ease',
-                      boxShadow: '0 2px 4px rgba(16, 185, 129, 0.3)'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.transform = 'translateY(-1px)';
-                      e.currentTarget.style.boxShadow = '0 4px 8px rgba(16, 185, 129, 0.4)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.transform = 'translateY(0)';
-                      e.currentTarget.style.boxShadow = '0 2px 4px rgba(16, 185, 129, 0.3)';
-                    }}
+                    type="button"
+                    onClick={() => onVerAsientos(libro)}
+                    className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-blue-700"
                   >
-                    📝 Gestionar Asientos
+                    <ListChecks className="size-4" aria-hidden="true" />
+                    Gestionar asientos
                   </button>
                 )}
-
                 <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (confirm(`¿Está seguro de eliminar el libro "${libro.descripcion}"?`)) {
+                  type="button"
+                  onClick={() => {
+                    if (window.confirm(`¿Eliminar el libro "${libro.descripcion}"?`)) {
                       onEliminar(libro.id!);
                     }
                   }}
-                  style={{
-                    background: '#ef4444',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '6px',
-                    padding: '8px 12px',
-                    cursor: 'pointer',
-                    fontSize: '12px',
-                    fontWeight: '500',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px'
-                  }}
+                  className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:border-red-300 hover:bg-red-50 hover:text-red-700"
                 >
-                  🗑️ Eliminar
+                  <Trash2 className="size-4" aria-hidden="true" />
+                  Eliminar
                 </button>
               </div>
 
-              {/* Información adicional */}
+              {/* Fechas */}
               {libro.fechaCreacion && (
-                <div style={{
-                  marginTop: '12px',
-                  paddingTop: '12px',
-                  borderTop: '1px solid #e5e7eb',
-                  fontSize: '12px',
-                  color: '#9ca3af'
-                }}>
+                <p className="mt-3 border-t border-slate-200 pt-2 text-xs text-slate-500">
                   Creado: {formatFecha(libro.fechaCreacion)}
                   {libro.fechaModificacion && libro.fechaModificacion !== libro.fechaCreacion && (
-                    <span> • Modificado: {formatFecha(libro.fechaModificacion)}</span>
+                    <> · Modificado: {formatFecha(libro.fechaModificacion)}</>
                   )}
-                </div>
+                </p>
               )}
-            </div>
+            </li>
           );
         })}
-      </div>
-    </div>
+      </ul>
+    </section>
   );
 };
 

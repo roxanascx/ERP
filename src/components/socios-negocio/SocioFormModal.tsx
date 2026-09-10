@@ -1,6 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
+import { AlertCircle, CheckCircle2, Landmark, Loader2, Search } from 'lucide-react';
 import type { SocioNegocio } from '../../services/sociosNegocioApi';
 import { useSociosNegocio } from '../../hooks';
+import Modal from '../common/Modal';
+import { CheckboxField, SelectField, TextField } from '../common/FormField';
+import { cn } from '../../lib/cn';
 
 interface SocioFormModalProps {
   isOpen: boolean;
@@ -9,36 +13,37 @@ interface SocioFormModalProps {
   socio?: SocioNegocio | null;
 }
 
+const VACIO = {
+  tipo_documento: 'RUC',
+  numero_documento: '',
+  razon_social: '',
+  nombre_comercial: '',
+  tipo_socio: 'cliente',
+  email: '',
+  telefono: '',
+  direccion: '',
+  // Datos que llegan de la consulta a SUNAT
+  estado_contribuyente: '',
+  condicion_contribuyente: '',
+  domicilio_fiscal: '',
+  actividad_economica: '',
+  tipo_contribuyente: '',
+  activo: true,
+};
+
 const SocioFormModal: React.FC<SocioFormModalProps> = ({
   isOpen,
   onClose,
   onSubmit,
-  socio = null
+  socio = null,
 }) => {
   const { consultarRuc } = useSociosNegocio();
-  
-  const [formData, setFormData] = useState({
-    tipo_documento: 'RUC',
-    numero_documento: '',
-    razon_social: '',
-    nombre_comercial: '',
-    tipo_socio: 'cliente',
-    email: '',
-    telefono: '',
-    direccion: '',
-    // Nuevos campos de SUNAT
-    estado_contribuyente: '',
-    condicion_contribuyente: '',
-    domicilio_fiscal: '',
-    actividad_economica: '',
-    tipo_contribuyente: '',
-    activo: true
-  });
 
+  const [formData, setFormData] = useState(VACIO);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoadingRuc, setIsLoadingRuc] = useState(false);
-  const [rucConsultaMessage, setRucConsultaMessage] = useState<{
+  const [rucMensaje, setRucMensaje] = useState<{
     type: 'success' | 'error' | null;
     message: string;
   }>({ type: null, message: '' });
@@ -54,225 +59,43 @@ const SocioFormModal: React.FC<SocioFormModalProps> = ({
         email: socio.email || '',
         telefono: socio.telefono || '',
         direccion: socio.direccion || '',
-        // Campos SUNAT - en edición mantener valores existentes
         estado_contribuyente: '',
         condicion_contribuyente: '',
         domicilio_fiscal: socio.direccion || '',
         actividad_economica: '',
         tipo_contribuyente: '',
-        activo: socio.activo
+        activo: socio.activo,
       });
     } else {
-      setFormData({
-        tipo_documento: 'RUC',
-        numero_documento: '',
-        razon_social: '',
-        nombre_comercial: '',
-        tipo_socio: 'cliente',
-        email: '',
-        telefono: '',
-        direccion: '',
-        // Campos SUNAT
-        estado_contribuyente: '',
-        condicion_contribuyente: '',
-        domicilio_fiscal: '',
-        actividad_economica: '',
-        tipo_contribuyente: '',
-        activo: true
-      });
+      setFormData(VACIO);
     }
     setErrors({});
+    setRucMensaje({ type: null, message: '' });
     setIsSubmitting(false);
   }, [socio, isOpen]);
 
-  const modalStyles = {
-    overlay: {
-      position: 'fixed' as const,
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      backgroundColor: 'rgba(0, 0, 0, 0.5)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      zIndex: 1000,
-      padding: '20px'
-    },
-    modal: {
-      backgroundColor: '#ffffff',
-      borderRadius: '12px',
-      boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
-      width: '100%',
-      maxWidth: '600px',
-      maxHeight: '90vh',
-      overflow: 'hidden',
-      position: 'relative' as const
-    },
-    header: {
-      padding: '24px 24px 0 24px',
-      borderBottom: '1px solid #e5e7eb',
-      marginBottom: '24px'
-    },
-    title: {
-      fontSize: '20px',
-      fontWeight: '600',
-      color: '#111827',
-      margin: '0 0 8px 0'
-    },
-    subtitle: {
-      fontSize: '14px',
-      color: '#6b7280',
-      margin: '0 0 16px 0'
-    },
-    closeButton: {
-      position: 'absolute' as const,
-      top: '20px',
-      right: '20px',
-      background: 'none',
-      border: 'none',
-      fontSize: '24px',
-      color: '#6b7280',
-      cursor: 'pointer',
-      padding: '4px',
-      borderRadius: '4px',
-      transition: 'color 0.2s ease'
-    },
-    body: {
-      padding: '0 24px',
-      maxHeight: 'calc(90vh - 160px)',
-      overflowY: 'auto' as const
-    },
-    form: {
-      display: 'grid',
-      gap: '20px'
-    },
-    formGroup: {
-      display: 'flex',
-      flexDirection: 'column' as const,
-      gap: '6px'
-    },
-    formRow: {
-      display: 'grid',
-      gridTemplateColumns: '1fr 1fr',
-      gap: '16px'
-    },
-    label: {
-      fontSize: '14px',
-      fontWeight: '500',
-      color: '#374151'
-    },
-    input: {
-      padding: '12px 14px',
-      border: '1px solid #d1d5db',
-      borderRadius: '6px',
-      fontSize: '14px',
-      transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
-      outline: 'none'
-    },
-    select: {
-      padding: '12px 14px',
-      border: '1px solid #d1d5db',
-      borderRadius: '6px',
-      fontSize: '14px',
-      backgroundColor: '#ffffff',
-      cursor: 'pointer',
-      outline: 'none'
-    },
-    error: {
-      fontSize: '12px',
-      color: '#ef4444',
-      marginTop: '4px'
-    },
-    consultaMessage: {
-      padding: '8px 12px',
-      borderRadius: '6px',
-      fontSize: '12px',
-      marginTop: '8px',
-      fontWeight: '500'
-    },
-    consultaSuccess: {
-      backgroundColor: '#d1fae5',
-      color: '#065f46',
-      border: '1px solid #a7f3d0'
-    },
-    consultaError: {
-      backgroundColor: '#fee2e2',
-      color: '#991b1b',
-      border: '1px solid #fca5a5'
-    },
-    footer: {
-      padding: '24px',
-      borderTop: '1px solid #e5e7eb',
-      display: 'flex',
-      justifyContent: 'flex-end',
-      gap: '12px',
-      marginTop: '24px'
-    },
-    button: {
-      padding: '10px 20px',
-      borderRadius: '6px',
-      fontSize: '14px',
-      fontWeight: '500',
-      cursor: 'pointer',
-      border: 'none',
-      transition: 'background-color 0.2s ease'
-    },
-    buttonSecondary: {
-      backgroundColor: '#f3f4f6',
-      color: '#374151'
-    },
-    buttonPrimary: {
-      backgroundColor: '#3b82f6',
-      color: '#ffffff'
-    },
-    buttonDisabled: {
-      backgroundColor: '#d1d5db',
-      color: '#9ca3af',
-      cursor: 'not-allowed'
-    },
-    rucButton: {
-      padding: '8px 12px',
-      backgroundColor: '#10b981',
-      color: 'white',
-      border: 'none',
-      borderRadius: '4px',
-      fontSize: '12px',
-      cursor: 'pointer',
-      marginTop: '8px'
-    },
-    checkbox: {
-      display: 'flex',
-      alignItems: 'center',
-      gap: '8px',
-      padding: '12px 0'
-    },
-    checkboxInput: {
-      width: '16px',
-      height: '16px',
-      cursor: 'pointer'
-    }
-  };
+  // ---------------------------------------------------------------------------
+  // Validación
+  // ---------------------------------------------------------------------------
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
+    const doc = formData.numero_documento;
 
-    if (!formData.numero_documento.trim()) {
+    if (!doc.trim()) {
       newErrors.numero_documento = 'El número de documento es requerido';
     } else if (formData.tipo_documento === 'RUC') {
-      // Validación específica para RUC
-      if (formData.numero_documento.length !== 11) {
+      if (doc.length !== 11) {
         newErrors.numero_documento = 'El RUC debe tener exactamente 11 dígitos';
-      } else if (!/^\d{11}$/.test(formData.numero_documento)) {
+      } else if (!/^\d{11}$/.test(doc)) {
         newErrors.numero_documento = 'El RUC debe contener solo números';
-      } else if (!['10', '15', '17', '20'].includes(formData.numero_documento.substring(0, 2))) {
+      } else if (!['10', '15', '17', '20'].includes(doc.substring(0, 2))) {
         newErrors.numero_documento = 'El RUC debe empezar con 10, 15, 17 o 20';
       }
     } else if (formData.tipo_documento === 'DNI') {
-      // Validación específica para DNI
-      if (formData.numero_documento.length !== 8) {
+      if (doc.length !== 8) {
         newErrors.numero_documento = 'El DNI debe tener exactamente 8 dígitos';
-      } else if (!/^\d{8}$/.test(formData.numero_documento)) {
+      } else if (!/^\d{8}$/.test(doc)) {
         newErrors.numero_documento = 'El DNI debe contener solo números';
       }
     }
@@ -280,7 +103,6 @@ const SocioFormModal: React.FC<SocioFormModalProps> = ({
     if (!formData.razon_social.trim()) {
       newErrors.razon_social = 'La razón social es requerida';
     }
-
     if (formData.email && !/\S+@\S+\.\S+/.test(formData.email)) {
       newErrors.email = 'El email no tiene un formato válido';
     }
@@ -289,501 +111,331 @@ const SocioFormModal: React.FC<SocioFormModalProps> = ({
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!validateForm()) {
-      return;
-    }
-
-    setIsSubmitting(true);
-    try {
-      await onSubmit(formData);
-      onClose();
-    } catch (error: any) {
-      console.error('❌ Error al guardar socio:', error);
-      
-      // Manejar errores específicos del backend
-      let errorMessage = 'Error al guardar el socio';
-      
-      if (error.response?.data?.detail) {
-        if (typeof error.response.data.detail === 'string') {
-          errorMessage = error.response.data.detail;
-        } else if (error.response.data.detail.message) {
-          errorMessage = error.response.data.detail.message;
-        }
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-      
-      // Manejar error específico de empresa no seleccionada
-      if (errorMessage.includes('No hay empresa seleccionada')) {
-        setRucConsultaMessage({
-          type: 'error',
-          message: `❌ Error: No hay empresa seleccionada. Por favor, seleccione una empresa antes de crear el socio.`
-        });
-        return;
-      }
-      
-      // Mostrar error específico si es de validación de documento
-      if (errorMessage.includes('Dígito verificador')) {
-        setErrors(prev => ({
-          ...prev,
-          numero_documento: errorMessage
-        }));
-      } else if (errorMessage.includes('ya existe')) {
-        setErrors(prev => ({
-          ...prev,
-          numero_documento: 'Este documento ya está registrado'
-        }));
-      } else {
-        // Error general
-        setRucConsultaMessage({
-          type: 'error',
-          message: `❌ ${errorMessage}`
-        });
-      }
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value, type } = e.target;
-    const checked = (e.target as HTMLInputElement).checked;
-    
-    setFormData(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value
-    }));
-
-    // Limpiar error del campo cuando el usuario empieza a escribir
-    if (errors[name]) {
-      setErrors(prev => ({
-        ...prev,
-        [name]: ''
-      }));
-    }
-  };
+  // ---------------------------------------------------------------------------
+  // Consulta a SUNAT
+  // ---------------------------------------------------------------------------
 
   const consultarRucSunat = async () => {
     if (!formData.numero_documento || formData.numero_documento.length !== 11) {
-      setErrors(prev => ({
-        ...prev,
-        numero_documento: 'El RUC debe tener 11 dígitos'
-      }));
+      setErrors((prev) => ({ ...prev, numero_documento: 'El RUC debe tener 11 dígitos' }));
       return;
     }
 
     setIsLoadingRuc(true);
-    setErrors(prev => ({
-      ...prev,
-      numero_documento: ''
-    }));
-    setRucConsultaMessage({ type: null, message: '' });
+    setErrors((prev) => ({ ...prev, numero_documento: '' }));
+    setRucMensaje({ type: null, message: '' });
 
     try {
-      // Llamada real a la API de consulta RUC
       const response = await consultarRuc(formData.numero_documento);
-      
+
       if (response.success && response.data) {
-        // Autocompletar formulario con datos de SUNAT
-        const newFormData = {
-          ...formData,
-          razon_social: response.data?.razon_social || formData.razon_social,
-          nombre_comercial: response.data?.nombre_comercial || formData.nombre_comercial,
-          direccion: response.data?.domicilio_fiscal || formData.direccion,
-          // Nuevos campos de SUNAT
+        setFormData((prev) => ({
+          ...prev,
+          razon_social: response.data?.razon_social || prev.razon_social,
+          nombre_comercial: response.data?.nombre_comercial || prev.nombre_comercial,
+          direccion: response.data?.domicilio_fiscal || prev.direccion,
           estado_contribuyente: response.data?.estado_contribuyente || '',
           condicion_contribuyente: response.data?.condicion_contribuyente || '',
           domicilio_fiscal: response.data?.domicilio_fiscal || '',
           actividad_economica: response.data?.actividad_economica || '',
           tipo_contribuyente: response.data?.tipo_contribuyente || '',
-        };
-        
-        setFormData(newFormData);
+        }));
 
-        // Mostrar mensaje de éxito
-        setRucConsultaMessage({
+        setRucMensaje({
           type: 'success',
-          message: `✅ Datos actualizados desde SUNAT: ${response.data.razon_social}`
+          message: `Datos actualizados desde SUNAT: ${response.data.razon_social}`,
         });
-        
-        // Limpiar mensaje después de 4 segundos
-        setTimeout(() => {
-          setRucConsultaMessage({ type: null, message: '' });
-        }, 4000);
-        
+        setTimeout(() => setRucMensaje({ type: null, message: '' }), 4000);
       } else {
-        // Error en la consulta
-        const errorMsg = response.error || 'No se pudieron obtener datos de SUNAT';
-        console.error('❌ Error en consulta SUNAT:', errorMsg);
-        
-        setRucConsultaMessage({
+        setRucMensaje({
           type: 'error',
-          message: `❌ ${errorMsg}`
+          message: response.error || 'No se pudieron obtener datos de SUNAT',
         });
       }
-    } catch (error) {
-      console.error('❌ Error al consultar RUC:', error);
-      setRucConsultaMessage({
+    } catch {
+      setRucMensaje({
         type: 'error',
-        message: '❌ Error de conexión al consultar SUNAT. Verifique su conexión e intente nuevamente.'
+        message: 'Error de conexión al consultar SUNAT. Revisa tu conexión e inténtalo de nuevo.',
       });
     } finally {
       setIsLoadingRuc(false);
     }
   };
 
-  if (!isOpen) return null;
+  // ---------------------------------------------------------------------------
+  // Envío
+  // ---------------------------------------------------------------------------
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validateForm()) return;
+
+    setIsSubmitting(true);
+    try {
+      await onSubmit(formData);
+      onClose();
+    } catch (error: any) {
+      let errorMessage = 'Error al guardar el socio';
+
+      const detail = error.response?.data?.detail;
+      if (typeof detail === 'string') errorMessage = detail;
+      else if (detail?.message) errorMessage = detail.message;
+      else if (error.message) errorMessage = error.message;
+
+      // El backend distingue estos casos; se muestran donde corresponde.
+      if (errorMessage.includes('No hay empresa seleccionada')) {
+        setRucMensaje({
+          type: 'error',
+          message: 'No hay empresa seleccionada. Elige una empresa antes de crear el socio.',
+        });
+      } else if (errorMessage.includes('Dígito verificador')) {
+        setErrors((prev) => ({ ...prev, numero_documento: errorMessage }));
+      } else if (errorMessage.includes('ya existe')) {
+        setErrors((prev) => ({ ...prev, numero_documento: 'Este documento ya está registrado' }));
+      } else {
+        setRucMensaje({ type: 'error', message: errorMessage });
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => {
+    const { name, value, type } = e.target;
+    const next = type === 'checkbox' ? (e.target as HTMLInputElement).checked : value;
+
+    setFormData((prev) => ({ ...prev, [name]: next }));
+    if (errors[name]) setErrors((prev) => ({ ...prev, [name]: '' }));
+  };
+
+  // ---------------------------------------------------------------------------
+  // Render
+  // ---------------------------------------------------------------------------
+
+  const tieneDatosSunat = Boolean(
+    formData.estado_contribuyente ||
+      formData.condicion_contribuyente ||
+      formData.domicilio_fiscal ||
+      formData.actividad_economica ||
+      formData.tipo_contribuyente
+  );
 
   return (
-    <div style={modalStyles.overlay} onClick={onClose}>
-      <div style={modalStyles.modal} onClick={(e) => e.stopPropagation()}>
-        <button 
-          style={modalStyles.closeButton}
-          onClick={onClose}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.color = '#374151';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.color = '#6b7280';
-          }}
-        >
-          ×
-        </button>
-
-        <div style={modalStyles.header}>
-          <h2 style={modalStyles.title}>
-            {socio ? 'Editar Socio de Negocio' : 'Agregar Socio de Negocio'}
-          </h2>
-          <p style={modalStyles.subtitle}>
-            {socio ? 'Modifica los datos del socio de negocio' : 'Completa los datos del nuevo socio de negocio'}
-          </p>
-        </div>
-
-        <div style={modalStyles.body}>
-          <form onSubmit={handleSubmit} style={modalStyles.form}>
-            {/* Tipo y número de documento */}
-            <div style={modalStyles.formRow}>
-              <div style={modalStyles.formGroup}>
-                <label style={modalStyles.label}>Tipo de Documento *</label>
-                <select
-                  name="tipo_documento"
-                  value={formData.tipo_documento}
-                  onChange={handleInputChange}
-                  style={modalStyles.select}
-                >
-                  <option value="RUC">RUC</option>
-                  <option value="DNI">DNI</option>
-                  <option value="CE">Carnet de Extranjería</option>
-                </select>
-              </div>
-
-              <div style={modalStyles.formGroup}>
-                <label style={modalStyles.label}>Número de Documento *</label>
-                <input
-                  type="text"
-                  name="numero_documento"
-                  value={formData.numero_documento}
-                  onChange={handleInputChange}
-                  style={{
-                    ...modalStyles.input,
-                    ...(errors.numero_documento ? { borderColor: '#ef4444' } : {})
-                  }}
-                  placeholder="Ingrese el número"
-                />
-                {formData.tipo_documento === 'RUC' && formData.numero_documento.length === 11 && (
-                  <button
-                    type="button"
-                    onClick={consultarRucSunat}
-                    disabled={isLoadingRuc}
-                    style={{
-                      ...modalStyles.rucButton,
-                      opacity: isLoadingRuc ? 0.6 : 1
-                    }}
-                  >
-                    {isLoadingRuc ? '🔄 Consultando SUNAT...' : '🔍 Consultar SUNAT'}
-                  </button>
-                )}
-                {errors.numero_documento && (
-                  <div style={modalStyles.error}>{errors.numero_documento}</div>
-                )}
-                {rucConsultaMessage.type && (
-                  <div style={{
-                    ...modalStyles.consultaMessage,
-                    ...(rucConsultaMessage.type === 'success' ? modalStyles.consultaSuccess : modalStyles.consultaError)
-                  }}>
-                    {rucConsultaMessage.message}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Razón social y nombre comercial */}
-            <div style={modalStyles.formRow}>
-              <div style={modalStyles.formGroup}>
-                <label style={modalStyles.label}>Razón Social *</label>
-                <input
-                  type="text"
-                  name="razon_social"
-                  value={formData.razon_social}
-                  onChange={handleInputChange}
-                  style={{
-                    ...modalStyles.input,
-                    ...(errors.razon_social ? { borderColor: '#ef4444' } : {})
-                  }}
-                  placeholder="Razón social completa"
-                />
-                {errors.razon_social && (
-                  <div style={modalStyles.error}>{errors.razon_social}</div>
-                )}
-              </div>
-
-              <div style={modalStyles.formGroup}>
-                <label style={modalStyles.label}>Nombre Comercial</label>
-                <input
-                  type="text"
-                  name="nombre_comercial"
-                  value={formData.nombre_comercial}
-                  onChange={handleInputChange}
-                  style={modalStyles.input}
-                  placeholder="Nombre comercial (opcional)"
-                />
-              </div>
-            </div>
-
-            {/* Tipo de socio */}
-            <div style={modalStyles.formGroup}>
-              <label style={modalStyles.label}>Tipo de Socio *</label>
-              <select
-                name="tipo_socio"
-                value={formData.tipo_socio}
-                onChange={handleInputChange}
-                style={modalStyles.select}
-              >
-                <option value="cliente">Cliente</option>
-                <option value="proveedor">Proveedor</option>
-                <option value="ambos">Cliente y Proveedor</option>
-              </select>
-            </div>
-
-            {/* Email y teléfono */}
-            <div style={modalStyles.formRow}>
-              <div style={modalStyles.formGroup}>
-                <label style={modalStyles.label}>Email</label>
-                <input
-                  type="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleInputChange}
-                  style={{
-                    ...modalStyles.input,
-                    ...(errors.email ? { borderColor: '#ef4444' } : {})
-                  }}
-                  placeholder="correo@empresa.com"
-                />
-                {errors.email && (
-                  <div style={modalStyles.error}>{errors.email}</div>
-                )}
-              </div>
-
-              <div style={modalStyles.formGroup}>
-                <label style={modalStyles.label}>Teléfono</label>
-                <input
-                  type="tel"
-                  name="telefono"
-                  value={formData.telefono}
-                  onChange={handleInputChange}
-                  style={modalStyles.input}
-                  placeholder="999 999 999"
-                />
-              </div>
-            </div>
-
-            {/* Dirección */}
-            <div style={modalStyles.formGroup}>
-              <label style={modalStyles.label}>Dirección</label>
-              <input
-                type="text"
-                name="direccion"
-                value={formData.direccion}
-                onChange={handleInputChange}
-                style={modalStyles.input}
-                placeholder="Dirección completa"
-              />
-            </div>
-
-            {/* Campos SUNAT - Solo se muestran si hay datos */}
-            {(formData.estado_contribuyente || formData.condicion_contribuyente || formData.domicilio_fiscal || formData.actividad_economica || formData.tipo_contribuyente) && (
-              <>
-                <div style={{
-                  padding: '12px',
-                  backgroundColor: '#f0f9ff',
-                  borderRadius: '6px',
-                  border: '1px solid #0ea5e9',
-                  marginBottom: '16px'
-                }}>
-                  <h4 style={{
-                    margin: '0 0 12px 0',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    color: '#0c4a6e',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px'
-                  }}>
-                    🏛️ Información SUNAT
-                  </h4>
-                  
-                  {/* Estado y Condición */}
-                  <div style={modalStyles.formRow}>
-                    <div style={modalStyles.formGroup}>
-                      <label style={modalStyles.label}>Estado Contribuyente</label>
-                      <input
-                        type="text"
-                        name="estado_contribuyente"
-                        value={formData.estado_contribuyente}
-                        onChange={handleInputChange}
-                        style={{
-                          ...modalStyles.input,
-                          backgroundColor: '#f8fafc',
-                          color: formData.estado_contribuyente === 'ACTIVO' ? '#059669' : '#dc2626',
-                          fontWeight: '500'
-                        }}
-                        placeholder="Estado en SUNAT"
-                        readOnly
-                      />
-                    </div>
-
-                    <div style={modalStyles.formGroup}>
-                      <label style={modalStyles.label}>Condición Contribuyente</label>
-                      <input
-                        type="text"
-                        name="condicion_contribuyente"
-                        value={formData.condicion_contribuyente}
-                        onChange={handleInputChange}
-                        style={{
-                          ...modalStyles.input,
-                          backgroundColor: '#f8fafc',
-                          color: formData.condicion_contribuyente === 'HABIDO' ? '#059669' : '#dc2626',
-                          fontWeight: '500'
-                        }}
-                        placeholder="Condición en SUNAT"
-                        readOnly
-                      />
-                    </div>
-                  </div>
-
-                  {/* Domicilio Fiscal */}
-                  <div style={modalStyles.formGroup}>
-                    <label style={modalStyles.label}>Domicilio Fiscal (SUNAT)</label>
-                    <input
-                      type="text"
-                      name="domicilio_fiscal"
-                      value={formData.domicilio_fiscal}
-                      onChange={handleInputChange}
-                      style={{
-                        ...modalStyles.input,
-                        backgroundColor: '#f8fafc'
-                      }}
-                      placeholder="Domicilio fiscal según SUNAT"
-                      readOnly
-                    />
-                  </div>
-
-                  {/* Actividad Económica y Tipo */}
-                  <div style={modalStyles.formRow}>
-                    <div style={modalStyles.formGroup}>
-                      <label style={modalStyles.label}>Actividad Económica</label>
-                      <input
-                        type="text"
-                        name="actividad_economica"
-                        value={formData.actividad_economica}
-                        onChange={handleInputChange}
-                        style={{
-                          ...modalStyles.input,
-                          backgroundColor: '#f8fafc'
-                        }}
-                        placeholder="Actividad económica"
-                        readOnly
-                      />
-                    </div>
-
-                    <div style={modalStyles.formGroup}>
-                      <label style={modalStyles.label}>Tipo Contribuyente</label>
-                      <input
-                        type="text"
-                        name="tipo_contribuyente"
-                        value={formData.tipo_contribuyente}
-                        onChange={handleInputChange}
-                        style={{
-                          ...modalStyles.input,
-                          backgroundColor: '#f8fafc'
-                        }}
-                        placeholder="Tipo"
-                        readOnly
-                      />
-                    </div>
-                  </div>
-                </div>
-              </>
-            )}
-
-            {/* Estado activo */}
-            <div style={modalStyles.checkbox}>
-              <input
-                type="checkbox"
-                name="activo"
-                checked={formData.activo}
-                onChange={handleInputChange}
-                style={modalStyles.checkboxInput}
-              />
-              <label style={modalStyles.label}>Socio activo</label>
-            </div>
-          </form>
-        </div>
-
-        <div style={modalStyles.footer}>
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={socio ? 'Editar socio de negocio' : 'Nuevo socio de negocio'}
+      description={
+        socio
+          ? 'Modifica los datos del socio de negocio.'
+          : 'Completa los datos del nuevo socio de negocio.'
+      }
+      footer={
+        <>
           <button
             type="button"
             onClick={onClose}
-            style={{
-              ...modalStyles.button,
-              ...modalStyles.buttonSecondary
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = '#e5e7eb';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = '#f3f4f6';
-            }}
+            disabled={isSubmitting}
+            className="rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
           >
             Cancelar
           </button>
           <button
-            onClick={handleSubmit}
+            type="submit"
+            form="socio-form"
             disabled={isSubmitting}
-            style={{
-              ...modalStyles.button,
-              ...(isSubmitting ? modalStyles.buttonDisabled : modalStyles.buttonPrimary)
-            }}
-            onMouseEnter={(e) => {
-              if (!isSubmitting) {
-                e.currentTarget.style.backgroundColor = '#2563eb';
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (!isSubmitting) {
-                e.currentTarget.style.backgroundColor = '#3b82f6';
-              }
-            }}
+            className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
           >
-            {isSubmitting ? '⏳ Guardando...' : (socio ? 'Actualizar' : 'Crear Socio')}
+            {isSubmitting && <Loader2 className="size-4 animate-spin" aria-hidden="true" />}
+            {socio ? 'Guardar cambios' : 'Crear socio'}
           </button>
+        </>
+      }
+    >
+      <form id="socio-form" onSubmit={handleSubmit} className="space-y-5" noValidate>
+        <div className="grid gap-5 sm:grid-cols-2">
+          <SelectField
+            label="Tipo de documento"
+            name="tipo_documento"
+            required
+            value={formData.tipo_documento}
+            onChange={handleInputChange}
+          >
+            <option value="RUC">RUC</option>
+            <option value="DNI">DNI</option>
+            <option value="CE">Carnet de extranjería</option>
+          </SelectField>
+
+          <div>
+            <TextField
+              label="Número de documento"
+              name="numero_documento"
+              required
+              value={formData.numero_documento}
+              onChange={handleInputChange}
+              error={errors.numero_documento}
+              placeholder={formData.tipo_documento === 'RUC' ? '20123456789' : '12345678'}
+              inputMode="numeric"
+              className="font-mono"
+            />
+
+            {formData.tipo_documento === 'RUC' && (
+              <button
+                type="button"
+                onClick={consultarRucSunat}
+                disabled={isLoadingRuc}
+                className="mt-2 inline-flex items-center gap-2 rounded-lg border border-blue-300 bg-blue-50 px-3 py-1.5 text-sm font-medium text-blue-700 hover:bg-blue-100 disabled:opacity-50"
+              >
+                {isLoadingRuc ? (
+                  <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                ) : (
+                  <Search className="size-4" aria-hidden="true" />
+                )}
+                {isLoadingRuc ? 'Consultando SUNAT…' : 'Consultar SUNAT'}
+              </button>
+            )}
+          </div>
         </div>
-      </div>
-    </div>
+
+        {rucMensaje.type && (
+          <p
+            role="status"
+            className={cn(
+              'flex items-start gap-2 rounded-lg border px-4 py-2.5 text-sm font-medium',
+              rucMensaje.type === 'success'
+                ? 'border-green-200 bg-green-50 text-green-800'
+                : 'border-red-200 bg-red-50 text-red-800'
+            )}
+          >
+            {rucMensaje.type === 'success' ? (
+              <CheckCircle2 className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+            ) : (
+              <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+            )}
+            {rucMensaje.message}
+          </p>
+        )}
+
+        <div className="grid gap-5 sm:grid-cols-2">
+          <TextField
+            label="Razón social"
+            name="razon_social"
+            required
+            value={formData.razon_social}
+            onChange={handleInputChange}
+            error={errors.razon_social}
+            placeholder="Razón social completa"
+          />
+
+          <TextField
+            label="Nombre comercial"
+            name="nombre_comercial"
+            value={formData.nombre_comercial}
+            onChange={handleInputChange}
+            placeholder="Opcional"
+          />
+
+          <SelectField
+            label="Tipo de socio"
+            name="tipo_socio"
+            required
+            full
+            value={formData.tipo_socio}
+            onChange={handleInputChange}
+          >
+            <option value="cliente">Cliente</option>
+            <option value="proveedor">Proveedor</option>
+            <option value="ambos">Cliente y proveedor</option>
+          </SelectField>
+
+          <TextField
+            label="Email"
+            name="email"
+            type="email"
+            value={formData.email}
+            onChange={handleInputChange}
+            error={errors.email}
+            placeholder="correo@empresa.com"
+          />
+
+          <TextField
+            label="Teléfono"
+            name="telefono"
+            type="tel"
+            value={formData.telefono}
+            onChange={handleInputChange}
+            placeholder="999 999 999"
+          />
+
+          <TextField
+            label="Dirección"
+            name="direccion"
+            full
+            value={formData.direccion}
+            onChange={handleInputChange}
+            placeholder="Dirección del socio"
+          />
+        </div>
+
+        {/* Datos traídos de SUNAT: solo lectura */}
+        {tieneDatosSunat && (
+          <fieldset className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <legend className="flex items-center gap-2 px-1 text-sm font-semibold text-slate-900">
+              <Landmark className="size-4 text-slate-400" aria-hidden="true" />
+              Información de SUNAT
+            </legend>
+
+            <div className="mt-2 grid gap-4 sm:grid-cols-2">
+              <TextField
+                label="Estado del contribuyente"
+                name="estado_contribuyente"
+                value={formData.estado_contribuyente}
+                onChange={handleInputChange}
+                readOnly
+              />
+              <TextField
+                label="Condición del contribuyente"
+                name="condicion_contribuyente"
+                value={formData.condicion_contribuyente}
+                onChange={handleInputChange}
+                readOnly
+              />
+              <TextField
+                label="Domicilio fiscal"
+                name="domicilio_fiscal"
+                full
+                value={formData.domicilio_fiscal}
+                onChange={handleInputChange}
+                readOnly
+              />
+              <TextField
+                label="Actividad económica"
+                name="actividad_economica"
+                value={formData.actividad_economica}
+                onChange={handleInputChange}
+                readOnly
+              />
+              <TextField
+                label="Tipo de contribuyente"
+                name="tipo_contribuyente"
+                value={formData.tipo_contribuyente}
+                onChange={handleInputChange}
+                readOnly
+              />
+            </div>
+          </fieldset>
+        )}
+
+        <CheckboxField
+          label="Socio activo"
+          name="activo"
+          checked={formData.activo}
+          onChange={handleInputChange}
+        />
+      </form>
+    </Modal>
   );
 };
 

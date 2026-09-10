@@ -1,10 +1,11 @@
 /**
  * API Service para Registro de Ventas
- * Conecta con endpoints del backend FastAPI para CRUD de ventas
+ * Conecta con endpoints del backend FastAPI - módulo accounting/ventas
+ * Sincronizado con ventas_routes.py (empresa_id explícito como query param)
  */
 
 import api from './api';
-import type { 
+import type {
   RegistroVentaRequest,
   RegistroVentaResponse,
   PLEVentasExportOptions,
@@ -15,49 +16,49 @@ import type {
 
 export const ventasApi = {
   // CRUD Básico
-  async getAll(filters?: VentasFilters): Promise<RegistroVentaResponse[]> {
+  async getAll(empresaId: string, filters?: VentasFilters): Promise<RegistroVentaResponse[]> {
     const params = new URLSearchParams();
-    if (filters?.fecha_inicio) params.append('fecha_inicio', filters.fecha_inicio);
-    if (filters?.fecha_fin) params.append('fecha_fin', filters.fecha_fin);
-    if (filters?.cliente_documento) params.append('cliente_documento', filters.cliente_documento);
+    params.append('empresa_id', empresaId);
+    if (filters?.fecha_inicio) params.append('fecha_desde', filters.fecha_inicio);
+    if (filters?.fecha_fin) params.append('fecha_hasta', filters.fecha_fin);
+    if (filters?.cliente_documento) params.append('numero_documento_cliente', filters.cliente_documento);
     if (filters?.tipo_comprobante) params.append('tipo_comprobante', filters.tipo_comprobante);
-    if (filters?.monto_min) params.append('monto_min', filters.monto_min.toString());
-    if (filters?.monto_max) params.append('monto_max', filters.monto_max.toString());
-    
-    const response = await api.get(`/accounting/ventas?${params.toString()}`);
+
+    const response = await api.get(`/accounting/ventas/?${params.toString()}`);
     return response.data;
   },
 
-  async getById(id: string): Promise<RegistroVentaResponse> {
-    const response = await api.get(`/accounting/ventas/${id}`);
+  async getById(empresaId: string, id: string): Promise<RegistroVentaResponse> {
+    const response = await api.get(`/accounting/ventas/${id}?empresa_id=${empresaId}`);
     return response.data;
   },
 
-  async create(registro: RegistroVentaRequest): Promise<RegistroVentaResponse> {
-    const response = await api.post('/accounting/ventas', registro);
+  async create(empresaId: string, periodo: string, registro: RegistroVentaRequest): Promise<RegistroVentaResponse> {
+    const response = await api.post(`/accounting/ventas/?empresa_id=${empresaId}&periodo=${periodo}`, registro);
     return response.data;
   },
 
-  async update(id: string, registro: RegistroVentaRequest): Promise<RegistroVentaResponse> {
-    const response = await api.put(`/accounting/ventas/${id}`, registro);
+  async update(empresaId: string, id: string, registro: RegistroVentaRequest): Promise<RegistroVentaResponse> {
+    const response = await api.put(`/accounting/ventas/${id}?empresa_id=${empresaId}`, registro);
     return response.data;
   },
 
-  async delete(id: string): Promise<void> {
-    await api.delete(`/accounting/ventas/${id}`);
+  async delete(empresaId: string, id: string): Promise<void> {
+    await api.delete(`/accounting/ventas/${id}?empresa_id=${empresaId}`);
   },
 
   // Exportaciones PLE
-  async exportPLE(options: PLEVentasExportOptions): Promise<PLEVentasExportResult> {
-    const response = await api.post('/accounting/ventas/export-ple', options);
+  async exportPLE(empresaId: string, options: PLEVentasExportOptions): Promise<PLEVentasExportResult> {
+    const response = await api.post(`/accounting/ventas/generar-ple?empresa_id=${empresaId}`, options);
     return response.data;
   },
 
-  async exportExcel(filters?: VentasFilters): Promise<Blob> {
+  async exportExcel(empresaId: string, filters?: VentasFilters): Promise<Blob> {
     const params = new URLSearchParams();
-    if (filters?.fecha_inicio) params.append('fecha_inicio', filters.fecha_inicio);
-    if (filters?.fecha_fin) params.append('fecha_fin', filters.fecha_fin);
-    
+    params.append('empresa_id', empresaId);
+    if (filters?.fecha_inicio) params.append('fecha_desde', filters.fecha_inicio);
+    if (filters?.fecha_fin) params.append('fecha_hasta', filters.fecha_fin);
+
     const response = await api.get(`/accounting/ventas/export-excel?${params.toString()}`, {
       responseType: 'blob'
     });
@@ -65,29 +66,22 @@ export const ventasApi = {
   },
 
   // Estadísticas
-  async getStats(periodo: string): Promise<VentasStats> {
-    const response = await api.get(`/accounting/ventas/stats?periodo=${periodo}`);
+  async getStats(empresaId: string, periodoAaaamm: string): Promise<VentasStats> {
+    const response = await api.get(
+      `/accounting/ventas/resumen?empresa_id=${empresaId}&periodo_aaaamm=${periodoAaaamm}`
+    );
     return response.data;
   },
 
-  // Validaciones
-  async validateDocumento(tipo: string, numero: string): Promise<{ valid: boolean; nombres?: string }> {
-    const response = await api.get(`/accounting/ventas/validate-documento/${tipo}/${numero}`);
-    return response.data;
-  },
-
-  // Importación masiva
-  async importFromExcel(file: File): Promise<{ success: number; errors: string[] }> {
-    const formData = new FormData();
-    formData.append('file', file);
-    
-    const response = await api.post('/accounting/ventas/import-excel', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data'
-      }
-    });
+  // Validaciones (de un registro ya guardado, contra las reglas SUNAT)
+  async validateRegistro(empresaId: string, id: string): Promise<{ es_valido: boolean; errores: string[]; warnings: string[] }> {
+    const response = await api.get(`/accounting/ventas/validar/${id}?empresa_id=${empresaId}`);
     return response.data;
   }
+
+  // Nota: validar documento de cliente (RUC/DNI) antes de crear un registro e
+  // importación masiva desde Excel no tienen todavía endpoint en el backend.
+  // No se exponen aquí hasta que se implementen esas funcionalidades.
 };
 
 export default ventasApi;

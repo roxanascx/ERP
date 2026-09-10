@@ -11,80 +11,36 @@ export interface ExportConfig {
 
 export class ExportacionService {
   /**
-   * Exporta asientos contables a Excel
+   * Exporta asientos contables a Excel.
+   *
+   * NO IMPLEMENTADO. Hace falta una libreria de generacion de XLSX que no esta
+   * en el proyecto. La version anterior esperaba 1,5 s y llamaba a una funcion
+   * vacia, de modo que el boton parecia funcionar y nunca descargaba nada.
+   * Ahora falla de forma visible para que el usuario lo sepa.
    */
   static async exportarAsientosExcel(
-    asientos: AsientoContable[], 
-    config: ExportConfig = {}
+    _asientos: AsientoContable[],
+    _config: ExportConfig = {}
   ): Promise<void> {
-    const {
-      fileName = `libro_diario_${new Date().toISOString().split('T')[0]}.xlsx`,
-      sheetName = 'Libro Diario',
-      // includeHeaders = true,
-      includeMetadata = true
-    } = config;
-
-    try {
-      // Preparar datos para exportación
-      const datosParaExportar = this.prepararDatosAsientos(asientos, includeMetadata);
-      
-      // Aquí se implementaría la lógica de exportación usando una librería como xlsx
-      // Por ahora, simulamos el proceso
-      console.log('📊 Exportando a Excel:', {
-        asientos: asientos.length,
-        fileName,
-        sheetName,
-        datos: datosParaExportar.slice(0, 3) // Solo mostrar los primeros 3 para debug
-      });
-
-      // Simular proceso de exportación
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // En una implementación real, aquí descargaríamos el archivo
-      this.descargarSimulado(fileName, 'excel');
-      
-    } catch (error) {
-      console.error('Error al exportar a Excel:', error);
-      throw new Error('No se pudo exportar a Excel');
-    }
+    throw new Error('La exportación a Excel aún no está implementada.');
   }
 
   /**
-   * Exporta asientos contables a PDF
+   * Exporta asientos contables a PDF.
+   *
+   * NO IMPLEMENTADO, por el mismo motivo que la exportacion a Excel.
    */
   static async exportarAsientosPDF(
-    asientos: AsientoContable[], 
-    config: ExportConfig = {}
+    _asientos: AsientoContable[],
+    _config: ExportConfig = {}
   ): Promise<void> {
-    const {
-      fileName = `libro_diario_${new Date().toISOString().split('T')[0]}.pdf`,
-      includeMetadata = true
-    } = config;
-
-    try {
-      // Preparar datos para PDF
-      const datosParaExportar = this.prepararDatosAsientos(asientos, includeMetadata);
-      
-      console.log('📄 Exportando a PDF:', {
-        asientos: asientos.length,
-        fileName,
-        datos: datosParaExportar.slice(0, 3)
-      });
-
-      // Simular proceso de exportación
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // En una implementación real, aquí generaríamos y descargaríamos el PDF
-      this.descargarSimulado(fileName, 'pdf');
-      
-    } catch (error) {
-      console.error('Error al exportar a PDF:', error);
-      throw new Error('No se pudo exportar a PDF');
-    }
+    throw new Error('La exportación a PDF aún no está implementada.');
   }
 
   /**
-   * Prepara los datos de asientos para exportación
+   * Aplana los asientos al formato de columnas de la exportacion.
+   * De momento no lo llama nadie: se conserva porque describe el formato que
+   * necesitara la exportacion cuando se implemente.
    */
   private static prepararDatosAsientos(asientos: AsientoContable[], includeMetadata: boolean) {
     const datos: any[] = [];
@@ -117,22 +73,6 @@ export class ExportacionService {
     });
 
     return datos;
-  }
-
-  /**
-   * Simula la descarga de archivo (para demo)
-   */
-  private static descargarSimulado(fileName: string, _tipo: 'excel' | 'pdf') {
-    console.log(`📁 Simulando descarga de archivo: ${fileName}`);
-    
-    // En una implementación real, aquí crearíamos el blob y trigger de descarga
-    // const blob = new Blob([contenido], { type: mimeType });
-    // const url = URL.createObjectURL(blob);
-    // const a = document.createElement('a');
-    // a.href = url;
-    // a.download = fileName;
-    // a.click();
-    // URL.revokeObjectURL(url);
   }
 
   /**

@@ -1,6 +1,6 @@
 // Hook para gestión de Socios de Negocio
 import { useState, useEffect, useCallback } from 'react';
-import { useEmpresa } from './useEmpresa';
+import { useEmpresaValidation } from './useEmpresaValidation';
 import sociosNegocioApi from '../services/sociosNegocioApi';
 import type {
   SocioNegocio,
@@ -67,7 +67,9 @@ const initialState: UseSociosNegocioState = {
 
 export function useSociosNegocio(): UseSociosNegocioState & UseSociosNegocioActions {
   const [state, setState] = useState<UseSociosNegocioState>(initialState);
-  const { empresaActual } = useEmpresa();
+  // Solo hace falta la empresa activa: useEmpresa ademas descarga la lista
+  // completa de empresas, que aqui no se usa.
+  const { empresaActual } = useEmpresaValidation();
 
   // Helper para actualizar estado
   const updateState = useCallback((updates: Partial<UseSociosNegocioState>) => {

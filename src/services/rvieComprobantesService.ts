@@ -118,7 +118,7 @@ export const rvieComprobantesService = {
         });
       }
 
-      const response = await api.get(`/api/v1/sire/rvie/${ruc}/comprobantes?${params}`);
+      const response = await api.get(`/sire/rvie/${ruc}/comprobantes?${params}`);
       return response.data;
     } catch (error: any) {
       console.error('❌ Error consultando comprobantes RVIE BD:', error);
@@ -135,7 +135,7 @@ export const rvieComprobantesService = {
    */
   async obtenerEstadisticas(ruc: string, periodo: string): Promise<RvieEstadisticasBD> {
     try {
-      const response = await api.get(`/api/v1/sire/rvie/${ruc}/estadisticas?periodo=${periodo}`);
+      const response = await api.get(`/sire/rvie/${ruc}/estadisticas?periodo=${periodo}`);
       return response.data.estadisticas;
     } catch (error: any) {
       console.error('❌ Error obteniendo estadísticas RVIE BD:', error);
@@ -152,7 +152,7 @@ export const rvieComprobantesService = {
    */
   async verificarEstadoBD(ruc: string, periodo: string): Promise<RvieEstadoBDResponse> {
     try {
-      const response = await api.get(`/api/v1/sire/rvie/${ruc}/estado?periodo=${periodo}`);
+      const response = await api.get(`/sire/rvie/${ruc}/estado?periodo=${periodo}`);
       return response.data;
     } catch (error: any) {
       console.error('❌ Error verificando estado BD RVIE:', error);
@@ -180,7 +180,7 @@ export const rvieComprobantesService = {
   ): Promise<RvieGuardarResponse> {
     try {
       const response = await api.post(
-        `/api/v1/sire/rvie/${ruc}/guardar-desde-sunat?periodo=${periodo}`,
+        `/sire/rvie/${ruc}/guardar-desde-sunat?periodo=${periodo}`,
         comprobantes
       );
       return response.data;
@@ -199,7 +199,7 @@ export const rvieComprobantesService = {
    */
   async obtenerComprobante(ruc: string, comprobanteId: string): Promise<RvieComprobanteBD> {
     try {
-      const response = await api.get(`/api/v1/sire/rvie/${ruc}/comprobantes/${comprobanteId}`);
+      const response = await api.get(`/sire/rvie/${ruc}/comprobantes/${comprobanteId}`);
       return response.data.comprobante;
     } catch (error: any) {
       console.error('❌ Error obteniendo comprobante RVIE:', error);
@@ -216,7 +216,7 @@ export const rvieComprobantesService = {
    */
   async eliminarComprobante(ruc: string, comprobanteId: string): Promise<{ success: boolean; message: string }> {
     try {
-      const response = await api.delete(`/api/v1/sire/rvie/${ruc}/comprobantes/${comprobanteId}`);
+      const response = await api.delete(`/sire/rvie/${ruc}/comprobantes/${comprobanteId}`);
       return response.data;
     } catch (error: any) {
       console.error('❌ Error eliminando comprobante RVIE:', error);
@@ -233,7 +233,7 @@ export const rvieComprobantesService = {
    */
   async limpiarPeriodo(ruc: string, periodo: string): Promise<{ success: boolean; message: string; eliminados: number }> {
     try {
-      const response = await api.delete(`/api/v1/sire/rvie/${ruc}/periodo/${periodo}`);
+      const response = await api.delete(`/sire/rvie/${ruc}/periodo/${periodo}`);
       return response.data;
     } catch (error: any) {
       console.error('❌ Error limpiando período RVIE:', error);

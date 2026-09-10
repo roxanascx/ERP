@@ -1,10 +1,11 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react-swc'
+import tailwindcss from '@tailwindcss/vite'
 import path from 'path'
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), tailwindcss()],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
@@ -22,39 +23,33 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
+        // ------------------------------------------------------------------
+        // Solo se agrupan dependencias de node_modules, que son estables y se
+        // cachean bien.
+        //
+        // Las reglas anteriores agrupaban tambien codigo propio por carpeta
+        // ('/sire/', '/empresa/'). Eso peleaba contra el code-splitting por
+        // ruta: bastaba con que un modulo eager cayera en el chunk 'sire' para
+        // que sus 146 kB + 56 kB de CSS se descargaran en el primer paint.
+        // Ahora las fronteras de carga las define el lazy() del router.
+        // ------------------------------------------------------------------
         manualChunks: (id) => {
-          // React core
-          if (id.includes('node_modules/react') || id.includes('node_modules/react-dom')) {
-            return 'react';
-          }
-          // Router
-          if (id.includes('node_modules/react-router')) {
-            return 'router';
-          }
-          // Clerk auth
-          if (id.includes('node_modules/@clerk')) {
-            return 'auth';
-          }
-          // SIRE modules
-          if (id.includes('/sire/')) {
-            return 'sire';
-          }
-          // Empresa modules
-          if (id.includes('/empresa/')) {
-            return 'empresa';
-          }
-          // Common utilities
-          if (id.includes('node_modules/axios') || id.includes('node_modules/date-fns')) {
-            return 'utils';
-          }
-          // Large libraries
-          if (id.includes('node_modules/')) {
-            return 'vendor';
-          }
+          if (!id.includes('node_modules')) return;
+
+          // react-router antes que react: 'node_modules/react' tambien casa
+          // con 'node_modules/react-router', por eso el chunk 'router' nunca
+          // llegaba a formarse.
+          if (id.includes('node_modules/react-router')) return 'router';
+          if (id.includes('node_modules/react-dom')) return 'react';
+          if (id.includes('node_modules/react')) return 'react';
+          if (id.includes('node_modules/@clerk')) return 'auth';
+          if (id.includes('node_modules/axios')) return 'utils';
+
+          return 'vendor';
         }
       }
     },
-    cssMinify: false, // Deshabilitar minificado CSS para eliminar advertencias
-    chunkSizeWarningLimit: 1000 // Aumentar el límite a 1MB
+    cssMinify: true,
+    chunkSizeWarningLimit: 1000
   }
 })

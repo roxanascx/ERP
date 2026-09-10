@@ -26,7 +26,7 @@ import type {
 // CONFIGURACIÓN BASE
 // ========================================
 
-const RCE_BASE_URL = '/api/v1/sire/rce';
+const RCE_BASE_URL = '/sire/rce';
 
 // Tipos para credenciales SUNAT
 interface CredencialesSunat {
@@ -342,14 +342,9 @@ export const rcePropuestasApi = {
   }>> {
     const url = `${RCE_BASE_URL}/propuestas`;
     const params = { ruc, ...filtros };
-    
-    console.log('🌐 [RCE API] Haciendo petición GET a:', url);
-    console.log('🌐 [RCE API] Con parámetros:', params);
-    console.log('🌐 [RCE API] URL completa construida:', url, 'params:', params);
-    
+
     try {
       const response = await api.get(url, { params });
-      console.log('🌐 [RCE API] Respuesta recibida:', response.status, response.data);
       return response.data;
     } catch (error) {
       console.error('🌐 [RCE API] Error en petición:', error);

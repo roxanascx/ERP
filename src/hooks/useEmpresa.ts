@@ -1,285 +1,203 @@
 import { useState, useEffect, useCallback } from 'react';
-import type { 
-  Empresa, 
-  EmpresaCreate, 
-  EmpresaUpdate, 
+import type {
+  Empresa,
+  EmpresaCreate,
+  EmpresaUpdate,
   SireConfig,
-  EmpresaState 
 } from '../types/empresa';
 import EmpresaApiService from '../services/empresaApi';
-import { notifyEmpresaChange } from './useEmpresaValidation';
+import { useEmpresaContext } from '../contexts/EmpresaContext';
 
+/**
+ * CRUD de empresas + acceso a la empresa activa.
+ *
+ * La LISTA de empresas sigue siendo estado local de este hook (solo la usan
+ * las 3 pantallas que administran empresas). La EMPRESA ACTIVA, en cambio,
+ * vive en EmpresaContext: antes este hook la pedia por su cuenta y avisaba de
+ * los cambios con un `window.dispatchEvent`, que ya no hace falta.
+ *
+ * La firma publica no cambia, para no tocar sus consumidores.
+ */
 export const useEmpresa = () => {
-  const [state, setState] = useState<EmpresaState>({
-    empresas: [],
-    empresaActual: null,
-    loading: false,
-    error: null,
-  });
+  const {
+    empresaActual,
+    seleccionarEmpresa: seleccionarEnContexto,
+    revalidate: revalidarEmpresaActual,
+  } = useEmpresaContext();
 
-  // ============================================
-  // FUNCIONES DE ESTADO
-  // ============================================
-
-  const setLoading = (loading: boolean) => {
-    setState(prev => ({ ...prev, loading }));
-  };
-
-  const setError = (error: string | null) => {
-    setState(prev => ({ ...prev, error }));
-  };
-
-  const setEmpresas = (empresas: Empresa[]) => {
-    setState(prev => ({ ...prev, empresas }));
-  };
-
-  const setEmpresaActual = (empresa: Empresa | null) => {
-    setState(prev => ({ ...prev, empresaActual: empresa }));
-  };
+  const [empresas, setEmpresas] = useState<Empresa[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // ============================================
   // OPERACIONES CRUD
   // ============================================
 
-  /**
-   * Cargar todas las empresas
-   */
   const cargarEmpresas = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const empresas = await EmpresaApiService.getEmpresas();
-      setEmpresas(empresas);
-    } catch (error) {
-      setError(error instanceof Error ? error.message : 'Error desconocido');
+      const data = await EmpresaApiService.getEmpresas();
+      setEmpresas(data);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error desconocido');
     } finally {
       setLoading(false);
     }
   }, []);
 
-  /**
-   * Crear nueva empresa
-   */
   const crearEmpresa = useCallback(async (data: EmpresaCreate): Promise<Empresa | null> => {
     setLoading(true);
     setError(null);
     try {
       const nuevaEmpresa = await EmpresaApiService.createEmpresa(data);
-      
-      // Actualizar lista local
-      setState(prev => ({
-        ...prev,
-        empresas: [...prev.empresas, nuevaEmpresa]
-      }));
-      
+      setEmpresas((prev) => [...prev, nuevaEmpresa]);
       return nuevaEmpresa;
-    } catch (error) {
-      setError(error instanceof Error ? error.message : 'Error al crear empresa');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error al crear empresa');
       return null;
     } finally {
       setLoading(false);
     }
   }, []);
 
-  /**
-   * Actualizar empresa existente
-   */
-  const actualizarEmpresa = useCallback(async (
-    ruc: string, 
-    data: EmpresaUpdate
-  ): Promise<Empresa | null> => {
-    setLoading(true);
-    setError(null);
-    try {
-      const empresaActualizada = await EmpresaApiService.updateEmpresa(ruc, data);
-      
-      // Actualizar lista local
-      setState(prev => ({
-        ...prev,
-        empresas: prev.empresas.map(emp => 
-          emp.ruc === ruc ? empresaActualizada : emp
-        ),
-        empresaActual: prev.empresaActual?.ruc === ruc ? empresaActualizada : prev.empresaActual
-      }));
-      
-      return empresaActualizada;
-    } catch (error) {
-      setError(error instanceof Error ? error.message : 'Error al actualizar empresa');
-      return null;
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const actualizarEmpresa = useCallback(
+    async (ruc: string, data: EmpresaUpdate): Promise<Empresa | null> => {
+      setLoading(true);
+      setError(null);
+      try {
+        const empresaActualizada = await EmpresaApiService.updateEmpresa(ruc, data);
+        setEmpresas((prev) => prev.map((emp) => (emp.ruc === ruc ? empresaActualizada : emp)));
 
-  /**
-   * Eliminar empresa
-   */
-  const eliminarEmpresa = useCallback(async (ruc: string): Promise<boolean> => {
-    setLoading(true);
-    setError(null);
-    try {
-      await EmpresaApiService.deleteEmpresa(ruc);
-      
-      // Actualizar lista local
-      setState(prev => ({
-        ...prev,
-        empresas: prev.empresas.filter(emp => emp.ruc !== ruc),
-        empresaActual: prev.empresaActual?.ruc === ruc ? null : prev.empresaActual
-      }));
-      
-      return true;
-    } catch (error) {
-      setError(error instanceof Error ? error.message : 'Error al eliminar empresa');
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+        // Si se ha editado la empresa activa, el contexto debe reflejarlo.
+        if (empresaActual?.ruc === ruc) {
+          await revalidarEmpresaActual();
+        }
+
+        return empresaActualizada;
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'Error al actualizar empresa');
+        return null;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [empresaActual?.ruc, revalidarEmpresaActual]
+  );
+
+  const eliminarEmpresa = useCallback(
+    async (ruc: string): Promise<boolean> => {
+      setLoading(true);
+      setError(null);
+      try {
+        await EmpresaApiService.deleteEmpresa(ruc);
+        setEmpresas((prev) => prev.filter((emp) => emp.ruc !== ruc));
+
+        if (empresaActual?.ruc === ruc) {
+          await revalidarEmpresaActual();
+        }
+
+        return true;
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'Error al eliminar empresa');
+        return false;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [empresaActual?.ruc, revalidarEmpresaActual]
+  );
 
   // ============================================
   // OPERACIONES SIRE
   // ============================================
 
-  /**
-   * Configurar SIRE para una empresa
-   */
-  const configurarSire = useCallback(async (
-    ruc: string, 
-    config: SireConfig
-  ): Promise<boolean> => {
-    setLoading(true);
-    setError(null);
-    try {
-      const empresaActualizada = await EmpresaApiService.configurarSire(ruc, config);
-      
-      // Actualizar estado local
-      setState(prev => ({
-        ...prev,
-        empresas: prev.empresas.map(emp => 
-          emp.ruc === ruc ? empresaActualizada : emp
-        ),
-        empresaActual: prev.empresaActual?.ruc === ruc ? empresaActualizada : prev.empresaActual
-      }));
-      
-      return true;
-    } catch (error) {
-      setError(error instanceof Error ? error.message : 'Error al configurar SIRE');
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const configurarSire = useCallback(
+    async (ruc: string, config: SireConfig): Promise<boolean> => {
+      setLoading(true);
+      setError(null);
+      try {
+        const empresaActualizada = await EmpresaApiService.configurarSire(ruc, config);
+        setEmpresas((prev) => prev.map((emp) => (emp.ruc === ruc ? empresaActualizada : emp)));
 
-  // ============================================
-  // GESTIÓN MULTI-EMPRESA
-  // ============================================
+        if (empresaActual?.ruc === ruc) {
+          await revalidarEmpresaActual();
+        }
 
-  /**
-   * Cargar empresa actual
-   */
-  const cargarEmpresaActual = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const empresaActual = await EmpresaApiService.getEmpresaActual();
-      setEmpresaActual(empresaActual);
-    } catch (error) {
-      setError(error instanceof Error ? error.message : 'Error al cargar empresa actual');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  /**
-   * Seleccionar empresa activa
-   */
-  const seleccionarEmpresa = useCallback(async (ruc: string): Promise<boolean> => {
-    setLoading(true);
-    setError(null);
-    try {
-      const result = await EmpresaApiService.seleccionarEmpresa(ruc);
-      if (result.success) {
-        // Después de seleccionar, cargar la empresa actual
-        await cargarEmpresaActual();
-        
-        // Notificar que la empresa ha cambiado para que otros hooks se actualicen
-        notifyEmpresaChange();
-        
         return true;
-      } else {
-        setError(result.message || 'Error al seleccionar empresa');
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'Error al configurar SIRE');
         return false;
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      setError(error instanceof Error ? error.message : 'Error al seleccionar empresa');
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  }, [cargarEmpresaActual]);
+    },
+    [empresaActual?.ruc, revalidarEmpresaActual]
+  );
 
   // ============================================
-  // FUNCIONES UTILITARIAS
+  // GESTION MULTI-EMPRESA (delegada al contexto)
   // ============================================
 
-  /**
-   * Buscar empresa por RUC en el estado local
-   */
-  const buscarEmpresaPorRuc = useCallback((ruc: string): Empresa | undefined => {
-    return state.empresas.find(emp => emp.ruc === ruc);
-  }, [state.empresas]);
+  const seleccionarEmpresa = useCallback(
+    async (ruc: string): Promise<boolean> => {
+      const ok = await seleccionarEnContexto(ruc);
+      if (!ok) setError('Error al seleccionar empresa');
+      return ok;
+    },
+    [seleccionarEnContexto]
+  );
 
-  /**
-   * Obtener empresas con SIRE configurado
-   */
-  const getEmpresasConSire = useCallback((): Empresa[] => {
-    return state.empresas.filter(emp => emp.sire_activo && emp.sire_client_id);
-  }, [state.empresas]);
+  const cargarEmpresaActual = revalidarEmpresaActual;
 
-  /**
-   * Verificar si hay errores
-   */
-  const hasError = Boolean(state.error);
+  // ============================================
+  // UTILIDADES
+  // ============================================
 
-  /**
-   * Limpiar error
-   */
-  const limpiarError = useCallback(() => {
-    setError(null);
-  }, []);
+  const buscarEmpresaPorRuc = useCallback(
+    (ruc: string): Empresa | undefined => empresas.find((emp) => emp.ruc === ruc),
+    [empresas]
+  );
+
+  const getEmpresasConSire = useCallback(
+    (): Empresa[] => empresas.filter((emp) => emp.sire_activo && emp.sire_client_id),
+    [empresas]
+  );
+
+  const hasError = Boolean(error);
+
+  const limpiarError = useCallback(() => setError(null), []);
 
   // ============================================
   // EFECTO INICIAL
   // ============================================
+  // Solo la lista: la empresa activa ya la resuelve EmpresaProvider una vez.
 
   useEffect(() => {
-    // Cargar datos iniciales
-    cargarEmpresas();
-    cargarEmpresaActual();
-  }, [cargarEmpresas, cargarEmpresaActual]);
-
-  // ============================================
-  // RETORNO DEL HOOK
-  // ============================================
+    void cargarEmpresas();
+  }, [cargarEmpresas]);
 
   return {
     // Estado
-    ...state,
+    empresas,
+    empresaActual,
+    loading,
+    error,
     hasError,
-    
+
     // Operaciones CRUD
     cargarEmpresas,
     crearEmpresa,
     actualizarEmpresa,
     eliminarEmpresa,
-    
+
     // Operaciones SIRE
     configurarSire,
-    
+
     // Multi-empresa
     seleccionarEmpresa,
     cargarEmpresaActual,
-    
+
     // Utilidades
     buscarEmpresaPorRuc,
     getEmpresasConSire,

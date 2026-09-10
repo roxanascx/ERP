@@ -69,7 +69,6 @@ export const RceDataProvider: React.FC<RceDataProviderProps> = ({ children }) =>
   const limpiarCache = (): void => {
     setComprobantesDetallados(null);
     setUltimaConsultaSunat(null);
-    console.log('🗑️ Cache RCE limpiado');
   };
 
   const obtenerEstadoCache = (ruc?: string, periodo?: string): { 

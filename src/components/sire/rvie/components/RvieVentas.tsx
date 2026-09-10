@@ -5,9 +5,26 @@
  */
 
 import { useState, useEffect } from 'react';
+import {
+  AlertCircle,
+  BarChart3,
+  CheckCircle2,
+  Cloud,
+  Database,
+  ExternalLink,
+  FileSpreadsheet,
+  FileText,
+  Inbox,
+  Loader2,
+  RefreshCw,
+  Search,
+  Wallet,
+} from 'lucide-react';
 import { rvieVentasService } from '../../../../services/sire';
 import { rvieComprobantesService } from '../../../../services/rvieComprobantesService';
-import './rvie-luxury.css';
+import { StatCard, StatGrid } from '../../../common/StatCard';
+import EmptyState from '../../../common/EmptyState';
+import { cn } from '../../../../lib/cn';
 
 interface RvieVentasProps {
   ruc: string;
@@ -395,448 +412,530 @@ const RvieVentas = ({
 
   const comprobantesFiltrados = filtrarComprobantes();
 
+  /**
+   * SUNAT no devuelve siempre los mismos nombres de campo, y la vista desde
+   * base de datos usa otros. Se busca el primero que traiga valor.
+   */
+  const getFieldValue = (comp: any, ...fieldNames: string[]) => {
+    for (const fieldName of fieldNames) {
+      if (comp[fieldName] !== undefined && comp[fieldName] !== null && comp[fieldName] !== '') {
+        return comp[fieldName];
+      }
+      if (comp.data?.[fieldName] !== undefined && comp.data[fieldName] !== null && comp.data[fieldName] !== '') {
+        return comp.data[fieldName];
+      }
+      if (
+        comp.comprobante?.[fieldName] !== undefined &&
+        comp.comprobante[fieldName] !== null &&
+        comp.comprobante[fieldName] !== ''
+      ) {
+        return comp.comprobante[fieldName];
+      }
+    }
+    return null;
+  };
+
+  /** Ultimo recurso: buscar cualquier clave que contenga el patron. */
+  const findFieldByPattern = (comp: any, pattern: string) => {
+    for (const key of Object.keys(comp)) {
+      if (key.toLowerCase().includes(pattern.toLowerCase())) {
+        const value = comp[key];
+        if (value !== undefined && value !== null && value !== '') return value;
+      }
+    }
+    return null;
+  };
+
+  const TIPO_CORTO: Record<string, string> = {
+    '01': 'FAC',
+    '03': 'BOL',
+    '07': 'NCR',
+    '08': 'NDB',
+  };
+
+  const th = 'px-3 py-2.5 text-left text-xs font-semibold whitespace-nowrap text-white uppercase';
+  const td = 'px-3 py-2.5 text-sm whitespace-nowrap text-slate-700';
+  const control =
+    'w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none';
+  const labelClass = 'mb-1.5 block text-xs font-medium tracking-wide text-slate-500 uppercase';
+
+  const cargando = loading || loadingComprobantes || loadingBD;
+
   return (
-    <div className="rvie-ventas-luxury">
-      {/* HEADER OPTIMIZADO - SIN INFORMACIÓN REDUNDANTE */}
-      <div className="compact-header-row">
-        <div className="header-info-compact">
-          <h2>📊 Ventas e Ingresos - {periodo.mes}/{periodo.año}</h2>
-          <div className="header-status">
-            <span className="status-badge neutral">🏢 RUC: {ruc}</span>
-            {authStatus?.authenticated ? (
-              <span className="status-badge success">✅ Conectado</span>
-            ) : (
-              <span className="status-badge error">❌ Sin conexión</span>
+    <div className="space-y-5 p-4 sm:p-5">
+      {/* ------------------------------------------------------------------ */}
+      {/* Cabecera: origen de datos y actualizacion                          */}
+      {/* ------------------------------------------------------------------ */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <h3 className="text-sm font-semibold text-slate-900">
+            Ventas e ingresos · {periodo.mes}/{periodo.año}
+          </h3>
+          <span
+            className={cn(
+              'rounded-full px-2 py-0.5 text-xs font-medium',
+              authStatus?.authenticated
+                ? 'bg-green-100 text-green-800'
+                : 'bg-red-100 text-red-800'
             )}
-            {estadoBD?.tiene_datos && (
-              <span className="status-badge info">� BD: {estadoBD.total_comprobantes}</span>
-            )}
-          </div>
+          >
+            {authStatus?.authenticated ? 'Conectado a SUNAT' : 'Sin conexión'}
+          </span>
+          {estadoBD?.tiene_datos && (
+            <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800 tabular-nums">
+              BD: {estadoBD.total_comprobantes}
+            </span>
+          )}
         </div>
-        
-        <div className="header-actions-optimized">
-          <div className="vista-toggle-compact">
+
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Origen de los datos */}
+          <div
+            role="tablist"
+            aria-label="Origen de los datos"
+            className="inline-flex overflow-hidden rounded-lg border border-slate-300"
+          >
             <button
-              className={`toggle-btn ${!vistaBD ? 'active' : ''}`}
+              type="button"
+              role="tab"
+              aria-selected={!vistaBD}
               onClick={() => {
                 setVistaBD(false);
-                if (!vistaBD && authStatus?.authenticated) {
-                  actualizarDesdeSunat();
-                }
+                if (!vistaBD && authStatus?.authenticated) actualizarDesdeSunat();
               }}
-              disabled={loading || loadingComprobantes}
+              disabled={cargando}
+              className={cn(
+                'inline-flex items-center gap-1.5 border-0 px-3 py-1.5 text-sm font-medium disabled:opacity-50',
+                !vistaBD ? 'bg-blue-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'
+              )}
             >
-              🌐
+              <Cloud className="size-4" aria-hidden="true" />
+              SUNAT
             </button>
             <button
-              className={`toggle-btn ${vistaBD ? 'active' : ''}`}
+              type="button"
+              role="tab"
+              aria-selected={vistaBD}
               onClick={() => {
                 setVistaBD(true);
                 cargarDesdeBD();
               }}
-              disabled={loadingBD || (!estadoBD?.tiene_datos)}
+              disabled={loadingBD || !estadoBD?.tiene_datos}
+              className={cn(
+                'inline-flex items-center gap-1.5 border-0 px-3 py-1.5 text-sm font-medium disabled:opacity-50',
+                vistaBD ? 'bg-blue-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'
+              )}
             >
-              💾
+              <Database className="size-4" aria-hidden="true" />
+              Local
             </button>
           </div>
-          
+
           <button
-            className="action-btn-primary"
+            type="button"
             onClick={actualizarDesdeSunat}
             disabled={loadingComprobantes || !authStatus?.authenticated}
             title="Actualizar desde SUNAT"
+            className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3.5 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
           >
-            {loadingComprobantes ? '⏳' : '🔄'}
+            {loadingComprobantes ? (
+              <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+            ) : (
+              <RefreshCw className="size-4" aria-hidden="true" />
+            )}
+            Actualizar
           </button>
         </div>
-
-        {(loading || loadingComprobantes) && (
-          <div className="loading-indicator">
-            <div className="loading-spinner"></div>
-          </div>
-        )}
       </div>
 
-      {/* FILA 1: ESTADÍSTICAS + ANÁLISIS POR TIPO + ESTADOS */}
+      {/* ------------------------------------------------------------------ */}
+      {/* Indicadores                                                        */}
+      {/* ------------------------------------------------------------------ */}
       {stats && (
-        <div className="stats-analysis-row">
-          {/* ESTADÍSTICAS PRINCIPALES */}
-          <div className="stats-compact">
-            <div className="stat-item-compact total">
-              <div className="stat-icon">📄</div>
-              <div className="stat-details">
-                <div className="stat-value">{stats.total_comprobantes.toLocaleString()}</div>
-                <div className="stat-label">Comprobantes</div>
-              </div>
-            </div>
-            
-            <div className="stat-item-compact monto">
-              <div className="stat-icon">💰</div>
-              <div className="stat-details">
-                <div className="stat-value">{formatMonto(stats.total_monto)}</div>
-                <div className="stat-label">Total</div>
-              </div>
-            </div>
-            
-            <div className="stat-item-compact promedio">
-              <div className="stat-icon">📊</div>
-              <div className="stat-details">
-                <div className="stat-value">
-                  {formatMonto(stats.total_comprobantes > 0 ? stats.total_monto / stats.total_comprobantes : 0)}
-                </div>
-                <div className="stat-label">Promedio</div>
-              </div>
-            </div>
-          </div>
+        <>
+          <StatGrid className="xl:grid-cols-3">
+            <StatCard
+              label="Comprobantes"
+              value={stats.total_comprobantes.toLocaleString('es-PE')}
+              icon={FileText}
+              tone="blue"
+            />
+            <StatCard
+              label="Total"
+              value={formatMonto(stats.total_monto)}
+              icon={Wallet}
+              tone="green"
+            />
+            <StatCard
+              label="Promedio"
+              value={formatMonto(
+                stats.total_comprobantes > 0 ? stats.total_monto / stats.total_comprobantes : 0
+              )}
+              icon={BarChart3}
+              tone="violet"
+            />
+          </StatGrid>
 
-          {/* SECCIÓN DE ANÁLISIS: POR TIPO + ESTADOS */}
-          <div className="analysis-section">
-            {/* ANÁLISIS POR TIPO */}
-            <div className="tipo-analysis-compact">
-              <h4>🔍 Por Tipo</h4>
-              <div className="tipo-breakdown-compact">
+          <div className="grid gap-4 xl:grid-cols-2">
+            {/* Por tipo */}
+            <section className="rounded-xl border border-slate-200 bg-white p-4">
+              <h4 className="mb-2 text-xs font-semibold tracking-wide text-slate-500 uppercase">
+                Por tipo de comprobante
+              </h4>
+              <ul className="space-y-1.5">
                 {Object.entries(stats.por_tipo).map(([tipo, data]) => {
-                  const porcentaje = (data.cantidad / stats.total_comprobantes * 100).toFixed(1);
+                  const porcentaje = ((data.cantidad / stats.total_comprobantes) * 100).toFixed(1);
                   return (
-                    <div key={tipo} className="tipo-item-compact">
-                      <span className={`tipo-badge-compact ${getTipoBadgeClass(tipo)}`}>
+                    <li key={tipo} className="flex items-center justify-between gap-3 text-sm">
+                      <span className="rounded bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">
                         {getTipoNombre(tipo)}
                       </span>
-                      <div className="tipo-stats-compact">
-                        <span>{data.cantidad} ({porcentaje}%)</span>
-                        <span>{formatMonto(data.monto)}</span>
-                      </div>
-                    </div>
+                      <span className="text-slate-500 tabular-nums">
+                        {data.cantidad} ({porcentaje}%)
+                        <span className="ml-3 font-semibold text-slate-800">
+                          {formatMonto(data.monto)}
+                        </span>
+                      </span>
+                    </li>
                   );
                 })}
-              </div>
-            </div>
+              </ul>
+            </section>
 
-            {/* ANÁLISIS DE ESTADOS */}
-            <div className="estados-compact">
-              <h4>📋 Estados</h4>
-              <div className="estados-list-compact">
+            {/* Por estado */}
+            <section className="rounded-xl border border-slate-200 bg-white p-4">
+              <h4 className="mb-2 text-xs font-semibold tracking-wide text-slate-500 uppercase">
+                Por estado
+              </h4>
+              <ul className="space-y-1.5">
                 {Object.entries(stats.por_estado).map(([estado, cantidad]) => {
-                  const porcentaje = (cantidad / stats.total_comprobantes * 100).toFixed(1);
+                  const porcentaje = ((cantidad / stats.total_comprobantes) * 100).toFixed(1);
                   return (
-                    <div key={estado} className="estado-item-compact">
-                      <span className={`estado-badge-compact ${estado.toLowerCase()}`}>
+                    <li key={estado} className="flex items-center justify-between gap-3 text-sm">
+                      <span
+                        className={cn(
+                          'rounded px-2 py-0.5 text-xs font-medium',
+                          estado.toUpperCase() === 'ANULADO'
+                            ? 'bg-red-100 text-red-800'
+                            : 'bg-green-100 text-green-800'
+                        )}
+                      >
                         {estado}
                       </span>
-                      <span className="estado-stats-compact">
+                      <span className="text-slate-500 tabular-nums">
                         {cantidad} ({porcentaje}%)
                       </span>
-                    </div>
+                    </li>
                   );
                 })}
-              </div>
-            </div>
+              </ul>
+            </section>
           </div>
-        </div>
+        </>
       )}
 
-      {/* FILA 2: FILTROS EN UNA SOLA FILA SEPARADA */}
-      <div className="filtros-row">
-        <div className="filtros-compact">
-          <h4>🎯 Filtros</h4>
-          <div className="filtros-grid-horizontal">
-            <div className="filtro-compact">
-              <label>Tipo</label>
-              <select
-                value={filtros.tipo_comprobante}
-                onChange={(e) => setFiltros(prev => ({ ...prev, tipo_comprobante: e.target.value }))}
-              >
-                <option value="">Todos</option>
-                <option value="01">Factura</option>
-                <option value="03">Boleta</option>
-                <option value="07">N.Crédito</option>
-                <option value="08">N.Débito</option>
-              </select>
-            </div>
-
-            <div className="filtro-compact">
-              <label>Estado</label>
-              <select
-                value={filtros.estado}
-                onChange={(e) => setFiltros(prev => ({ ...prev, estado: e.target.value }))}
-              >
-                <option value="">Todos</option>
-                <option value="ACTIVO">Activo</option>
-                <option value="ANULADO">Anulado</option>
-              </select>
-            </div>
-
-            <div className="filtro-compact">
-              <label>Monto Min</label>
-              <input
-                type="number"
-                step="0.01"
-                value={filtros.monto_min}
-                onChange={(e) => setFiltros(prev => ({ ...prev, monto_min: e.target.value }))}
-                placeholder="0.00"
-              />
-            </div>
-
-            <div className="filtro-compact">
-              <label>Monto Max</label>
-              <input
-                type="number"
-                step="0.01"
-                value={filtros.monto_max}
-                onChange={(e) => setFiltros(prev => ({ ...prev, monto_max: e.target.value }))}
-                placeholder="∞"
-              />
-            </div>
-          </div>
+      {/* ------------------------------------------------------------------ */}
+      {/* Filtros                                                            */}
+      {/* ------------------------------------------------------------------ */}
+      <section className="grid gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div>
+          <label htmlFor="rv-tipo" className={labelClass}>
+            Tipo
+          </label>
+          <select
+            id="rv-tipo"
+            value={filtros.tipo_comprobante}
+            onChange={(e) => setFiltros((prev) => ({ ...prev, tipo_comprobante: e.target.value }))}
+            className={control}
+          >
+            <option value="">Todos</option>
+            <option value="01">Factura</option>
+            <option value="03">Boleta</option>
+            <option value="07">Nota de crédito</option>
+            <option value="08">Nota de débito</option>
+          </select>
         </div>
-      </div>
 
-      {/* TABLA LUXURY */}
+        <div>
+          <label htmlFor="rv-estado" className={labelClass}>
+            Estado
+          </label>
+          <select
+            id="rv-estado"
+            value={filtros.estado}
+            onChange={(e) => setFiltros((prev) => ({ ...prev, estado: e.target.value }))}
+            className={control}
+          >
+            <option value="">Todos</option>
+            <option value="ACTIVO">Activo</option>
+            <option value="ANULADO">Anulado</option>
+          </select>
+        </div>
+
+        <div>
+          <label htmlFor="rv-min" className={labelClass}>
+            Monto mínimo
+          </label>
+          <input
+            id="rv-min"
+            type="number"
+            step="0.01"
+            placeholder="0.00"
+            value={filtros.monto_min}
+            onChange={(e) => setFiltros((prev) => ({ ...prev, monto_min: e.target.value }))}
+            className={cn(control, 'text-right tabular-nums')}
+          />
+        </div>
+
+        <div>
+          <label htmlFor="rv-max" className={labelClass}>
+            Monto máximo
+          </label>
+          <input
+            id="rv-max"
+            type="number"
+            step="0.01"
+            placeholder="Sin límite"
+            value={filtros.monto_max}
+            onChange={(e) => setFiltros((prev) => ({ ...prev, monto_max: e.target.value }))}
+            className={cn(control, 'text-right tabular-nums')}
+          />
+        </div>
+      </section>
+
+      {/* ------------------------------------------------------------------ */}
+      {/* Tabla                                                              */}
+      {/* ------------------------------------------------------------------ */}
       {comprobantesFiltrados.length > 0 ? (
-        <div className="luxury-table-section">
-          <div className="table-header-luxury">
-            <h3 className="table-title">📋 Comprobantes ({comprobantesFiltrados.length})</h3>
-            <div className="table-actions">
-              <button className="action-button export" onClick={exportarCSV}>
-                📊 Exportar CSV
+        <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-3">
+            <h4 className="text-sm font-semibold text-slate-900">
+              Comprobantes{' '}
+              <span className="font-normal text-slate-500 tabular-nums">
+                ({comprobantesFiltrados.length})
+              </span>
+            </h4>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={exportarCSV}
+                className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              >
+                <FileSpreadsheet className="size-4 text-emerald-600" aria-hidden="true" />
+                Exportar CSV
               </button>
-              <button className="action-button sunat" onClick={verEnSunat}>
-                🔗 Ver en SUNAT
+              <button
+                type="button"
+                onClick={verEnSunat}
+                className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              >
+                <ExternalLink className="size-4" aria-hidden="true" />
+                Ver en SUNAT
               </button>
             </div>
           </div>
 
-          <div className="luxury-table-wrapper">
-            <table className="luxury-table">
-              <thead>
+          <div className="max-h-[70vh] overflow-auto">
+            <table className="w-full border-collapse">
+              <thead className="sticky top-0 bg-blue-800">
                 <tr>
-                  <th style={{ textAlign: 'center', width: '50px' }}>#</th>
-                  <th>Tipo</th>
-                  <th>Número</th>
-                  <th>Fecha</th>
-                  <th>Cliente</th>
-                  <th>Doc. Cliente</th>
-                  <th style={{ textAlign: 'right' }}>Base Gravada</th>
-                  <th style={{ textAlign: 'right' }}>IGV</th>
-                  <th style={{ textAlign: 'right' }}>Exonerado</th>
-                  <th style={{ textAlign: 'right' }}>Inafecto</th>
-                  <th style={{ textAlign: 'right' }}>Total</th>
-                  <th style={{ textAlign: 'center' }}>Estado</th>
-                  <th style={{ textAlign: 'center' }}>Tipo Op.</th>
+                  <th scope="col" className={cn(th, 'w-14 text-center')}>#</th>
+                  <th scope="col" className={th}>Tipo</th>
+                  <th scope="col" className={th}>Número</th>
+                  <th scope="col" className={cn(th, 'text-center')}>Fecha</th>
+                  <th scope="col" className={th}>Cliente</th>
+                  <th scope="col" className={cn(th, 'text-center')}>Documento</th>
+                  <th scope="col" className={cn(th, 'text-right')}>Base gravada</th>
+                  <th scope="col" className={cn(th, 'text-right')}>IGV</th>
+                  <th scope="col" className={cn(th, 'text-right')}>Exonerado</th>
+                  <th scope="col" className={cn(th, 'text-right')}>Inafecto</th>
+                  <th scope="col" className={cn(th, 'text-right')}>Total</th>
+                  <th scope="col" className={cn(th, 'text-center')}>Estado</th>
+                  <th scope="col" className={cn(th, 'text-center')}>Tipo op.</th>
                 </tr>
               </thead>
+
               <tbody>
-                {comprobantesFiltrados.slice(0, 50).map((comp, index) => {
-                  
-                  // Mapeo inteligente de campos - detecta la estructura real
-                  const getFieldValue = (comp: any, ...fieldNames: string[]) => {
-                    for (const fieldName of fieldNames) {
-                      // Buscar en el nivel raíz
-                      if (comp[fieldName] !== undefined && comp[fieldName] !== null && comp[fieldName] !== '') {
-                        return comp[fieldName];
-                      }
-                      
-                      // Buscar en propiedades anidadas comunes
-                      if (comp.data && comp.data[fieldName] !== undefined && comp.data[fieldName] !== null && comp.data[fieldName] !== '') {
-                        return comp.data[fieldName];
-                      }
-                      
-                      // Buscar en otras posibles estructuras anidadas
-                      if (comp.comprobante && comp.comprobante[fieldName] !== undefined && comp.comprobante[fieldName] !== null && comp.comprobante[fieldName] !== '') {
-                        return comp.comprobante[fieldName];
-                      }
-                    }
-                    return null;
-                  };
-
-                  // También crear una función para buscar por valor similar
-                  const findFieldByPattern = (comp: any, pattern: string) => {
-                    const keys = Object.keys(comp);
-                    for (const key of keys) {
-                      if (key.toLowerCase().includes(pattern.toLowerCase())) {
-                        const value = comp[key];
-                        if (value !== undefined && value !== null && value !== '') {
-                          return value;
-                        }
-                      }
-                    }
-                    return null;
-                  };
-
+                {comprobantesFiltrados.slice(0, 50).map((comp: any, index) => {
                   const id = getFieldValue(comp, '_id', 'id') || `temp_${index}`;
                   const tipoComprobante = getFieldValue(comp, 'codTipoCDP', 'desTipoCDP', 'tipo');
                   const serie = getFieldValue(comp, 'numSerieCDP', 'serie');
                   const numero = getFieldValue(comp, 'numCDP', 'numero');
-                  // FECHA - Múltiples posibilidades + búsqueda por patrón
-                  const fecha = getFieldValue(comp, 'fecEmisionCDP', 'fecha', 'fechaEmision', 'fecEmision', 'dateEmision') || 
-                               findFieldByPattern(comp, 'fecha') || 
-                               findFieldByPattern(comp, 'fec');
-                  // CLIENTE - Múltiples posibilidades + búsqueda por patrón (CORREGIDO)
-                  // Primero intentar campos específicos de receptor/cliente
-                  const cliente = getFieldValue(comp, 'apeNomRznSocReceptor', 'nombreReceptor', 'clienteNombre', 'receptor') ||
-                                 findFieldByPattern(comp, 'receptor') ||
-                                 findFieldByPattern(comp, 'cliente') ||
-                                 // Solo como último recurso usar razón social (que puede ser de la empresa emisora)
-                                 getFieldValue(comp, 'nomRazonSocial', 'razonSocial') ||
-                                 findFieldByPattern(comp, 'nombre');
+
+                  const fecha =
+                    getFieldValue(comp, 'fecEmisionCDP', 'fecha', 'fechaEmision', 'fecEmision', 'dateEmision') ||
+                    findFieldByPattern(comp, 'fecha') ||
+                    findFieldByPattern(comp, 'fec');
+
+                  // El receptor es el cliente; la razon social puede ser la del
+                  // emisor, asi que solo se usa como ultimo recurso.
+                  const cliente =
+                    getFieldValue(comp, 'apeNomRznSocReceptor', 'nombreReceptor', 'clienteNombre', 'receptor') ||
+                    findFieldByPattern(comp, 'receptor') ||
+                    findFieldByPattern(comp, 'cliente') ||
+                    getFieldValue(comp, 'nomRazonSocial', 'razonSocial') ||
+                    findFieldByPattern(comp, 'nombre');
+
                   const tipoDocumento = getFieldValue(comp, 'codTipoDocIdentidad', 'tipoDocumento', 'tipoDoc');
                   const numeroDocumento = getFieldValue(comp, 'numDocReceptor', 'numeroDocumento', 'documento', 'docReceptor');
-                  const ruc = getFieldValue(comp, 'numRuc', 'ruc');
-                  const baseGravada = Number(getFieldValue(comp, 'mtoOperGravadas', 'baseGravada', 'gravada', 'operGravadas') || 
-                                           findFieldByPattern(comp, 'gravada') || 0);
-                  const igv = Number(getFieldValue(comp, 'mtoIGV', 'igv', 'IGV') || 
-                                    findFieldByPattern(comp, 'igv') || 0);
-                  // EXONERADO - Múltiples posibilidades + búsqueda por patrón
-                  const exonerado = Number(getFieldValue(comp, 'mtoOperExoneradas', 'exonerado', 'operExoneradas', 'montoExonerado', 'mtoExonerado') || 
-                                          findFieldByPattern(comp, 'exoner') || 
-                                          findFieldByPattern(comp, 'exo') || 0);
-                  const inafecto = Number(getFieldValue(comp, 'mtoOperInafectas', 'inafecto', 'operInafectas', 'montoInafecto', 'mtoInafecto') || 
-                                         findFieldByPattern(comp, 'inafect') || 0);
-                  const total = Number(getFieldValue(comp, 'mtoTotalCP', 'total', 'monto', 'montoTotal', 'totalComprobante') || 
-                                      findFieldByPattern(comp, 'total') || 0);
+                  const rucComp = getFieldValue(comp, 'numRuc', 'ruc');
+
+                  const baseGravada = Number(
+                    getFieldValue(comp, 'mtoOperGravadas', 'baseGravada', 'gravada', 'operGravadas') ||
+                      findFieldByPattern(comp, 'gravada') || 0
+                  );
+                  const igv = Number(
+                    getFieldValue(comp, 'mtoIGV', 'igv', 'IGV') || findFieldByPattern(comp, 'igv') || 0
+                  );
+                  const exonerado = Number(
+                    getFieldValue(comp, 'mtoOperExoneradas', 'exonerado', 'operExoneradas', 'montoExonerado', 'mtoExonerado') ||
+                      findFieldByPattern(comp, 'exoner') ||
+                      findFieldByPattern(comp, 'exo') || 0
+                  );
+                  const inafecto = Number(
+                    getFieldValue(comp, 'mtoOperInafectas', 'inafecto', 'operInafectas', 'montoInafecto', 'mtoInafecto') ||
+                      findFieldByPattern(comp, 'inafect') || 0
+                  );
+                  const total = Number(
+                    getFieldValue(comp, 'mtoTotalCP', 'total', 'monto', 'montoTotal', 'totalComprobante') ||
+                      findFieldByPattern(comp, 'total') || 0
+                  );
+
                   const moneda = getFieldValue(comp, 'codMoneda', 'moneda') || 'PEN';
-                  const estado = getFieldValue(comp, 'desEstadoComprobante', 'estado', 'estadoComprobante') || 
-                                findFieldByPattern(comp, 'estado') || 'SIN_ESTADO';
-                  // TIPO OPERACIÓN - Múltiples posibilidades + búsqueda por patrón
-                  const tipoOperacion = getFieldValue(comp, 'indTipoOperacion', 'tipoOperacion', 'operacion', 'codOperacion', 'indicadorOperacion') ||
-                                       findFieldByPattern(comp, 'operacion') ||
-                                       findFieldByPattern(comp, 'tipo');
+                  const estado =
+                    getFieldValue(comp, 'desEstadoComprobante', 'estado', 'estadoComprobante') ||
+                    findFieldByPattern(comp, 'estado') ||
+                    'SIN_ESTADO';
+                  const tipoOperacion =
+                    getFieldValue(comp, 'indTipoOperacion', 'tipoOperacion', 'operacion', 'codOperacion', 'indicadorOperacion') ||
+                    findFieldByPattern(comp, 'operacion') ||
+                    findFieldByPattern(comp, 'tipo');
+
                   return (
-                    <tr key={id}>
-                      <td style={{ textAlign: 'center', fontSize: '0.9rem', fontWeight: 'bold', color: '#6b7280' }}>
+                    <tr
+                      key={id}
+                      className="border-b border-slate-100 last:border-0 odd:bg-slate-50/60 hover:bg-blue-50"
+                    >
+                      <td className={cn(td, 'text-center text-slate-400 tabular-nums')}>
                         {index + 1}
                       </td>
-                      <td>
-                        <span className={`table-badge ${getTipoBadgeClass(tipoComprobante)}`}>
-                          {tipoComprobante === '01' ? 'FAC' : 
-                           tipoComprobante === '03' ? 'BOL' : 
-                           tipoComprobante === '07' ? 'NCR' : 
-                           tipoComprobante === '08' ? 'NDB' : (tipoComprobante || 'N/A')}
-                        </span>
-                        <div style={{ fontSize: '0.7rem', color: '#64748b', marginTop: '2px' }}>
-                          {tipoComprobante || 'N/A'}
-                        </div>
-                      </td>
-                      <td style={{ fontFamily: 'monospace', fontSize: '0.8rem' }}>
-                        <strong>{serie || 'N/A'}-{numero || 'N/A'}</strong>
-                        {id && (
-                          <div style={{ fontSize: '0.6rem', color: '#64748b', marginTop: '2px' }}>
-                            ID: {typeof id === 'string' ? id.slice(-8) : id}
-                          </div>
-                        )}
-                      </td>
-                      <td style={{ textAlign: 'center', fontSize: '0.8rem' }}>
-                        <strong>{fecha || 'N/A'}</strong>
-                      </td>
-                      <td style={{ maxWidth: '200px' }}>
-                        <div style={{ fontWeight: '600', fontSize: '0.85rem' }}>
-                          {cliente || 'Sin datos'}
-                        </div>
-                      </td>
-                      <td style={{ textAlign: 'center', fontSize: '0.8rem' }}>
-                        <strong>{tipoDocumento ? `${tipoDocumento}-` : ''}{numeroDocumento || 'N/A'}</strong>
-                        {ruc && (
-                          <div style={{ fontSize: '0.7rem', color: '#64748b', marginTop: '2px' }}>
-                            RUC: {ruc}
-                          </div>
-                        )}
-                      </td>
-                      <td className="table-amount">
-                        <strong>{formatMonto(Number(baseGravada))}</strong>
-                      </td>
-                      <td className="table-amount">
-                        <strong>{formatMonto(Number(igv))}</strong>
-                      </td>
-                      <td className="table-amount">
-                        <strong>{formatMonto(Number(exonerado))}</strong>
-                      </td>
-                      <td className="table-amount">
-                        <strong>{formatMonto(Number(inafecto))}</strong>
-                      </td>
-                      <td className="table-amount total">
-                        <strong>{formatMonto(Number(total))}</strong>
-                        {moneda && moneda !== 'PEN' && (
-                          <div style={{ fontSize: '0.7rem', color: '#64748b', marginTop: '2px' }}>
-                            {moneda}
-                          </div>
-                        )}
-                      </td>
-                      <td style={{ textAlign: 'center' }}>
-                        <span className={`table-badge ${estado?.toLowerCase() || 'sin-estado'}`}>
-                          {estado || 'SIN ESTADO'}
+
+                      <td className={td}>
+                        <span className="rounded bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700">
+                          {TIPO_CORTO[tipoComprobante] || tipoComprobante || 'N/A'}
                         </span>
                       </td>
-                      <td style={{ textAlign: 'center', fontSize: '0.8rem' }}>
-                        <strong>{tipoOperacion || 'N/A'}</strong>
+
+                      <td className={cn(td, 'font-mono')}>
+                        {serie || 'N/A'}-{numero || 'N/A'}
                       </td>
+
+                      <td className={cn(td, 'text-center tabular-nums')}>{fecha || 'N/A'}</td>
+
+                      <td className={cn(td, 'max-w-50 truncate whitespace-normal')}>
+                        {cliente || 'Sin datos'}
+                      </td>
+
+                      <td className={cn(td, 'text-center font-mono')}>
+                        {tipoDocumento ? `${tipoDocumento}-` : ''}
+                        {numeroDocumento || 'N/A'}
+                        {rucComp && (
+                          <span className="block text-xs text-slate-400">RUC {rucComp}</span>
+                        )}
+                      </td>
+
+                      <td className={cn(td, 'text-right tabular-nums')}>{formatMonto(baseGravada)}</td>
+                      <td className={cn(td, 'text-right tabular-nums')}>{formatMonto(igv)}</td>
+                      <td className={cn(td, 'text-right tabular-nums')}>{formatMonto(exonerado)}</td>
+                      <td className={cn(td, 'text-right tabular-nums')}>{formatMonto(inafecto)}</td>
+
+                      <td className={cn(td, 'text-right font-semibold tabular-nums')}>
+                        {formatMonto(total)}
+                        {moneda !== 'PEN' && (
+                          <span className="block text-xs font-normal text-slate-400">{moneda}</span>
+                        )}
+                      </td>
+
+                      <td className={cn(td, 'text-center')}>
+                        <span
+                          className={cn(
+                            'rounded px-2 py-0.5 text-xs font-medium',
+                            String(estado).toUpperCase() === 'ANULADO'
+                              ? 'bg-red-100 text-red-800'
+                              : 'bg-green-100 text-green-800'
+                          )}
+                        >
+                          {estado}
+                        </span>
+                      </td>
+
+                      <td className={cn(td, 'text-center')}>{tipoOperacion || 'N/A'}</td>
                     </tr>
                   );
                 })}
               </tbody>
             </table>
-            
-            {comprobantesFiltrados.length > 50 && (
-              <div style={{
-                padding: '1rem',
-                textAlign: 'center',
-                background: '#f8fafc',
-                borderTop: '1px solid #e2e8f0',
-                color: '#64748b',
-                fontSize: '0.9rem'
-              }}>
-                📋 Mostrando primeros 50 de {comprobantesFiltrados.length} comprobantes. 
-                Use los filtros para refinar o{' '}
-                <button 
-                  onClick={exportarCSV} 
-                  style={{ 
-                    background: 'none', 
-                    border: 'none', 
-                    color: '#3b82f6', 
-                    cursor: 'pointer', 
-                    textDecoration: 'underline',
-                    fontWeight: '600'
-                  }}
-                >
-                  exporte todos a CSV
-                </button>
-              </div>
-            )}
           </div>
-        </div>
-      ) : !stats && !loading && !loadingComprobantes ? (
-        <div className="luxury-empty-state">
-          <div className="empty-icon">📭</div>
-          <h3 className="empty-title">No hay datos disponibles</h3>
-          <p className="empty-description">
-            Para ver los comprobantes de ventas del período <strong>{periodo.mes}/{periodo.año}</strong>,<br />
-            haga clic en "Actualizar desde SUNAT" para obtener los datos más recientes.
-          </p>
-          <button className="luxury-button" onClick={actualizarDesdeSunat} disabled={!authStatus?.authenticated}>
-            🔄 Obtener Datos de SUNAT
+
+          {comprobantesFiltrados.length > 50 && (
+            <p className="border-t border-slate-200 bg-slate-50 px-4 py-3 text-center text-sm text-slate-500">
+              Mostrando los primeros 50 de{' '}
+              <span className="tabular-nums">{comprobantesFiltrados.length}</span>. Afina los
+              filtros o{' '}
+              <button
+                type="button"
+                onClick={exportarCSV}
+                className="border-0 bg-transparent p-0 font-semibold text-blue-600 underline hover:text-blue-800"
+              >
+                exporta todos a CSV
+              </button>
+              .
+            </p>
+          )}
+        </section>
+      ) : !stats && !cargando ? (
+        <EmptyState
+          icon={Inbox}
+          title="No hay datos disponibles"
+          description={`Para ver los comprobantes de ${periodo.mes}/${periodo.año}, actualiza desde SUNAT.`}
+        >
+          <button
+            type="button"
+            onClick={actualizarDesdeSunat}
+            disabled={!authStatus?.authenticated}
+            className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+          >
+            <RefreshCw className="size-4" aria-hidden="true" />
+            Obtener datos de SUNAT
           </button>
-        </div>
+        </EmptyState>
       ) : stats && comprobantesFiltrados.length === 0 ? (
-        <div className="luxury-empty-state">
-          <div className="empty-icon">🔍</div>
-          <h3 className="empty-title">Sin resultados</h3>
-          <p className="empty-description">
-            No se encontraron comprobantes que coincidan con los filtros aplicados.<br />
-            Ajuste los criterios de búsqueda para ver más resultados.
-          </p>
-        </div>
+        <EmptyState
+          icon={Search}
+          title="Sin resultados"
+          description="Ningún comprobante coincide con los filtros aplicados."
+        />
       ) : null}
 
-      {/* MENSAJES */}
+      {/* Mensajes */}
       {error && (
-        <div className="luxury-message error">
-          ⚠️ {error}
-        </div>
+        <p
+          role="alert"
+          className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-800"
+        >
+          <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+          {error}
+        </p>
       )}
 
       {successMessage && (
-        <div className="luxury-message success">
-          ✅ {successMessage}
-        </div>
+        <p
+          role="status"
+          className="flex items-start gap-2 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm font-medium text-green-800"
+        >
+          <CheckCircle2 className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+          {successMessage}
+        </p>
       )}
     </div>
   );

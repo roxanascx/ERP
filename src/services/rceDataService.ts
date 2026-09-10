@@ -19,7 +19,7 @@ class RceDataService {
    */
   async obtenerResumen(ruc: string, periodo: string): Promise<any> {
     try {
-      const response = await api.get('/api/v1/sire/rce/comprobantes/resumen-sunat', {
+      const response = await api.get('/sire/rce/comprobantes/resumen-sunat', {
         params: { ruc, periodo }
       });
 
@@ -53,7 +53,7 @@ class RceDataService {
     periodo: string
   ): Promise<RceComprobantesDetalladosResponse> {
     try {
-      const response = await api.get('/api/v1/sire/rce/comprobantes/comprobantes-detallados', {
+      const response = await api.get('/sire/rce/comprobantes/comprobantes-detallados', {
         params: { ruc, periodo }
       });
 
@@ -80,7 +80,7 @@ class RceDataService {
    */
   async validarDatos(request: any): Promise<any> {
     try {
-      const response = await api.post('/api/v1/sire/rce/data-management/validate', request);
+      const response = await api.post('/sire/rce/data-management/validate', request);
       return response.data;
     } catch (error: any) {
       throw new Error(error.response?.data?.detail || 'Error en validación');
@@ -92,7 +92,6 @@ class RceDataService {
    */
   async invalidarCache(): Promise<void> {
     // No hace nada, pero mantiene compatibilidad
-    console.log('ℹ️ Cache deshabilitado, no hay nada que invalidar');
   }
 }
 

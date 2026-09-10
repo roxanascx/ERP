@@ -1,120 +1,187 @@
-/* Import Design System */
+/* ==========================================================================
+   ESTILOS GLOBALES
+   --------------------------------------------------------------------------
+   Orden de capas (importante):
+
+     1. @import "tailwindcss"   -> preflight (capa base) + utilidades
+     2. design-system.css       -> tokens :root heredados del proyecto
+     3. @theme                  -> expone esos tokens COMO utilidades Tailwind
+     4. @layer base             -> nuestros estilos base, despues del preflight
+                                   pero por debajo de las utilidades, para que
+                                   className="bg-blue-600" siga ganando.
+
+   Este archivo contenia el boilerplate de `npm create vite`, que peleaba
+   contra toda la aplicacion: fondo #242424, texto blanco, button oscuro,
+   h1 a 3.2em, y body/#root con width: 100vw (100vw incluye la barra de scroll,
+   de ahi el desbordamiento horizontal que el overflow-x: hidden recortaba).
+   App.css definia ademas #root { max-width: 1280px; text-align: center } en
+   conflicto directo; estaba huerfano y se elimino.
+   ========================================================================== */
+
+@import 'tailwindcss';
 @import './styles/design-system.css';
 
-:root {
-  font-family: var(--font-family-base);
-  line-height: var(--line-height-base);
-  font-weight: var(--font-weight-normal);
+/* Donde buscar clases. Explicito porque el proyecto no es un repo git y la
+   deteccion automatica de Tailwind se apoya en .gitignore. */
+@source './';
 
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
+/* --------------------------------------------------------------------------
+   TOKENS -> UTILIDADES
+   Expone la paleta del design-system como clases Tailwind (bg-primary,
+   text-success, border-error...). La paleta por defecto de Tailwind se
+   mantiene intacta: los componentes de src/components/ui/ usan bg-blue-600,
+   text-gray-500, etc.
+   -------------------------------------------------------------------------- */
 
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
+@theme {
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
 
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
-}
+  --color-primary: #667eea;
+  --color-primary-hover: #5a6fd8;
+  --color-primary-light: #f0f4ff;
+  --color-primary-dark: #4c63d2;
 
-body {
-  margin: 0;
-  padding: 0;
-  width: 100vw;
-  min-height: 100vh;
-  min-width: 320px;
-  box-sizing: border-box;
-  overflow-x: hidden;
-}
+  --color-secondary: #764ba2;
+  --color-secondary-hover: #6a4190;
+  --color-secondary-light: #f5f0ff;
 
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
+  --color-success: #10b981;
+  --color-success-light: #ecfdf5;
+  --color-warning: #f59e0b;
+  --color-warning-light: #fef3c7;
+  --color-error: #ef4444;
+  --color-error-light: #fef2f2;
+  --color-info: #3b82f6;
+  --color-info-light: #dbeafe;
 }
 
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
-  cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
-}
+/* --------------------------------------------------------------------------
+   BASE
+   -------------------------------------------------------------------------- */
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
+@layer base {
+  html {
+    height: 100%;
+    color-scheme: light;
+    -webkit-text-size-adjust: 100%;
   }
+
+  body {
+    min-height: 100%;
+    /* width: 100% (no 100vw): evita el desbordamiento por la barra de scroll */
+    width: 100%;
+    min-width: 320px;
+
+    font-family: var(--font-family-base);
+    font-size: var(--font-size-base);
+    line-height: var(--line-height-base);
+    color: var(--color-gray-800);
+    background-color: var(--color-gray-50);
+
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  #root {
+    width: 100%;
+    min-height: 100vh;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    line-height: var(--line-height-tight);
+  }
+
+  a {
+    color: var(--color-info);
+    font-weight: var(--font-weight-medium);
+    text-decoration: none;
+  }
+
   a:hover {
-    color: #747bff;
+    text-decoration: underline;
   }
+
+  /* Los enlaces que actuan como boton o tarjeta no deben subrayarse. */
+  a:has(> button),
+  a:has(> div),
+  a[data-no-underline]:hover {
+    text-decoration: none;
+  }
+
+  img, svg, video, canvas {
+    max-width: 100%;
+  }
+
+  /* ------------------------------------------------------------------------
+     Boton base.
+     100 de los 223 <button> de la aplicacion no traen estilo propio. Antes
+     heredaban el boton oscuro de Vite; el preflight de Tailwind los dejaria
+     completamente sin estilo. Esta regla les da un aspecto neutro deliberado,
+     con estados de foco y deshabilitado que antes no existian.
+     Al vivir en @layer base, cualquier utilidad (bg-blue-600) la sobrescribe.
+     ------------------------------------------------------------------------ */
   button {
-    background-color: #f9f9f9;
+    font-family: inherit;
+    font-size: 1em;
+    font-weight: var(--font-weight-medium);
+    padding: 0.6em 1.2em;
+    border: var(--border-width) solid transparent;
+    border-radius: var(--border-radius-md);
+    background-color: var(--color-gray-100);
+    color: var(--color-gray-800);
+    cursor: pointer;
+    transition: background-color var(--transition-base), border-color var(--transition-base);
+  }
+
+  button:hover:not(:disabled) {
+    background-color: var(--color-gray-200);
+  }
+
+  button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  button:focus-visible,
+  a:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible {
+    outline: 2px solid var(--color-info);
+    outline-offset: 2px;
   }
 }
 
-/* Estilos para pantalla completa */
-* {
-  box-sizing: border-box;
-}
+/* --------------------------------------------------------------------------
+   ANIMACIONES COMPARTIDAS
+   `subtleShift` y `spin` seguian duplicadas en varios componentes con <style>
+   inline. Viven aqui.
+   -------------------------------------------------------------------------- */
 
-html {
-  width: 100%;
-  height: 100%;
-  margin: 0;
-  padding: 0;
-}
-
-#root {
-  width: 100vw;
-  min-height: 100vh;
-  margin: 0;
-  padding: 0;
-}
-
-/* Animations */
 @keyframes spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 @keyframes pulse {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.5;
-  }
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
 }
 
 @keyframes subtleShift {
-  0%, 100% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

@@ -1,11 +1,26 @@
 /**
- * Componente para gestionar las operaciones RVIE
- * Descargar y Aceptar Propuesta
+ * Operaciones RVIE: descargar y aceptar la propuesta de SUNAT.
  */
 
 import { useState } from 'react';
-import type { RvieDescargarPropuestaRequest, RvieAceptarPropuestaRequest, RvieResumenResponse, RvieTicketResponse } from '../../../../types/sire';
-import './rvie-components.css';
+import {
+  AlertCircle,
+  CheckCircle2,
+  ChevronDown,
+  Download,
+  FileText,
+  Info,
+  Loader2,
+  RefreshCw,
+  TriangleAlert,
+} from 'lucide-react';
+import type {
+  RvieDescargarPropuestaRequest,
+  RvieAceptarPropuestaRequest,
+  RvieResumenResponse,
+  RvieTicketResponse,
+} from '../../../../types/sire';
+import { cn } from '../../../../lib/cn';
 
 interface RvieOperacionesProps {
   periodo: { año: string; mes: string };
@@ -20,15 +35,33 @@ interface RvieOperacionesProps {
   onDescargarArchivo: (ticketId: string) => Promise<void>;
 }
 
-interface OpcionesDescarga {
-  forzar_descarga: boolean;
-  incluir_detalle: boolean;
-}
+/** Aviso de estado dentro de una tarjeta de operación. */
+const Estado: React.FC<{
+  tone: 'success' | 'warning' | 'info' | 'error';
+  titulo: string;
+  children?: React.ReactNode;
+}> = ({ tone, titulo, children }) => {
+  const TONES = {
+    success: { wrap: 'border-green-200 bg-green-50', text: 'text-green-800', icon: CheckCircle2 },
+    warning: { wrap: 'border-amber-200 bg-amber-50', text: 'text-amber-800', icon: TriangleAlert },
+    info: { wrap: 'border-blue-200 bg-blue-50', text: 'text-blue-800', icon: Info },
+    error: { wrap: 'border-red-200 bg-red-50', text: 'text-red-800', icon: AlertCircle },
+  } as const;
 
-interface OpcionesAceptacion {
-  acepta_completa: boolean;
-  observaciones: string;
-}
+  const { wrap, text, icon: Icon } = TONES[tone];
+
+  return (
+    <div className={cn('rounded-lg border px-4 py-3', wrap)}>
+      <p className={cn('flex items-center gap-2 text-sm font-semibold', text)}>
+        <Icon className="size-4 shrink-0" aria-hidden="true" />
+        {titulo}
+      </p>
+      {children && <div className={cn('mt-1.5 text-sm', text)}>{children}</div>}
+    </div>
+  );
+};
+
+const checkbox = 'mt-0.5 size-4 shrink-0 cursor-pointer accent-blue-600';
 
 export default function RvieOperaciones({
   periodo,
@@ -40,296 +73,346 @@ export default function RvieOperaciones({
   onDescargarPropuesta,
   onAceptarPropuesta,
   onConsultarTicket,
-  onDescargarArchivo
+  onDescargarArchivo,
 }: RvieOperacionesProps) {
-
-  // Estados para opciones avanzadas
   const [mostrarOpcionesAvanzadas, setMostrarOpcionesAvanzadas] = useState(false);
-  const [opcionesDescarga, setOpcionesDescarga] = useState<OpcionesDescarga>({
+  const [opcionesDescarga, setOpcionesDescarga] = useState({
     forzar_descarga: false,
-    incluir_detalle: true
+    incluir_detalle: true,
   });
-
-  const [opcionesAceptacion, setOpcionesAceptacion] = useState<OpcionesAceptacion>({
+  const [opcionesAceptacion, setOpcionesAceptacion] = useState({
     acepta_completa: true,
-    observaciones: ''
+    observaciones: '',
   });
 
-  // Filtrar tickets de descarga-propuesta
-  const ticketsDescarga = tickets.filter(ticket => 
-    ticket.operacion === 'descargar-propuesta' && 
-    ticket.ticket_id.startsWith('SYNC-')
+  // Los tickets sincronizados desde SUNAT llevan el prefijo SYNC-.
+  const ticketsDescarga = tickets.filter(
+    (t) => t.operacion === 'descargar-propuesta' && t.ticket_id.startsWith('SYNC-')
   );
 
+  const periodoSunat = `${periodo.año}${periodo.mes}`;
+  const autenticado = Boolean(authStatus?.authenticated);
+  const yaAceptada = resumen?.estado_proceso === 'ACEPTADO';
 
-  const handleDescargarPropuesta = async () => {
-    await onDescargarPropuesta({
-      periodo: `${periodo.año}${periodo.mes}`,
+  const handleDescargarPropuesta = () =>
+    onDescargarPropuesta({
+      periodo: periodoSunat,
       forzar_descarga: opcionesDescarga.forzar_descarga,
-      incluir_detalle: opcionesDescarga.incluir_detalle
+      incluir_detalle: opcionesDescarga.incluir_detalle,
     });
-  };
 
-  const handleAceptarPropuesta = async () => {
-    await onAceptarPropuesta({
-      periodo: `${periodo.año}${periodo.mes}`,
+  const handleAceptarPropuesta = () =>
+    onAceptarPropuesta({
+      periodo: periodoSunat,
       acepta_completa: opcionesAceptacion.acepta_completa,
-      observaciones: opcionesAceptacion.observaciones || undefined
+      observaciones: opcionesAceptacion.observaciones || undefined,
     });
+
+  const textoBotonAceptar = () => {
+    if (operacionActiva === 'aceptar_propuesta') return 'Procesando…';
+    if (!resumen) return 'Descarga la propuesta primero';
+    if (yaAceptada) return 'Ya aceptada';
+    if (!autenticado) return 'Requiere autenticación';
+    return 'Aceptar propuesta';
   };
 
   return (
-    <div className="operaciones-rvie">
-      <h3>🔧 Operaciones RVIE</h3>
+    <div className="space-y-5 p-4 sm:p-5">
+      {/* ------------------------------------------------------------------ */}
+      {/* Descargar propuesta                                                */}
+      {/* ------------------------------------------------------------------ */}
+      <section className="space-y-3 rounded-xl border border-slate-200 bg-white p-4">
+        <div>
+          <h4 className="text-sm font-semibold text-slate-900">Descargar propuesta SUNAT</h4>
+          <p className="text-sm text-slate-500">
+            Descarga la propuesta de ventas e ingresos generada por SUNAT para el período
+            seleccionado.
+          </p>
+        </div>
 
-      {/* Descargar Propuesta */}
-      <div className="operacion-card">
-        <h4>📥 Descargar Propuesta SUNAT</h4>
-        <p>Descarga la propuesta de ventas e ingresos generada por SUNAT para el período seleccionado.</p>
-        
-        {/* Estado actual del período */}
         {resumen ? (
-          <div className="estado-propuesta success">
-            <div className="estado-header">
-              <span className="estado-icon">✅</span>
-              <span className="estado-texto">Propuesta ya descargada</span>
-            </div>
-            <div className="estado-detalles">
-              <p><strong>Comprobantes:</strong> {resumen.total_comprobantes}</p>
-              <p><strong>Importe:</strong> S/ {resumen.total_importe.toLocaleString('es-PE', { minimumFractionDigits: 2 })}</p>
-              <p><strong>Estado:</strong> {resumen.estado_proceso}</p>
-            </div>
-          </div>
+          <Estado tone="success" titulo="Propuesta ya descargada">
+            <dl className="flex flex-wrap gap-x-6 gap-y-1">
+              <div className="flex gap-1.5">
+                <dt>Comprobantes:</dt>
+                <dd className="font-semibold tabular-nums">{resumen.total_comprobantes}</dd>
+              </div>
+              <div className="flex gap-1.5">
+                <dt>Importe:</dt>
+                <dd className="font-semibold tabular-nums">
+                  S/ {resumen.total_importe.toLocaleString('es-PE', { minimumFractionDigits: 2 })}
+                </dd>
+              </div>
+              <div className="flex gap-1.5">
+                <dt>Estado:</dt>
+                <dd className="font-semibold">{resumen.estado_proceso}</dd>
+              </div>
+            </dl>
+          </Estado>
         ) : (
-          <div className="estado-propuesta warning">
-            <div className="estado-header">
-              <span className="estado-icon">⚠️</span>
-              <span className="estado-texto">No hay propuesta descargada</span>
-            </div>
-            <p>Debe descargar la propuesta desde SUNAT para este período.</p>
-          </div>
+          <Estado tone="warning" titulo="No hay propuesta descargada">
+            Debes descargar la propuesta desde SUNAT para este período.
+          </Estado>
         )}
-        
-        {!authStatus?.authenticated && (
-          <div className="warning-message">
-            <p>⚠️ <strong>Advertencia:</strong> Necesita autenticación SUNAT para acceder a datos reales.</p>
-          </div>
+
+        {!autenticado && (
+          <Estado tone="warning" titulo="Sin autenticación SUNAT">
+            Necesitas autenticarte para acceder a datos reales.
+          </Estado>
         )}
-        
-        {/* Opciones avanzadas de descarga */}
-        <div className="opciones-avanzadas">
-          <button 
+
+        {/* Opciones avanzadas */}
+        <div>
+          <button
             type="button"
-            className="btn-toggle-opciones"
-            onClick={() => setMostrarOpcionesAvanzadas(!mostrarOpcionesAvanzadas)}
+            onClick={() => setMostrarOpcionesAvanzadas((v) => !v)}
+            aria-expanded={mostrarOpcionesAvanzadas}
+            className="inline-flex items-center gap-1.5 rounded border-0 bg-transparent p-0 text-sm font-medium text-slate-600 hover:text-slate-900"
           >
-            {mostrarOpcionesAvanzadas ? '▼' : '▶'} Opciones Avanzadas
+            <ChevronDown
+              className={cn(
+                'size-4 transition-transform',
+                !mostrarOpcionesAvanzadas && '-rotate-90'
+              )}
+              aria-hidden="true"
+            />
+            Opciones avanzadas
           </button>
-          
+
           {mostrarOpcionesAvanzadas && (
-            <div className="opciones-contenido">
-              <div className="opcion-item">
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={opcionesDescarga.forzar_descarga}
-                    onChange={(e) => setOpcionesDescarga(prev => ({
-                      ...prev,
-                      forzar_descarga: e.target.checked
-                    }))}
-                  />
-                  🔄 Forzar nueva descarga (ignorar cache)
-                </label>
-                <small>Descarga nuevamente desde SUNAT aunque ya exista en cache</small>
-              </div>
-              
-              <div className="opcion-item">
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={opcionesDescarga.incluir_detalle}
-                    onChange={(e) => setOpcionesDescarga(prev => ({
-                      ...prev,
-                      incluir_detalle: e.target.checked
-                    }))}
-                  />
-                  📋 Incluir detalle completo
-                </label>
-                <small>Incluye información detallada de cada comprobante</small>
-              </div>
+            <div className="mt-2 space-y-3 rounded-lg bg-slate-50 p-3">
+              <label className="flex cursor-pointer items-start gap-2.5 text-sm text-slate-700">
+                <input
+                  type="checkbox"
+                  checked={opcionesDescarga.forzar_descarga}
+                  onChange={(e) =>
+                    setOpcionesDescarga((prev) => ({ ...prev, forzar_descarga: e.target.checked }))
+                  }
+                  className={checkbox}
+                />
+                <span>
+                  Forzar nueva descarga
+                  <span className="mt-0.5 block text-xs text-slate-500">
+                    Vuelve a pedirla a SUNAT aunque ya esté en caché.
+                  </span>
+                </span>
+              </label>
+
+              <label className="flex cursor-pointer items-start gap-2.5 text-sm text-slate-700">
+                <input
+                  type="checkbox"
+                  checked={opcionesDescarga.incluir_detalle}
+                  onChange={(e) =>
+                    setOpcionesDescarga((prev) => ({ ...prev, incluir_detalle: e.target.checked }))
+                  }
+                  className={checkbox}
+                />
+                <span>
+                  Incluir detalle completo
+                  <span className="mt-0.5 block text-xs text-slate-500">
+                    Añade la información detallada de cada comprobante.
+                  </span>
+                </span>
+              </label>
             </div>
           )}
         </div>
-        
-        <button 
-          className="btn-primary"
+
+        <button
+          type="button"
           onClick={handleDescargarPropuesta}
           disabled={loading || operacionActiva === 'descargar_propuesta'}
+          className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3.5 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
         >
-          {operacionActiva === 'descargar_propuesta' ? 'Descargando...' : 'Descargar Propuesta'}
+          {operacionActiva === 'descargar_propuesta' ? (
+            <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+          ) : (
+            <Download className="size-4" aria-hidden="true" />
+          )}
+          {operacionActiva === 'descargar_propuesta' ? 'Descargando…' : 'Descargar propuesta'}
         </button>
-      </div>
+      </section>
 
-      {/* Aceptar Propuesta */}
-      <div className="operacion-card">
-        <h4>✅ Aceptar Propuesta</h4>
-        <p>Acepta la propuesta de SUNAT con opciones de personalización.</p>
-        
-        {/* Estado para aceptación */}
+      {/* ------------------------------------------------------------------ */}
+      {/* Aceptar propuesta                                                  */}
+      {/* ------------------------------------------------------------------ */}
+      <section className="space-y-3 rounded-xl border border-slate-200 bg-white p-4">
+        <div>
+          <h4 className="text-sm font-semibold text-slate-900">Aceptar propuesta</h4>
+          <p className="text-sm text-slate-500">
+            Acepta la propuesta de SUNAT, entera o en parte.
+          </p>
+        </div>
+
         {!resumen ? (
-          <div className="estado-propuesta error">
-            <div className="estado-header">
-              <span className="estado-icon">❌</span>
-              <span className="estado-texto">No se puede aceptar</span>
-            </div>
-            <p>Debe descargar la propuesta primero antes de aceptarla.</p>
-          </div>
-        ) : resumen.estado_proceso === 'ACEPTADO' ? (
-          <div className="estado-propuesta success">
-            <div className="estado-header">
-              <span className="estado-icon">✅</span>
-              <span className="estado-texto">Propuesta ya aceptada</span>
-            </div>
-            <p>La propuesta para este período ya ha sido aceptada en SUNAT.</p>
-          </div>
+          <Estado tone="error" titulo="No hay propuesta que aceptar">
+            Descarga primero la propuesta del período.
+          </Estado>
+        ) : yaAceptada ? (
+          <Estado tone="success" titulo="Propuesta ya aceptada">
+            La propuesta de este período ya se aceptó en SUNAT.
+          </Estado>
         ) : (
-          <div className="estado-propuesta info">
-            <div className="estado-header">
-              <span className="estado-icon">📋</span>
-              <span className="estado-texto">Lista para aceptar</span>
-            </div>
-            <p>La propuesta está descargada y lista para ser aceptada.</p>
-          </div>
+          <Estado tone="info" titulo="Lista para aceptar">
+            La propuesta está descargada y lista.
+          </Estado>
         )}
-        
-        {!authStatus?.authenticated && (
-          <div className="warning-message">
-            <p>⚠️ <strong>Advertencia:</strong> Necesita autenticación SUNAT para realizar esta operación.</p>
-          </div>
+
+        {!autenticado && (
+          <Estado tone="warning" titulo="Sin autenticación SUNAT">
+            Necesitas autenticarte para realizar esta operación.
+          </Estado>
         )}
-        
-        {/* Opciones de aceptación */}
-        <div className="opciones-aceptacion">
-          <div className="opcion-item">
-            <label>
-              <input
-                type="radio"
-                name="tipo_aceptacion"
-                checked={opcionesAceptacion.acepta_completa}
-                onChange={() => setOpcionesAceptacion(prev => ({
-                  ...prev,
-                  acepta_completa: true
-                }))}
-              />
-              ✅ Aceptación completa
+
+        <fieldset className="space-y-3 rounded-lg bg-slate-50 p-3">
+          <legend className="sr-only">Tipo de aceptación</legend>
+
+          <label className="flex cursor-pointer items-start gap-2.5 text-sm text-slate-700">
+            <input
+              type="radio"
+              name="tipo_aceptacion"
+              checked={opcionesAceptacion.acepta_completa}
+              onChange={() =>
+                setOpcionesAceptacion((prev) => ({ ...prev, acepta_completa: true }))
+              }
+              className={checkbox}
+            />
+            <span>
+              Aceptación completa
+              <span className="mt-0.5 block text-xs text-slate-500">
+                Acepta toda la propuesta de SUNAT sin modificaciones.
+              </span>
+            </span>
+          </label>
+
+          <label className="flex cursor-pointer items-start gap-2.5 text-sm text-slate-700">
+            <input
+              type="radio"
+              name="tipo_aceptacion"
+              checked={!opcionesAceptacion.acepta_completa}
+              onChange={() =>
+                setOpcionesAceptacion((prev) => ({ ...prev, acepta_completa: false }))
+              }
+              className={checkbox}
+            />
+            <span>
+              Aceptación parcial
+              <span className="mt-0.5 block text-xs text-slate-500">
+                Acepta solo una parte; requiere justificación.
+              </span>
+            </span>
+          </label>
+
+          <div>
+            <label
+              htmlFor="observaciones"
+              className="mb-1.5 block text-xs font-medium tracking-wide text-slate-500 uppercase"
+            >
+              Observaciones (opcional)
             </label>
-            <small>Acepta toda la propuesta de SUNAT sin modificaciones</small>
-          </div>
-          
-          <div className="opcion-item">
-            <label>
-              <input
-                type="radio"
-                name="tipo_aceptacion"
-                checked={!opcionesAceptacion.acepta_completa}
-                onChange={() => setOpcionesAceptacion(prev => ({
-                  ...prev,
-                  acepta_completa: false
-                }))}
-              />
-              ⚠️ Aceptación parcial
-            </label>
-            <small>Acepta solo parte de la propuesta (requiere justificación)</small>
-          </div>
-          
-          <div className="opcion-item">
-            <label htmlFor="observaciones">📝 Observaciones (opcional):</label>
             <textarea
               id="observaciones"
-              placeholder="Ingrese observaciones sobre la aceptación (máx. 500 caracteres)"
-              maxLength={500}
-              value={opcionesAceptacion.observaciones}
-              onChange={(e) => setOpcionesAceptacion(prev => ({
-                ...prev,
-                observaciones: e.target.value
-              }))}
               rows={3}
+              maxLength={500}
+              placeholder="Observaciones sobre la aceptación"
+              value={opcionesAceptacion.observaciones}
+              onChange={(e) =>
+                setOpcionesAceptacion((prev) => ({ ...prev, observaciones: e.target.value }))
+              }
+              className="w-full resize-y rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none"
             />
-            <small>{opcionesAceptacion.observaciones.length}/500 caracteres</small>
+            <p className="mt-1 text-right text-xs text-slate-400 tabular-nums">
+              {opcionesAceptacion.observaciones.length}/500
+            </p>
           </div>
-        </div>
-        
-        <button 
-          className="btn-success"
+        </fieldset>
+
+        <button
+          type="button"
           onClick={handleAceptarPropuesta}
           disabled={
-            loading || 
-            operacionActiva === 'aceptar_propuesta' || 
-            !resumen || 
-            resumen.estado_proceso === 'ACEPTADO' ||
-            !authStatus?.authenticated
+            loading ||
+            operacionActiva === 'aceptar_propuesta' ||
+            !resumen ||
+            yaAceptada ||
+            !autenticado
           }
+          className="inline-flex items-center gap-2 rounded-lg bg-green-600 px-3.5 py-2 text-sm font-semibold text-white hover:bg-green-700 disabled:opacity-50"
         >
-          {operacionActiva === 'aceptar_propuesta' ? 'Procesando...' : 
-           !resumen ? 'Descargar propuesta primero' :
-           resumen.estado_proceso === 'ACEPTADO' ? 'Ya aceptada' :
-           !authStatus?.authenticated ? 'Requiere autenticación' :
-           'Aceptar Propuesta'}
+          {operacionActiva === 'aceptar_propuesta' ? (
+            <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+          ) : (
+            <CheckCircle2 className="size-4" aria-hidden="true" />
+          )}
+          {textoBotonAceptar()}
         </button>
-      </div>
+      </section>
 
-      {/* Sección de Tickets de Descarga */}
+      {/* ------------------------------------------------------------------ */}
+      {/* Tickets de descarga sincronizados                                  */}
+      {/* ------------------------------------------------------------------ */}
       {ticketsDescarga.length > 0 && (
-        <div className="operacion-card">
-          <h4>📋 Tickets de Descarga Generados</h4>
-          <p>Gestiona los tickets de descarga-propuesta desde aquí:</p>
-          
-          <div className="tickets-descarga-list">
-            {ticketsDescarga.map((ticket) => (
-              <div key={ticket.ticket_id} className="ticket-descarga-item">
-                <div className="ticket-info">
-                  <div className="ticket-header">
-                    <span className="ticket-id">🎫 {ticket.ticket_id}</span>
-                    <span className={`ticket-status ${ticket.status.toLowerCase()}`}>
-                      {ticket.status}
-                    </span>
-                  </div>
-                  
-                  <div className="ticket-details">
-                    <p><strong>📅 Período:</strong> {ticket.periodo}</p>
-                    <p><strong>⏰ Creado:</strong> {new Date(ticket.fecha_creacion).toLocaleString()}</p>
+        <section className="space-y-3 rounded-xl border border-slate-200 bg-white p-4">
+          <div>
+            <h4 className="text-sm font-semibold text-slate-900">Tickets de descarga</h4>
+            <p className="text-sm text-slate-500">
+              Tickets de descarga-propuesta sincronizados desde SUNAT.
+            </p>
+          </div>
+
+          <ul className="space-y-2">
+            {ticketsDescarga.map((ticket) => {
+              const descargable = ticket.status === 'TERMINADO' && ticket.archivo_nombre;
+
+              return (
+                <li
+                  key={ticket.ticket_id}
+                  className="flex flex-wrap items-start justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3"
+                >
+                  <div className="min-w-0">
+                    <p className="font-mono text-sm font-semibold text-slate-800">
+                      {ticket.ticket_id}
+                    </p>
+                    <p className="text-xs text-slate-500 tabular-nums">
+                      {new Date(ticket.fecha_creacion).toLocaleString('es-PE')}
+                    </p>
                     {ticket.descripcion && (
-                      <p><strong>📝 Descripción:</strong> {ticket.descripcion}</p>
+                      <p className="text-sm text-slate-600">{ticket.descripcion}</p>
                     )}
                     {ticket.archivo_nombre && (
-                      <p><strong>📁 Archivo:</strong> {ticket.archivo_nombre}</p>
+                      <p className="flex items-center gap-1.5 text-sm text-slate-600">
+                        <FileText className="size-3.5 shrink-0 text-slate-400" aria-hidden="true" />
+                        <span className="min-w-0 truncate">{ticket.archivo_nombre}</span>
+                      </p>
                     )}
                   </div>
-                </div>
-                
-                <div className="ticket-actions">
-                  {ticket.status === 'TERMINADO' && ticket.archivo_nombre ? (
-                    <button 
-                      className="btn-primary"
+
+                  {descargable ? (
+                    <button
+                      type="button"
                       onClick={() => onDescargarArchivo(ticket.ticket_id)}
                       disabled={loading}
+                      className="inline-flex shrink-0 items-center gap-2 rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
                     >
-                      📥 Descargar
+                      <Download className="size-4" aria-hidden="true" />
+                      Descargar
                     </button>
                   ) : (
-                    <button 
-                      className="btn-secondary"
+                    <button
+                      type="button"
                       onClick={() => onConsultarTicket(ticket.ticket_id)}
                       disabled={loading}
+                      className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
                     >
-                      🔄 Consultar
+                      <RefreshCw className="size-4" aria-hidden="true" />
+                      Consultar
                     </button>
                   )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
       )}
     </div>
   );

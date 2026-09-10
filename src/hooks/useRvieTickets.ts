@@ -147,8 +147,6 @@ export function useRvieTickets(options: UseRvieTicketsOptions): UseRvieTicketsRe
       setLoading(true);
       setError(null);
 
-      console.log('🎫 [RVIE-HOOK] Generando ticket de descarga...');
-      
       const ticketResponse = await rvieTicketService.generarTicketDescarga(ruc, periodo);
       const ticket = convertTicketResponse(ticketResponse);
       
@@ -178,8 +176,6 @@ export function useRvieTickets(options: UseRvieTicketsOptions): UseRvieTicketsRe
       setLoading(true);
       setError(null);
 
-      console.log('🎫 [RVIE-HOOK] Generando ticket de aceptación...');
-      
       const ticketResponse = await rvieTicketService.generarTicketAceptar(ruc, periodo);
       const ticket = convertTicketResponse(ticketResponse);
       
@@ -208,8 +204,6 @@ export function useRvieTickets(options: UseRvieTicketsOptions): UseRvieTicketsRe
       setLoading(true);
       setError(null);
 
-      console.log('🎫 [RVIE-HOOK] Generando ticket de reemplazo...');
-      
       const ticketResponse = await rvieTicketService.generarTicketReemplazar(ruc, periodo);
       const ticket = convertTicketResponse(ticketResponse);
       
@@ -236,7 +230,6 @@ export function useRvieTickets(options: UseRvieTicketsOptions): UseRvieTicketsRe
   // ========== FUNCIONES DE CONSULTA ==========
   const consultarTicket = useCallback(async (ticketId: string): Promise<RvieTicket> => {
     try {
-      console.log(`🔍 [RVIE-HOOK] Consultando ticket ${ticketId}...`);
       
       const ticketResponse = await rvieTicketService.consultarTicket(ruc, ticketId);
       const ticket = convertTicketResponse(ticketResponse);
@@ -263,7 +256,6 @@ export function useRvieTickets(options: UseRvieTicketsOptions): UseRvieTicketsRe
 
   const descargarArchivo = useCallback(async (ticketId: string): Promise<ArchivoTicket> => {
     try {
-      console.log(`📥 [RVIE-HOOK] Descargando archivo del ticket ${ticketId}...`);
       
       const archivo = await rvieTicketService.descargarArchivo(ruc, ticketId);
       
@@ -277,7 +269,6 @@ export function useRvieTickets(options: UseRvieTicketsOptions): UseRvieTicketsRe
 
   // ========== FUNCIONES DE MONITOREO ==========
   const iniciarMonitoreo = useCallback((ticketId: string, callbacks?: TicketCallbacks) => {
-    console.log(`🔄 [RVIE-HOOK] Iniciando monitoreo del ticket ${ticketId}...`);
 
     // Detener monitoreo previo si existe
     const existingInterval = monitoringRefs.current.get(ticketId);
@@ -297,7 +288,6 @@ export function useRvieTickets(options: UseRvieTicketsOptions): UseRvieTicketsRe
 
         // Verificar si completó
         if (ticket.status === 'TERMINADO') {
-          console.log(`✅ [RVIE-HOOK] Ticket ${ticketId} completado`);
           
           detenerMonitoreo(ticketId);
           
@@ -343,13 +333,11 @@ export function useRvieTickets(options: UseRvieTicketsOptions): UseRvieTicketsRe
       if (interval) {
         clearInterval(interval);
         monitoringRefs.current.delete(ticketId);
-        console.log(`⏹️ [RVIE-HOOK] Monitoreo detenido para ticket ${ticketId}`);
       }
     } else {
       // Detener todos los monitoreos
       monitoringRefs.current.forEach((interval, id) => {
         clearInterval(interval);
-        console.log(`⏹️ [RVIE-HOOK] Monitoreo detenido para ticket ${id}`);
       });
       monitoringRefs.current.clear();
     }

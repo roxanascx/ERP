@@ -1,54 +1,78 @@
-import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import MainLayout from '../../../components/MainLayout';
+import React, { useEffect, useState } from 'react';
+import {
+  AlertCircle,
+  BarChart3,
+  FileSpreadsheet,
+  Loader2,
+  SlidersHorizontal,
+  TrendingDown,
+  TrendingUp,
+  Wallet,
+} from 'lucide-react';
+import useEmpresaActual from '../../../hooks/useEmpresaActual';
 import { mayorApi } from '../../../services/mayorApi';
-import type { 
-  MayorMovimiento, 
-  MayorFilters, 
+import { StatCard, StatGrid } from '../../../components/common/StatCard';
+import EmptyState from '../../../components/common/EmptyState';
+import type {
+  MayorMovimiento,
+  MayorFilters,
   MayorSummary,
-  CuentaContable 
+  CuentaContable,
 } from '../../../types/mayor';
+import { cn } from '../../../lib/cn';
+
+const control = cn(
+  'w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900',
+  'focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none'
+);
+const labelClass = 'mb-1.5 block text-xs font-medium tracking-wide text-slate-500 uppercase';
+const th = 'px-3 py-2.5 text-left text-xs font-semibold tracking-wide text-slate-600 uppercase';
+const td = 'px-3 py-3 text-sm text-slate-700';
+
+const soles = (n: number): string =>
+  `S/ ${(n ?? 0).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+const formatFecha = (fecha: string): string => {
+  try {
+    return new Date(fecha).toLocaleDateString('es-PE');
+  } catch {
+    return fecha;
+  }
+};
 
 const LibroMayorPage: React.FC = () => {
+  const { empresa } = useEmpresaActual();
+
   const [movimientos, setMovimientos] = useState<MayorMovimiento[]>([]);
   const [summary, setSummary] = useState<MayorSummary | null>(null);
   const [filters, setFilters] = useState<MayorFilters>({});
   const [cuentas, setCuentas] = useState<CuentaContable[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  // Estados para la interfaz
   const [showFilters, setShowFilters] = useState(true);
-  const [selectedAccount, setSelectedAccount] = useState<string>('');
 
-  useEffect(() => {
-    loadCuentas();
-  }, []);
-
-  useEffect(() => {
-    if (filters.cuenta_codigo || filters.fecha_inicio) {
-      loadMovimientos();
-      loadSummary();
-    }
-  }, [filters]);
+  // ---------------------------------------------------------------------------
+  // Datos
+  // ---------------------------------------------------------------------------
 
   const loadCuentas = async () => {
+    if (!empresa?.id) return;
     try {
-      const data = await mayorApi.getCuentasDisponibles();
-      setCuentas(data);
+      setCuentas(await mayorApi.getCuentasDisponibles(empresa.id));
     } catch (err) {
       console.error('Error al cargar cuentas:', err);
     }
   };
 
   const loadMovimientos = async () => {
+    if (!empresa?.id) return;
+
+    setLoading(true);
     try {
-      setLoading(true);
-      const data = await mayorApi.getMovimientos(filters);
-      setMovimientos(data);
+      setMovimientos(await mayorApi.getMovimientos(empresa.id, filters));
       setError(null);
     } catch (err) {
-      setError('Error al cargar movimientos del Libro Mayor');
+      setError('Error al cargar los movimientos del Libro Mayor');
       console.error(err);
     } finally {
       setLoading(false);
@@ -56,415 +80,284 @@ const LibroMayorPage: React.FC = () => {
   };
 
   const loadSummary = async () => {
+    if (!empresa?.id) return;
     try {
-      const data = await mayorApi.getSummary(filters);
-      setSummary(data);
+      setSummary(await mayorApi.getSummary(empresa.id, filters));
     } catch (err) {
-      console.error('Error al cargar resumen:', err);
+      console.error('Error al cargar el resumen:', err);
     }
   };
 
-  const handleFilterChange = (newFilters: MayorFilters) => {
+  useEffect(() => {
+    void loadCuentas();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [empresa?.id]);
+
+  // El Libro Mayor se consulta por cuenta: sin cuenta no hay nada que pedir.
+  useEffect(() => {
+    if (!empresa?.id || (!filters.cuenta_codigo && !filters.fecha_inicio)) return;
+    void loadMovimientos();
+    void loadSummary();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters, empresa?.id]);
+
+  // ---------------------------------------------------------------------------
+  // Acciones
+  // ---------------------------------------------------------------------------
+
+  const handleFilterChange = (newFilters: MayorFilters) =>
     setFilters({ ...filters, ...newFilters });
-  };
 
   const handleExportExcel = async () => {
+    if (!empresa?.id) return;
+
     try {
-      const blob = await mayorApi.exportExcel(filters);
+      const blob = await mayorApi.exportExcel(empresa.id, filters);
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
       a.download = `libro_mayor_${filters.cuenta_codigo || 'todas'}_${new Date().toISOString().substring(0, 10)}.xlsx`;
       document.body.appendChild(a);
       a.click();
+      document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
-    } catch (err) {
+    } catch {
       setError('Error al exportar a Excel');
     }
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('es-PE', {
-      style: 'currency',
-      currency: 'PEN'
-    }).format(amount);
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('es-PE');
-  };
+  // ---------------------------------------------------------------------------
+  // Render
+  // ---------------------------------------------------------------------------
 
   return (
-    <MainLayout 
-      title="📊 Libro Mayor" 
-      subtitle="Movimientos por cuenta contable y saldos acumulados"
-    >
-      <div style={{ padding: '1.5rem' }}>
-        {/* Breadcrumb */}
-        <nav style={{ marginBottom: '1.5rem' }}>
-          <Link 
-            to="/contabilidad" 
-            style={{ 
-              color: '#6b7280', 
-              textDecoration: 'none', 
-              fontSize: '0.875rem' 
-            }}
-          >
-            Contabilidad
-          </Link>
-          <span style={{ margin: '0 0.5rem', color: '#6b7280' }}>/</span>
-          <span style={{ color: '#111827', fontSize: '0.875rem', fontWeight: '600' }}>
-            Libro Mayor
-          </span>
-        </nav>
+    <div className="space-y-5">
+      {summary && (
+        <>
+          <h2 className="text-sm font-semibold text-slate-900">
+            <span className="font-mono">{summary.cuenta_codigo}</span>
+            <span className="mx-2 text-slate-300">·</span>
+            {summary.cuenta_nombre}
+          </h2>
 
-        {/* Resumen de cuenta seleccionada */}
-        {summary && (
-          <div style={{
-            background: 'white',
-            padding: '1.5rem',
-            borderRadius: '0.5rem',
-            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-            border: '1px solid #e5e7eb',
-            marginBottom: '1.5rem'
-          }}>
-            <h3 style={{ 
-              fontSize: '1.125rem', 
-              fontWeight: '600', 
-              color: '#111827',
-              marginBottom: '1rem'
-            }}>
-              {summary.cuenta_codigo} - {summary.cuenta_nombre}
-            </h3>
-            
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-              gap: '1rem'
-            }}>
-              <div>
-                <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>Saldo Inicial</div>
-                <div style={{ fontSize: '1.25rem', fontWeight: '600', color: '#111827' }}>
-                  {formatCurrency(summary.saldo_inicial)}
-                </div>
-              </div>
-              <div>
-                <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>Total Debe</div>
-                <div style={{ fontSize: '1.25rem', fontWeight: '600', color: '#dc2626' }}>
-                  {formatCurrency(summary.total_debe)}
-                </div>
-              </div>
-              <div>
-                <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>Total Haber</div>
-                <div style={{ fontSize: '1.25rem', fontWeight: '600', color: '#059669' }}>
-                  {formatCurrency(summary.total_haber)}
-                </div>
-              </div>
-              <div>
-                <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>Saldo Final</div>
-                <div style={{ 
-                  fontSize: '1.25rem', 
-                  fontWeight: '700', 
-                  color: summary.saldo_final >= 0 ? '#059669' : '#dc2626'
-                }}>
-                  {formatCurrency(summary.saldo_final)}
-                </div>
-              </div>
-              <div>
-                <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>Movimientos</div>
-                <div style={{ fontSize: '1.25rem', fontWeight: '600', color: '#111827' }}>
-                  {summary.cantidad_movimientos}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+          <StatGrid className="xl:grid-cols-5">
+            <StatCard
+              label="Saldo inicial"
+              value={soles(summary.saldo_inicial)}
+              icon={Wallet}
+              tone="slate"
+            />
+            <StatCard
+              label="Total debe"
+              value={soles(summary.total_debe)}
+              icon={TrendingUp}
+              tone="blue"
+            />
+            <StatCard
+              label="Total haber"
+              value={soles(summary.total_haber)}
+              icon={TrendingDown}
+              tone="violet"
+            />
+            <StatCard
+              label="Saldo final"
+              value={soles(summary.saldo_final)}
+              icon={Wallet}
+              tone={summary.saldo_final >= 0 ? 'green' : 'red'}
+            />
+            <StatCard
+              label="Movimientos"
+              value={summary.cantidad_movimientos.toLocaleString('es-PE')}
+              icon={BarChart3}
+              tone="amber"
+            />
+          </StatGrid>
+        </>
+      )}
 
-        {/* Barra de herramientas */}
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: '1.5rem',
-          background: 'white',
-          padding: '1rem',
-          borderRadius: '0.5rem',
-          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-          border: '1px solid #e5e7eb'
-        }}>
-          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-            <button
-              onClick={() => setShowFilters(!showFilters)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                padding: '0.5rem 1rem',
-                border: '1px solid #d1d5db',
-                borderRadius: '0.375rem',
-                background: showFilters ? '#f3f4f6' : 'white',
-                color: '#374151',
-                fontSize: '0.875rem',
-                cursor: 'pointer'
-              }}
-            >
-              🔍 Filtros
-            </button>
-            
-            <button
-              onClick={handleExportExcel}
-              disabled={!filters.cuenta_codigo}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                padding: '0.5rem 1rem',
-                border: '1px solid #2563eb',
-                borderRadius: '0.375rem',
-                background: filters.cuenta_codigo ? '#2563eb' : '#d1d5db',
-                color: 'white',
-                fontSize: '0.875rem',
-                cursor: filters.cuenta_codigo ? 'pointer' : 'not-allowed'
-              }}
-            >
-              📊 Exportar Excel
-            </button>
-          </div>
-        </div>
-
-        {/* Panel de filtros */}
-        {showFilters && (
-          <div style={{
-            background: 'white',
-            padding: '1.5rem',
-            borderRadius: '0.5rem',
-            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-            border: '1px solid #e5e7eb',
-            marginBottom: '1.5rem'
-          }}>
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-              gap: '1rem'
-            }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', marginBottom: '0.5rem' }}>
-                  Cuenta Contable *
-                </label>
-                <select
-                  value={filters.cuenta_codigo || ''}
-                  onChange={(e) => handleFilterChange({ cuenta_codigo: e.target.value })}
-                  style={{
-                    width: '100%',
-                    padding: '0.5rem',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '0.375rem',
-                    fontSize: '0.875rem'
-                  }}
-                >
-                  <option value="">Seleccione una cuenta</option>
-                  {cuentas.map((cuenta) => (
-                    <option key={cuenta.codigo} value={cuenta.codigo}>
-                      {cuenta.codigo} - {cuenta.nombre}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              
-              <div>
-                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', marginBottom: '0.5rem' }}>
-                  Fecha Inicio
-                </label>
-                <input
-                  type="date"
-                  value={filters.fecha_inicio || ''}
-                  onChange={(e) => handleFilterChange({ fecha_inicio: e.target.value })}
-                  style={{
-                    width: '100%',
-                    padding: '0.5rem',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '0.375rem',
-                    fontSize: '0.875rem'
-                  }}
-                />
-              </div>
-              
-              <div>
-                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', marginBottom: '0.5rem' }}>
-                  Fecha Fin
-                </label>
-                <input
-                  type="date"
-                  value={filters.fecha_fin || ''}
-                  onChange={(e) => handleFilterChange({ fecha_fin: e.target.value })}
-                  style={{
-                    width: '100%',
-                    padding: '0.5rem',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '0.375rem',
-                    fontSize: '0.875rem'
-                  }}
-                />
-              </div>
-
-              <div>
-                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', marginBottom: '0.5rem' }}>
-                  Incluir Subcuentas
-                </label>
-                <input
-                  type="checkbox"
-                  checked={filters.incluir_subcuentas || false}
-                  onChange={(e) => handleFilterChange({ incluir_subcuentas: e.target.checked })}
-                  style={{
-                    marginTop: '0.5rem'
-                  }}
-                />
-              </div>
-            </div>
-
-            <div style={{ marginTop: '1rem', display: 'flex', gap: '0.5rem' }}>
-              <button
-                onClick={() => setFilters({ cuenta_codigo: filters.cuenta_codigo })}
-                style={{
-                  padding: '0.5rem 1rem',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '0.375rem',
-                  background: 'white',
-                  color: '#374151',
-                  fontSize: '0.875rem',
-                  cursor: 'pointer'
-                }}
-              >
-                Limpiar Fechas
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Tabla de movimientos */}
-        <div style={{
-          background: 'white',
-          borderRadius: '0.5rem',
-          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-          border: '1px solid #e5e7eb',
-          overflow: 'hidden'
-        }}>
-          {!filters.cuenta_codigo ? (
-            <div style={{ 
-              padding: '3rem', 
-              textAlign: 'center', 
-              color: '#6b7280' 
-            }}>
-              Seleccione una cuenta contable para ver los movimientos
-            </div>
-          ) : loading ? (
-            <div style={{ padding: '3rem', textAlign: 'center', color: '#6b7280' }}>
-              Cargando movimientos del Libro Mayor...
-            </div>
-          ) : error ? (
-            <div style={{ 
-              padding: '3rem', 
-              textAlign: 'center', 
-              color: '#dc2626',
-              background: '#fef2f2' 
-            }}>
-              {error}
-            </div>
-          ) : movimientos.length === 0 ? (
-            <div style={{ padding: '3rem', textAlign: 'center', color: '#6b7280' }}>
-              No se encontraron movimientos para los filtros seleccionados
-            </div>
-          ) : (
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead style={{ background: '#f9fafb' }}>
-                  <tr>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600', color: '#374151' }}>
-                      Fecha
-                    </th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600', color: '#374151' }}>
-                      Asiento
-                    </th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600', color: '#374151' }}>
-                      Glosa
-                    </th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600', color: '#374151' }}>
-                      Tercero
-                    </th>
-                    <th style={{ padding: '0.75rem', textAlign: 'right', fontSize: '0.875rem', fontWeight: '600', color: '#374151' }}>
-                      Debe
-                    </th>
-                    <th style={{ padding: '0.75rem', textAlign: 'right', fontSize: '0.875rem', fontWeight: '600', color: '#374151' }}>
-                      Haber
-                    </th>
-                    <th style={{ padding: '0.75rem', textAlign: 'right', fontSize: '0.875rem', fontWeight: '600', color: '#374151' }}>
-                      Saldo
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {movimientos.map((movimiento, index) => (
-                    <tr key={movimiento.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                      <td style={{ padding: '0.75rem', fontSize: '0.875rem' }}>
-                        {formatDate(movimiento.fecha)}
-                      </td>
-                      <td style={{ padding: '0.75rem', fontSize: '0.875rem' }}>
-                        <div style={{ fontWeight: '500' }}>
-                          {movimiento.numero_asiento}
-                        </div>
-                        {movimiento.documento_tipo && (
-                          <div style={{ color: '#6b7280', fontSize: '0.8rem' }}>
-                            {movimiento.documento_tipo} {movimiento.documento_numero}
-                          </div>
-                        )}
-                      </td>
-                      <td style={{ padding: '0.75rem', fontSize: '0.875rem' }}>
-                        {movimiento.glosa}
-                      </td>
-                      <td style={{ padding: '0.75rem', fontSize: '0.875rem' }}>
-                        {movimiento.tercero_nombre && (
-                          <div>
-                            <div style={{ fontWeight: '500' }}>{movimiento.tercero_nombre}</div>
-                            <div style={{ color: '#6b7280', fontSize: '0.8rem' }}>
-                              {movimiento.tercero_documento}
-                            </div>
-                          </div>
-                        )}
-                      </td>
-                      <td style={{ 
-                        padding: '0.75rem', 
-                        fontSize: '0.875rem', 
-                        textAlign: 'right',
-                        color: movimiento.debe > 0 ? '#dc2626' : '#6b7280'
-                      }}>
-                        {movimiento.debe > 0 ? formatCurrency(movimiento.debe) : '-'}
-                      </td>
-                      <td style={{ 
-                        padding: '0.75rem', 
-                        fontSize: '0.875rem', 
-                        textAlign: 'right',
-                        color: movimiento.haber > 0 ? '#059669' : '#6b7280'
-                      }}>
-                        {movimiento.haber > 0 ? formatCurrency(movimiento.haber) : '-'}
-                      </td>
-                      <td style={{ 
-                        padding: '0.75rem', 
-                        fontSize: '0.875rem', 
-                        textAlign: 'right',
-                        fontWeight: '600',
-                        color: movimiento.saldo_acumulado >= 0 ? '#059669' : '#dc2626'
-                      }}>
-                        {formatCurrency(movimiento.saldo_acumulado)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+      {/* Barra de herramientas */}
+      <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <button
+          type="button"
+          onClick={() => setShowFilters((v) => !v)}
+          aria-expanded={showFilters}
+          className={cn(
+            'inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-colors',
+            showFilters
+              ? 'border-blue-300 bg-blue-50 text-blue-700'
+              : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
           )}
-        </div>
+        >
+          <SlidersHorizontal className="size-4" aria-hidden="true" />
+          Filtros
+        </button>
+
+        <button
+          type="button"
+          onClick={handleExportExcel}
+          disabled={!filters.cuenta_codigo}
+          title={!filters.cuenta_codigo ? 'Elige una cuenta para exportar' : undefined}
+          className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+        >
+          <FileSpreadsheet className="size-4 text-emerald-600" aria-hidden="true" />
+          Exportar Excel
+        </button>
       </div>
-    </MainLayout>
+
+      {/* Filtros */}
+      {showFilters && (
+        <div className="grid gap-4 rounded-xl border border-slate-200 bg-slate-50 p-4 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="sm:col-span-2 xl:col-span-1">
+            <label htmlFor="lm-cuenta" className={labelClass}>
+              Cuenta contable <span className="text-red-500">*</span>
+            </label>
+            <select
+              id="lm-cuenta"
+              value={filters.cuenta_codigo || ''}
+              onChange={(e) => handleFilterChange({ cuenta_codigo: e.target.value })}
+              className={control}
+            >
+              <option value="">Selecciona una cuenta</option>
+              {cuentas.map((cuenta) => (
+                <option key={cuenta.codigo} value={cuenta.codigo}>
+                  {cuenta.codigo} · {cuenta.nombre}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label htmlFor="lm-desde" className={labelClass}>
+              Fecha inicio
+            </label>
+            <input
+              id="lm-desde"
+              type="date"
+              value={filters.fecha_inicio || ''}
+              onChange={(e) => handleFilterChange({ fecha_inicio: e.target.value })}
+              className={control}
+            />
+          </div>
+
+          <div>
+            <label htmlFor="lm-hasta" className={labelClass}>
+              Fecha fin
+            </label>
+            <input
+              id="lm-hasta"
+              type="date"
+              value={filters.fecha_fin || ''}
+              onChange={(e) => handleFilterChange({ fecha_fin: e.target.value })}
+              className={control}
+            />
+          </div>
+        </div>
+      )}
+
+      {error && (
+        <div
+          role="alert"
+          className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3"
+        >
+          <AlertCircle className="mt-0.5 size-5 shrink-0 text-red-600" aria-hidden="true" />
+          <p className="text-sm font-medium text-red-800">{error}</p>
+        </div>
+      )}
+
+      {/* Movimientos */}
+      {loading ? (
+        <div
+          className="flex items-center justify-center rounded-xl border border-slate-200 bg-white py-16"
+          role="status"
+        >
+          <Loader2 className="size-5 animate-spin text-blue-600" aria-hidden="true" />
+          <span className="ml-3 text-sm text-slate-500">Cargando movimientos…</span>
+        </div>
+      ) : movimientos.length === 0 ? (
+        <EmptyState
+          icon={BarChart3}
+          title={filters.cuenta_codigo ? 'Sin movimientos' : 'Elige una cuenta'}
+          description={
+            filters.cuenta_codigo
+              ? 'Esta cuenta no tiene movimientos en el período seleccionado.'
+              : 'Selecciona una cuenta contable para ver sus movimientos y saldos.'
+          }
+        />
+      ) : (
+        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse">
+              <thead className="bg-slate-50">
+                <tr className="border-b border-slate-200">
+                  <th scope="col" className={th}>Fecha</th>
+                  <th scope="col" className={th}>Asiento</th>
+                  <th scope="col" className={th}>Glosa</th>
+                  <th scope="col" className={th}>Tercero</th>
+                  <th scope="col" className={cn(th, 'text-right')}>Debe</th>
+                  <th scope="col" className={cn(th, 'text-right')}>Haber</th>
+                  <th scope="col" className={cn(th, 'text-right')}>Saldo</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {movimientos.map((movimiento) => (
+                  <tr
+                    key={movimiento.id}
+                    className="border-b border-slate-100 last:border-0 hover:bg-slate-50"
+                  >
+                    <td className={cn(td, 'tabular-nums')}>{formatFecha(movimiento.fecha)}</td>
+
+                    <td className={td}>
+                      <span className="font-mono font-medium">{movimiento.numero_asiento}</span>
+                      {movimiento.documento_numero && (
+                        <span className="block text-xs text-slate-500">
+                          {movimiento.documento_tipo} {movimiento.documento_numero}
+                        </span>
+                      )}
+                    </td>
+
+                    <td className={td}>
+                      <p className="max-w-75 truncate">{movimiento.glosa}</p>
+                    </td>
+
+                    <td className={td}>
+                      {movimiento.tercero_nombre ? (
+                        <>
+                          <p className="max-w-50 truncate">{movimiento.tercero_nombre}</p>
+                          {movimiento.tercero_documento && (
+                            <span className="font-mono text-xs text-slate-500">
+                              {movimiento.tercero_documento}
+                            </span>
+                          )}
+                        </>
+                      ) : (
+                        <span className="text-slate-400">—</span>
+                      )}
+                    </td>
+
+                    <td className={cn(td, 'text-right tabular-nums')}>
+                      {movimiento.debe ? soles(movimiento.debe) : '—'}
+                    </td>
+                    <td className={cn(td, 'text-right tabular-nums')}>
+                      {movimiento.haber ? soles(movimiento.haber) : '—'}
+                    </td>
+                    <td
+                      className={cn(
+                        td,
+                        'text-right font-semibold tabular-nums',
+                        movimiento.saldo_acumulado >= 0 ? 'text-green-700' : 'text-red-700'
+                      )}
+                    >
+                      {soles(movimiento.saldo_acumulado)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
   );
 };
 

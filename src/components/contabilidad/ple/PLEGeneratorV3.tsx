@@ -48,16 +48,11 @@ export const PLEGeneratorV3: React.FC<PLEGeneratorV3Props> = ({
   const handleGenerar = async (formData: PLEGeneracionData) => {
     setGenerando(true);
     try {
-      console.log('🚀 Generando PLE con datos unificados:', formData);
       
       // Usar el servicio API unificado
       const resultado = await pleApiService.generarPLE(formData);
-      
-      console.log('✅ PLE generado exitosamente:', resultado);
-      
+
       if (resultado.success) {
-        console.log(`📄 Archivo generado: ${resultado.archivo_nombre}`);
-        console.log(`📊 Total registros: ${resultado.total_registros}`);
         
         if (resultado.errores.length > 0) {
           console.warn('⚠️ Errores encontrados:', resultado.errores);

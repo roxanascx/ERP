@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import type { CuentaContable } from '../../../types/contabilidad';
+import { Check, Loader2, TriangleAlert, X } from 'lucide-react';
 import { ContabilidadApiService } from '../../../services/contabilidadApi';
+import { fieldControl } from '../../common/FormField';
+import { cn } from '../../../lib/cn';
 
 interface CuentaAutocompleteProps {
   value: string;
@@ -110,7 +113,6 @@ const CuentaAutocomplete: React.FC<CuentaAutocompleteProps> = ({
       );
       
       if (cuentaExacta) {
-        console.log('✅ Cuenta encontrada automáticamente:', cuentaExacta);
         onSelect(cuentaExacta);
         setShowDropdown(false); // Cerrar dropdown al encontrar coincidencia exacta
       }
@@ -171,10 +173,10 @@ const CuentaAutocomplete: React.FC<CuentaAutocompleteProps> = ({
   const mostrarError = error || (value.trim() && !cuentaValida);
 
   return (
-    <div style={{ position: 'relative', width: '100%' }}>
-      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-        {/* Input de código */}
-        <div style={{ flex: '0 0 120px', position: 'relative' }}>
+    <div className="relative w-full">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
+        {/* Codigo */}
+        <div className="relative sm:w-32 sm:shrink-0">
           <input
             ref={inputRef}
             type="text"
@@ -185,213 +187,100 @@ const CuentaAutocomplete: React.FC<CuentaAutocompleteProps> = ({
             onFocus={handleFocus}
             placeholder={placeholder}
             disabled={disabled}
-            style={{
-              width: '100%',
-              padding: '8px 12px',
-              border: `2px solid ${mostrarError ? '#ef4444' : cuentaValida ? '#10b981' : '#d1d5db'}`,
-              borderRadius: '6px',
-              fontSize: '14px',
-              background: disabled ? '#f9fafb' : 'white',
-              outline: 'none',
-              transition: 'border-color 0.2s',
-              fontFamily: 'monospace',
-              fontWeight: '600'
-            }}
+            autoComplete="off"
+            aria-invalid={Boolean(mostrarError)}
+            aria-expanded={showDropdown}
+            className={cn(fieldControl(Boolean(mostrarError)), 'pr-9 font-mono')}
           />
-          
-          {/* Indicador de validación */}
+
+          {/* Estado de la validacion */}
           {value.trim() && (
-            <div style={{
-              position: 'absolute',
-              right: '8px',
-              top: '50%',
-              transform: 'translateY(-50%)',
-              fontSize: '14px'
-            }}>
+            <span className="absolute top-1/2 right-3 -translate-y-1/2" aria-hidden="true">
               {loading ? (
-                <span style={{ color: '#6b7280' }}>⏳</span>
+                <Loader2 className="size-4 animate-spin text-slate-400" />
               ) : cuentaValida ? (
-                <span style={{ color: '#10b981' }}>✓</span>
+                <Check className="size-4 text-green-600" />
               ) : (
-                <span style={{ color: '#ef4444' }}>✗</span>
+                <X className="size-4 text-red-500" />
               )}
-            </div>
+            </span>
           )}
         </div>
 
-        {/* Campo de denominación (solo lectura y autocompletado) */}
-        <div style={{ flex: 1 }}>
-          <div style={{
-            width: '100%',
-            padding: '8px 12px',
-            border: '1px solid #e5e7eb',
-            borderRadius: '6px',
-            fontSize: '14px',
-            background: '#f8fafc',
-            color: denominacion ? '#1f2937' : '#9ca3af',
-            fontWeight: denominacion ? '500' : 'normal',
-            minHeight: '40px',
-            display: 'flex',
-            alignItems: 'center',
-            position: 'relative'
-          }}>
-            {denominacion || 'Nombre de la cuenta aparecerá aquí...'}
-            {denominacion && (
-              <div style={{
-                position: 'absolute',
-                right: '8px',
-                top: '50%',
-                transform: 'translateY(-50%)',
-                fontSize: '12px',
-                color: '#10b981',
-                background: '#ecfdf5',
-                padding: '2px 6px',
-                borderRadius: '4px',
-                fontWeight: '600'
-              }}>
-                AUTO
-              </div>
+        {/* Denominacion (solo lectura) */}
+        <div className="min-w-0 flex-1">
+          <p
+            className={cn(
+              'flex items-center gap-2 truncate rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm',
+              denominacion ? 'text-slate-800' : 'text-slate-400 italic'
             )}
-          </div>
+          >
+            <span className="min-w-0 truncate">
+              {denominacion || 'El nombre de la cuenta aparecerá aquí'}
+            </span>
+            {denominacion && (
+              <span className="ml-auto shrink-0 rounded bg-green-100 px-1.5 py-0.5 text-[10px] font-bold text-green-700">
+                AUTO
+              </span>
+            )}
+          </p>
         </div>
       </div>
 
-      {/* Dropdown de sugerencias */}
+      {/* Sugerencias */}
       {showDropdown && cuentasFiltradas.length > 0 && (
         <div
           ref={dropdownRef}
-          style={{
-            position: 'absolute',
-            top: '100%',
-            left: 0,
-            right: 0,
-            zIndex: 1000,
-            background: 'white',
-            border: '1px solid #d1d5db',
-            borderRadius: '8px',
-            boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
-            maxHeight: '300px',
-            overflowY: 'auto',
-            marginTop: '4px'
-          }}
+          className="absolute z-20 mt-1 w-full min-w-72 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg"
         >
-          {/* Header del dropdown */}
-          <div style={{
-            padding: '8px 12px',
-            background: '#f8fafc',
-            borderBottom: '1px solid #e5e7eb',
-            fontSize: '12px',
-            color: '#6b7280',
-            fontWeight: '500'
-          }}>
-            {cuentasFiltradas.length} cuenta{cuentasFiltradas.length !== 1 ? 's' : ''} encontrada{cuentasFiltradas.length !== 1 ? 's' : ''}
-          </div>
-          
-          {cuentasFiltradas.map((cuenta, index) => (
-            <div
-              key={cuenta.codigo}
-              onClick={() => handleSelectCuenta(cuenta)}
-              style={{
-                padding: '12px',
-                cursor: 'pointer',
-                borderBottom: index < cuentasFiltradas.length - 1 ? '1px solid #f3f4f6' : 'none',
-                background: index === selectedIndex ? '#f0f9ff' : 'white',
-                transition: 'background-color 0.2s'
-              }}
-              onMouseEnter={() => setSelectedIndex(index)}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    gap: '8px',
-                    marginBottom: '4px'
-                  }}>
-                    <span style={{
-                      fontWeight: '700',
-                      fontSize: '14px',
-                      color: '#1f2937',
-                      fontFamily: 'monospace',
-                      background: '#f3f4f6',
-                      padding: '2px 6px',
-                      borderRadius: '4px'
-                    }}>
+          <p className="border-b border-slate-100 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-500 tabular-nums">
+            {cuentasFiltradas.length} cuenta{cuentasFiltradas.length !== 1 ? 's' : ''} encontrada
+            {cuentasFiltradas.length !== 1 ? 's' : ''}
+          </p>
+
+          <ul className="max-h-60 overflow-y-auto">
+            {cuentasFiltradas.map((cuenta, index) => (
+              <li key={cuenta.codigo}>
+                <button
+                  type="button"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => handleSelectCuenta(cuenta)}
+                  className={cn(
+                    'flex w-full items-center gap-3 border-0 px-3 py-2 text-left',
+                    index === selectedIndex ? 'bg-blue-50' : 'bg-transparent hover:bg-slate-50'
+                  )}
+                >
+                  <span className="min-w-0 flex-1">
+                    <span className="block font-mono text-sm font-semibold text-slate-800">
                       {cuenta.codigo}
                     </span>
-                    <span style={{
-                      fontSize: '10px',
-                      padding: '2px 6px',
-                      borderRadius: '4px',
-                      background: cuenta.naturaleza === 'DEUDORA' ? '#fef3c7' : 
-                                  cuenta.naturaleza === 'ACREEDORA' ? '#d1fae5' : '#e0e7ff',
-                      color: cuenta.naturaleza === 'DEUDORA' ? '#92400e' : 
-                             cuenta.naturaleza === 'ACREEDORA' ? '#065f46' : '#3730a3',
-                      fontWeight: '500'
-                    }}>
-                      {cuenta.naturaleza}
+                    <span className="block truncate text-xs text-slate-500">
+                      {cuenta.descripcion}
                     </span>
-                  </div>
-                  <div style={{ 
-                    fontSize: '13px', 
-                    color: '#4b5563', 
-                    lineHeight: '1.4',
-                    fontWeight: '500'
-                  }}>
-                    {cuenta.descripcion}
-                  </div>
-                  {cuenta.codigo.length > 1 && (
-                    <div style={{
-                      fontSize: '10px',
-                      color: '#9ca3af',
-                      marginTop: '2px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '4px'
-                    }}>
-                      <span>📁</span>
-                      Nivel {cuenta.codigo.length}
-                    </div>
-                  )}
-                </div>
-                <div style={{
-                  fontSize: '12px',
-                  color: '#10b981',
-                  fontWeight: '600'
-                }}>
-                  ✓
-                </div>
-              </div>
-            </div>
-          ))}
-          
+                  </span>
+                  <span className="shrink-0 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-500">
+                    Nivel {cuenta.codigo.length}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+
           {loading && (
-            <div style={{ 
-              padding: '16px', 
-              textAlign: 'center', 
-              color: '#6b7280',
-              fontSize: '14px'
-            }}>
-              <div style={{ marginBottom: '4px' }}>🔍</div>
-              Buscando cuentas...
-            </div>
+            <p className="flex items-center gap-2 border-t border-slate-100 px-3 py-2 text-xs text-slate-500">
+              <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
+              Buscando cuentas…
+            </p>
           )}
         </div>
       )}
 
-      {/* Mensaje de error */}
+      {/* Error */}
       {mostrarError && value.trim() && (
-        <div style={{
-          marginTop: '4px',
-          fontSize: '12px',
-          color: '#ef4444',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '4px'
-        }}>
-          <span>⚠️</span>
-          {loading ? 'Verificando cuenta...' : 'Código de cuenta no válido'}
-        </div>
+        <p className="mt-1 flex items-center gap-1 text-xs text-red-600">
+          <TriangleAlert className="size-3" aria-hidden="true" />
+          {loading ? 'Verificando cuenta…' : 'Código de cuenta no válido'}
+        </p>
       )}
     </div>
   );

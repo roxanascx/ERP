@@ -1,5 +1,4 @@
-import { useState, useEffect } from 'react';
-import { EmpresaApiService } from '../services/empresaApi';
+import { useEmpresaContext } from '../contexts/EmpresaContext';
 import type { Empresa } from '../types/empresa';
 
 export interface UseEmpresaActualResult {
@@ -10,39 +9,20 @@ export interface UseEmpresaActualResult {
 }
 
 /**
- * Hook para obtener y manejar la empresa actualmente seleccionada
+ * Empresa actualmente seleccionada.
+ *
+ * Fachada de EmpresaContext, con la misma firma que antes (4 paginas de
+ * contabilidad la consumen). Antes hacia su propio `GET /current/info` al
+ * montar, en paralelo al de useEmpresaValidation.
  */
 export const useEmpresaActual = (): UseEmpresaActualResult => {
-  const [empresa, setEmpresa] = useState<Empresa | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchEmpresaActual = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      const empresaActual = await EmpresaApiService.getEmpresaActual();
-      setEmpresa(empresaActual);
-      
-    } catch (err) {
-      console.error('Error obteniendo empresa actual:', err);
-      setError(err instanceof Error ? err.message : 'Error desconocido');
-      setEmpresa(null);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchEmpresaActual();
-  }, []);
+  const { empresaActual, loading, error, revalidate } = useEmpresaContext();
 
   return {
-    empresa,
+    empresa: empresaActual,
     loading,
     error,
-    refetch: fetchEmpresaActual
+    refetch: revalidate,
   };
 };
 

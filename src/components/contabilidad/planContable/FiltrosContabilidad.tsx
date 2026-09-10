@@ -1,431 +1,238 @@
 import React, { useState } from 'react';
+import { ChevronDown, Plus, Search, SlidersHorizontal, X } from 'lucide-react';
+import { cn } from '../../../lib/cn';
+
+export interface Filtros {
+  busqueda: string;
+  clase_contable?: number;
+  nivel?: number;
+  solo_activas: boolean;
+}
 
 interface FiltrosContabilidadProps {
-  filtros: {
-    busqueda: string;
-    clase_contable?: number;
-    nivel?: number;
-    solo_activas: boolean;
-  };
-  onFiltrosChange: (filtros: any) => void;
+  filtros: Filtros;
+  onFiltrosChange: (filtros: Filtros) => void;
   onCrearCuenta: () => void;
   totalCuentas: number;
 }
+
+const CLASES_CONTABLES = [
+  { value: 1, label: '1 · Activo disponible y exigible' },
+  { value: 2, label: '2 · Activo realizable' },
+  { value: 3, label: '3 · Activo inmovilizado' },
+  { value: 4, label: '4 · Pasivo' },
+  { value: 5, label: '5 · Patrimonio neto' },
+  { value: 6, label: '6 · Gastos por naturaleza' },
+  { value: 7, label: '7 · Ventas' },
+  { value: 8, label: '8 · Saldos intermediarios' },
+  { value: 9, label: '9 · Contabilidad analítica' },
+];
+
+const NIVELES = [
+  { value: 1, label: '1 · Clase' },
+  { value: 2, label: '2 · Grupo' },
+  { value: 3, label: '3 · Subgrupo' },
+  { value: 4, label: '4 · Cuenta' },
+  { value: 5, label: '5 · Subcuenta' },
+  { value: 6, label: '6 · Divisionaria' },
+  { value: 7, label: '7 · Subdivisionaria' },
+  { value: 8, label: '8 · Auxiliar' },
+];
+
+const selectClass = cn(
+  'w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900',
+  'focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none'
+);
+
+/** Etiqueta de filtro aplicado, con su aspa para quitarlo. */
+const Chip: React.FC<{ label: string; onRemove: () => void; tone: string }> = ({
+  label,
+  onRemove,
+  tone,
+}) => (
+  <span
+    className={cn('inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium', tone)}
+  >
+    {label}
+    <button
+      type="button"
+      onClick={onRemove}
+      aria-label={`Quitar filtro ${label}`}
+      className="grid size-4 place-items-center rounded-full border-0 bg-transparent p-0 text-current opacity-60 hover:opacity-100"
+    >
+      <X className="size-3" aria-hidden="true" />
+    </button>
+  </span>
+);
 
 const FiltrosContabilidad: React.FC<FiltrosContabilidadProps> = ({
   filtros,
   onFiltrosChange,
   onCrearCuenta,
-  totalCuentas
+  totalCuentas,
 }) => {
   const [showAdvanced, setShowAdvanced] = useState(false);
 
-  const clasesContables = [
-    { value: 1, label: '1 - ACTIVO DISPONIBLE Y EXIGIBLE' },
-    { value: 2, label: '2 - ACTIVO REALIZABLE' },
-    { value: 3, label: '3 - ACTIVO INMOVILIZADO' },
-    { value: 4, label: '4 - PASIVO' },
-    { value: 5, label: '5 - PATRIMONIO NETO' },
-    { value: 6, label: '6 - GASTOS POR NATURALEZA' },
-    { value: 7, label: '7 - VENTAS' },
-    { value: 8, label: '8 - SALDOS INTERMEDIARIOS' },
-    { value: 9, label: '9 - CONTABILIDAD ANALÍTICA' }
-  ];
+  const set = (patch: Partial<Filtros>) => onFiltrosChange({ ...filtros, ...patch });
 
-  const niveles = [
-    { value: 1, label: '1 - CLASE' },
-    { value: 2, label: '2 - GRUPO' },
-    { value: 3, label: '3 - SUBGRUPO' },
-    { value: 4, label: '4 - CUENTA' },
-    { value: 5, label: '5 - SUBCUENTA' },
-    { value: 6, label: '6 - DIVISIONARIA' },
-    { value: 7, label: '7 - SUBDIVISIONARIA' },
-    { value: 8, label: '8 - AUXILIAR' }
-  ];
-
-  const handleBusquedaChange = (value: string) => {
-    onFiltrosChange({ ...filtros, busqueda: value });
-  };
-
-  const handleClaseChange = (value: string) => {
-    onFiltrosChange({ 
-      ...filtros, 
-      clase_contable: value ? parseInt(value) : undefined 
-    });
-  };
-
-  const handleNivelChange = (value: string) => {
-    onFiltrosChange({ 
-      ...filtros, 
-      nivel: value ? parseInt(value) : undefined 
-    });
-  };
-
-  const handleActivasChange = (checked: boolean) => {
-    onFiltrosChange({ ...filtros, solo_activas: checked });
-  };
-
-  const limpiarFiltros = () => {
+  const limpiarFiltros = () =>
     onFiltrosChange({
       busqueda: '',
       clase_contable: undefined,
       nivel: undefined,
-      solo_activas: true
+      solo_activas: true,
     });
-  };
 
-  const hayFiltrosActivos = filtros.busqueda || filtros.clase_contable || filtros.nivel || !filtros.solo_activas;
+  const hayFiltrosActivos = Boolean(
+    filtros.busqueda || filtros.clase_contable || filtros.nivel || !filtros.solo_activas
+  );
+
+  const claseLabel = CLASES_CONTABLES.find((c) => c.value === filtros.clase_contable)?.label;
+  const nivelLabel = NIVELES.find((n) => n.value === filtros.nivel)?.label;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+    <div className="space-y-4">
       {/* Fila principal */}
-      <div style={{ 
-        display: 'flex', 
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: '1rem',
-        flexWrap: 'wrap'
-      }}>
-        <div style={{ flex: 1, maxWidth: '28rem' }}>
-          <div style={{ position: 'relative' }}>
-            <div style={{ 
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              bottom: 0,
-              paddingLeft: '0.75rem',
-              display: 'flex',
-              alignItems: 'center',
-              pointerEvents: 'none'
-            }}>
-              <svg style={{ height: '1.25rem', width: '1.25rem', color: '#9ca3af' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-            </div>
-            <input
-              type="text"
-              placeholder="Buscar por código o descripción..."
-              value={filtros.busqueda}
-              onChange={(e) => handleBusquedaChange(e.target.value)}
-              style={{
-                display: 'block',
-                width: '100%',
-                paddingLeft: '2.5rem',
-                paddingRight: '3rem',
-                paddingTop: '0.5rem',
-                paddingBottom: '0.5rem',
-                border: '1px solid #d1d5db',
-                borderRadius: '0.375rem',
-                lineHeight: '1.25',
-                background: 'white',
-                fontSize: '0.875rem',
-                outline: 'none',
-                transition: 'all 0.15s ease-in-out'
-              }}
-              onFocus={(e) => {
-                e.target.style.borderColor = '#3b82f6';
-                e.target.style.boxShadow = '0 0 0 1px #3b82f6';
-              }}
-              onBlur={(e) => {
-                e.target.style.borderColor = '#d1d5db';
-                e.target.style.boxShadow = 'none';
-              }}
-            />
-            {filtros.busqueda && (
-              <button
-                onClick={() => handleBusquedaChange('')}
-                style={{
-                  position: 'absolute',
-                  top: 0,
-                  right: 0,
-                  bottom: 0,
-                  paddingRight: '0.75rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                  background: 'transparent',
-                  border: 'none',
-                  cursor: 'pointer',
-                  color: '#6b7280'
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.color = '#374151'}
-                onMouseLeave={(e) => e.currentTarget.style.color = '#6b7280'}
-              >
-                <svg style={{ height: '1rem', width: '1rem' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative min-w-0 flex-1 sm:max-w-md">
+          <Search
+            className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-slate-400"
+            aria-hidden="true"
+          />
+          <input
+            type="search"
+            value={filtros.busqueda}
+            onChange={(e) => set({ busqueda: e.target.value })}
+            placeholder="Buscar por código o descripción…"
+            aria-label="Buscar cuenta contable"
+            className={cn(
+              'w-full rounded-lg border border-slate-300 bg-white py-2 pr-9 pl-9 text-sm text-slate-900',
+              'placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none'
             )}
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <span style={{ 
-              fontSize: '0.875rem', 
-              color: '#6b7280',
-              fontWeight: '500'
-            }}>
-              {totalCuentas} cuenta{totalCuentas !== 1 ? 's' : ''}
-            </span>
-            {hayFiltrosActivos && (
-              <span style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                padding: '0.125rem 0.5rem',
-                borderRadius: '0.375rem',
-                fontSize: '0.75rem',
-                fontWeight: '500',
-                background: '#dbeafe',
-                color: '#1e40af'
-              }}>
-                Filtrado
-              </span>
-            )}
-          </div>
-
-          <button
-            onClick={() => setShowAdvanced(!showAdvanced)}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              padding: '0.5rem 0.75rem',
-              border: '1px solid #d1d5db',
-              borderRadius: '0.375rem',
-              background: 'white',
-              fontSize: '0.875rem',
-              fontWeight: '500',
-              color: '#374151',
-              cursor: 'pointer',
-              transition: 'all 0.15s ease-in-out'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = '#f9fafb';
-              e.currentTarget.style.borderColor = '#9ca3af';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'white';
-              e.currentTarget.style.borderColor = '#d1d5db';
-            }}
-          >
-            <svg style={{ height: '1rem', width: '1rem' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4" />
-            </svg>
-            Filtros {showAdvanced ? 'avanzados' : ''}
-            <svg 
-              style={{ 
-                height: '1rem', 
-                width: '1rem',
-                transform: showAdvanced ? 'rotate(180deg)' : 'rotate(0deg)',
-                transition: 'transform 0.15s ease-in-out'
-              }} 
-              fill="none" 
-              stroke="currentColor" 
-              viewBox="0 0 24 24"
+          />
+          {filtros.busqueda && (
+            <button
+              type="button"
+              onClick={() => set({ busqueda: '' })}
+              aria-label="Limpiar búsqueda"
+              className="absolute top-1/2 right-2 grid size-6 -translate-y-1/2 place-items-center rounded border-0 bg-transparent p-0 text-slate-400 hover:text-slate-700"
             >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-            </svg>
-          </button>
-
-          <button
-            onClick={onCrearCuenta}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              padding: '0.5rem 1rem',
-              background: '#3b82f6',
-              color: 'white',
-              border: 'none',
-              borderRadius: '0.375rem',
-              fontSize: '0.875rem',
-              fontWeight: '500',
-              cursor: 'pointer',
-              transition: 'background-color 0.15s ease-in-out'
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.background = '#2563eb'}
-            onMouseLeave={(e) => e.currentTarget.style.background = '#3b82f6'}
-          >
-            <svg style={{ height: '1rem', width: '1rem' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            Nueva Cuenta
-          </button>
+              <X className="size-4" aria-hidden="true" />
+            </button>
+          )}
         </div>
+
+        <span className="hidden text-sm text-slate-500 tabular-nums sm:inline">
+          {totalCuentas.toLocaleString('es-PE')} cuentas
+        </span>
+
+        <button
+          type="button"
+          onClick={() => setShowAdvanced((v) => !v)}
+          aria-expanded={showAdvanced}
+          className={cn(
+            'inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-colors',
+            showAdvanced
+              ? 'border-blue-300 bg-blue-50 text-blue-700'
+              : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
+          )}
+        >
+          <SlidersHorizontal className="size-4" aria-hidden="true" />
+          Filtros
+          <ChevronDown
+            className={cn('size-4 transition-transform', showAdvanced && 'rotate-180')}
+            aria-hidden="true"
+          />
+        </button>
+
+        <button
+          type="button"
+          onClick={onCrearCuenta}
+          className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3.5 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+        >
+          <Plus className="size-4" aria-hidden="true" />
+          Nueva cuenta
+        </button>
       </div>
 
       {/* Filtros avanzados */}
       {showAdvanced && (
-        <div style={{
-          background: '#f9fafb',
-          borderRadius: '0.5rem',
-          padding: '1rem',
-          border: '1px solid #e5e7eb'
-        }}>
-          <div style={{ 
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-            gap: '1rem'
-          }}>
-            {/* Clase contable */}
+        <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             <div>
-              <label style={{ 
-                display: 'block',
-                fontSize: '0.875rem',
-                fontWeight: '500',
-                color: '#374151',
-                marginBottom: '0.25rem'
-              }}>
-                Clase Contable
+              <label
+                htmlFor="filtro-clase"
+                className="mb-1.5 block text-xs font-medium tracking-wide text-slate-500 uppercase"
+              >
+                Clase contable
               </label>
               <select
-                value={filtros.clase_contable || ''}
-                onChange={(e) => handleClaseChange(e.target.value)}
-                style={{
-                  display: 'block',
-                  width: '100%',
-                  padding: '0.5rem 0.75rem',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '0.375rem',
-                  background: 'white',
-                  fontSize: '0.875rem',
-                  outline: 'none',
-                  transition: 'all 0.15s ease-in-out'
-                }}
-                onFocus={(e) => {
-                  e.target.style.borderColor = '#3b82f6';
-                  e.target.style.boxShadow = '0 0 0 1px #3b82f6';
-                }}
-                onBlur={(e) => {
-                  e.target.style.borderColor = '#d1d5db';
-                  e.target.style.boxShadow = 'none';
-                }}
+                id="filtro-clase"
+                value={filtros.clase_contable ?? ''}
+                onChange={(e) =>
+                  set({ clase_contable: e.target.value ? parseInt(e.target.value, 10) : undefined })
+                }
+                className={selectClass}
               >
                 <option value="">Todas las clases</option>
-                {clasesContables.map((clase) => (
-                  <option key={clase.value} value={clase.value}>
-                    {clase.label}
+                {CLASES_CONTABLES.map((c) => (
+                  <option key={c.value} value={c.value}>
+                    {c.label}
                   </option>
                 ))}
               </select>
             </div>
 
-            {/* Nivel */}
             <div>
-              <label style={{ 
-                display: 'block',
-                fontSize: '0.875rem',
-                fontWeight: '500',
-                color: '#374151',
-                marginBottom: '0.25rem'
-              }}>
-                Nivel Jerárquico
+              <label
+                htmlFor="filtro-nivel"
+                className="mb-1.5 block text-xs font-medium tracking-wide text-slate-500 uppercase"
+              >
+                Nivel
               </label>
               <select
-                value={filtros.nivel || ''}
-                onChange={(e) => handleNivelChange(e.target.value)}
-                style={{
-                  display: 'block',
-                  width: '100%',
-                  padding: '0.5rem 0.75rem',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '0.375rem',
-                  background: 'white',
-                  fontSize: '0.875rem',
-                  outline: 'none',
-                  transition: 'all 0.15s ease-in-out'
-                }}
-                onFocus={(e) => {
-                  e.target.style.borderColor = '#3b82f6';
-                  e.target.style.boxShadow = '0 0 0 1px #3b82f6';
-                }}
-                onBlur={(e) => {
-                  e.target.style.borderColor = '#d1d5db';
-                  e.target.style.boxShadow = 'none';
-                }}
+                id="filtro-nivel"
+                value={filtros.nivel ?? ''}
+                onChange={(e) =>
+                  set({ nivel: e.target.value ? parseInt(e.target.value, 10) : undefined })
+                }
+                className={selectClass}
               >
                 <option value="">Todos los niveles</option>
-                {niveles.map((nivel) => (
-                  <option key={nivel.value} value={nivel.value}>
-                    {nivel.label}
+                {NIVELES.map((n) => (
+                  <option key={n.value} value={n.value}>
+                    {n.label}
                   </option>
                 ))}
               </select>
             </div>
 
-            {/* Estados */}
-            <div>
-              <label style={{ 
-                display: 'block',
-                fontSize: '0.875rem',
-                fontWeight: '500',
-                color: '#374151',
-                marginBottom: '0.25rem'
-              }}>
-                Estado
+            <div className="flex items-end">
+              <label
+                htmlFor="filtro-activas"
+                className="flex cursor-pointer items-center gap-2 text-sm text-slate-700"
+              >
+                <input
+                  id="filtro-activas"
+                  type="checkbox"
+                  checked={filtros.solo_activas}
+                  onChange={(e) => set({ solo_activas: e.target.checked })}
+                  className="size-4 cursor-pointer accent-blue-600"
+                />
+                Solo cuentas activas
               </label>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                <label style={{ display: 'flex', alignItems: 'center' }}>
-                  <input
-                    type="checkbox"
-                    checked={filtros.solo_activas}
-                    onChange={(e) => handleActivasChange(e.target.checked)}
-                    style={{
-                      height: '1rem',
-                      width: '1rem',
-                      accentColor: '#3b82f6',
-                      borderRadius: '0.25rem'
-                    }}
-                  />
-                  <span style={{ 
-                    marginLeft: '0.5rem',
-                    fontSize: '0.875rem',
-                    color: '#374151'
-                  }}>
-                    Solo cuentas activas
-                  </span>
-                </label>
-              </div>
             </div>
           </div>
 
-          {/* Acciones de filtros */}
           {hayFiltrosActivos && (
-            <div style={{ 
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              marginTop: '1rem',
-              paddingTop: '1rem',
-              borderTop: '1px solid #e5e7eb'
-            }}>
-              <span style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                padding: '0.125rem 0.625rem',
-                borderRadius: '9999px',
-                fontSize: '0.75rem',
-                fontWeight: '500',
-                background: '#dbeafe',
-                color: '#1e40af'
-              }}>
+            <div className="mt-4 flex items-center justify-between border-t border-slate-200 pt-3">
+              <span className="text-xs font-medium tracking-wide text-slate-500 uppercase">
                 Filtros aplicados
               </span>
-              
               <button
+                type="button"
                 onClick={limpiarFiltros}
-                style={{
-                  fontSize: '0.875rem',
-                  color: '#6b7280',
-                  textDecoration: 'underline',
-                  background: 'transparent',
-                  border: 'none',
-                  cursor: 'pointer',
-                  transition: 'color 0.15s ease-in-out'
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.color = '#374151'}
-                onMouseLeave={(e) => e.currentTarget.style.color = '#6b7280'}
+                className="rounded border-0 bg-transparent px-0 py-0 text-sm font-medium text-slate-600 hover:text-slate-900 hover:underline"
               >
                 Limpiar filtros
               </button>
@@ -434,131 +241,36 @@ const FiltrosContabilidad: React.FC<FiltrosContabilidadProps> = ({
         </div>
       )}
 
-      {/* Filtros activos (chips) */}
+      {/* Filtros aplicados */}
       {hayFiltrosActivos && (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+        <div className="flex flex-wrap gap-2">
           {filtros.busqueda && (
-            <span style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              padding: '0.25rem 0.75rem',
-              borderRadius: '9999px',
-              fontSize: '0.875rem',
-              background: '#dbeafe',
-              color: '#1e40af'
-            }}>
-              Búsqueda: "{filtros.busqueda}"
-              <button
-                onClick={() => handleBusquedaChange('')}
-                style={{
-                  marginLeft: '0.5rem',
-                  color: '#2563eb',
-                  background: 'transparent',
-                  border: 'none',
-                  cursor: 'pointer',
-                  fontSize: '1rem',
-                  lineHeight: 1,
-                  transition: 'color 0.15s ease-in-out'
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.color = '#1d4ed8'}
-                onMouseLeave={(e) => e.currentTarget.style.color = '#2563eb'}
-              >
-                ×
-              </button>
-            </span>
+            <Chip
+              label={`Búsqueda: "${filtros.busqueda}"`}
+              onRemove={() => set({ busqueda: '' })}
+              tone="bg-blue-50 text-blue-700"
+            />
           )}
-          
-          {filtros.clase_contable && (
-            <span style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              padding: '0.25rem 0.75rem',
-              borderRadius: '9999px',
-              fontSize: '0.875rem',
-              background: '#d1fae5',
-              color: '#065f46'
-            }}>
-              Clase: {filtros.clase_contable}
-              <button
-                onClick={() => handleClaseChange('')}
-                style={{
-                  marginLeft: '0.5rem',
-                  color: '#059669',
-                  background: 'transparent',
-                  border: 'none',
-                  cursor: 'pointer',
-                  fontSize: '1rem',
-                  lineHeight: 1,
-                  transition: 'color 0.15s ease-in-out'
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.color = '#047857'}
-                onMouseLeave={(e) => e.currentTarget.style.color = '#059669'}
-              >
-                ×
-              </button>
-            </span>
+          {filtros.clase_contable && claseLabel && (
+            <Chip
+              label={claseLabel}
+              onRemove={() => set({ clase_contable: undefined })}
+              tone="bg-emerald-50 text-emerald-700"
+            />
           )}
-          
-          {filtros.nivel && (
-            <span style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              padding: '0.25rem 0.75rem',
-              borderRadius: '9999px',
-              fontSize: '0.875rem',
-              background: '#fef3c7',
-              color: '#92400e'
-            }}>
-              Nivel: {filtros.nivel}
-              <button
-                onClick={() => handleNivelChange('')}
-                style={{
-                  marginLeft: '0.5rem',
-                  color: '#d97706',
-                  background: 'transparent',
-                  border: 'none',
-                  cursor: 'pointer',
-                  fontSize: '1rem',
-                  lineHeight: 1,
-                  transition: 'color 0.15s ease-in-out'
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.color = '#b45309'}
-                onMouseLeave={(e) => e.currentTarget.style.color = '#d97706'}
-              >
-                ×
-              </button>
-            </span>
+          {filtros.nivel && nivelLabel && (
+            <Chip
+              label={nivelLabel}
+              onRemove={() => set({ nivel: undefined })}
+              tone="bg-violet-50 text-violet-700"
+            />
           )}
-          
           {!filtros.solo_activas && (
-            <span style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              padding: '0.25rem 0.75rem',
-              borderRadius: '9999px',
-              fontSize: '0.875rem',
-              background: '#fee2e2',
-              color: '#991b1b'
-            }}>
-              Incluye inactivas
-              <button
-                onClick={() => handleActivasChange(true)}
-                style={{
-                  marginLeft: '0.5rem',
-                  color: '#dc2626',
-                  background: 'transparent',
-                  border: 'none',
-                  cursor: 'pointer',
-                  fontSize: '1rem',
-                  lineHeight: 1,
-                  transition: 'color 0.15s ease-in-out'
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.color = '#b91c1c'}
-                onMouseLeave={(e) => e.currentTarget.style.color = '#dc2626'}
-              >
-                ×
-              </button>
-            </span>
+            <Chip
+              label="Incluye inactivas"
+              onRemove={() => set({ solo_activas: true })}
+              tone="bg-slate-100 text-slate-700"
+            />
           )}
         </div>
       )}

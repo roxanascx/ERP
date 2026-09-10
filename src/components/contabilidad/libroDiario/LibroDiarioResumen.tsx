@@ -1,142 +1,132 @@
 import React from 'react';
+import { CheckCircle2, RefreshCw, TriangleAlert } from 'lucide-react';
 import type { ResumenLibroDiario } from '../../../types/libroDiario';
-import './LibroDiarioResumen.css';
+import { cn } from '../../../lib/cn';
 
 interface LibroDiarioResumenProps {
   resumen: ResumenLibroDiario;
   onRefresh: () => void;
 }
 
-const LibroDiarioResumen: React.FC<LibroDiarioResumenProps> = ({
-  resumen,
-  onRefresh
-}) => {
-  const formatCurrency = (amount: number): string => {
-    return new Intl.NumberFormat('es-PE', {
-      style: 'currency',
-      currency: 'PEN',
-      minimumFractionDigits: 2
-    }).format(amount);
-  };
+const soles = (amount: number): string =>
+  new Intl.NumberFormat('es-PE', {
+    style: 'currency',
+    currency: 'PEN',
+    minimumFractionDigits: 2,
+  }).format(amount);
 
-  const formatNumber = (num: number): string => {
-    return new Intl.NumberFormat('es-PE').format(num);
-  };
+const numero = (n: number): string => new Intl.NumberFormat('es-PE').format(n);
 
-  const calcularBalance = (): number => {
-    return resumen.totalDebe - resumen.totalHaber;
-  };
+/**
+ * Panel lateral con los totales del periodo.
+ * Migrado a Tailwind; su LibroDiarioResumen.css (6 kB) se elimina.
+ */
+const LibroDiarioResumen: React.FC<LibroDiarioResumenProps> = ({ resumen, onRefresh }) => {
+  const balance = resumen.totalDebe - resumen.totalHaber;
+  // Un asiento cuadra cuando debe y haber coinciden al centimo.
+  const balanceado = Math.abs(balance) < 0.01;
 
-  const isBalanceado = (): boolean => {
-    return Math.abs(calcularBalance()) < 0.01;
-  };
+  const filas = [
+    { label: 'Libros', value: numero(resumen.totalLibros), tone: 'text-slate-900' },
+    { label: 'Asientos', value: numero(resumen.totalAsientos), tone: 'text-slate-900' },
+    { label: 'Total debe', value: soles(resumen.totalDebe), tone: 'text-blue-700' },
+    { label: 'Total haber', value: soles(resumen.totalHaber), tone: 'text-violet-700' },
+  ];
+
+  const estados = [
+    { label: 'Borrador', value: resumen.asientosPorEstado.borrador || 0 },
+    { label: 'Finalizado', value: resumen.asientosPorEstado.finalizado || 0 },
+    { label: 'Enviado', value: resumen.asientosPorEstado.enviado || 0 },
+  ];
 
   return (
-    <div className="libro-diario-resumen">
-      <div className="resumen-header">
-        <h3>📊 Resumen del Período</h3>
+    <aside className="h-fit space-y-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="text-sm font-semibold text-slate-900">Resumen del período</h3>
         <button
-          className="btn-refresh"
+          type="button"
           onClick={onRefresh}
           title="Actualizar resumen"
+          aria-label="Actualizar resumen"
+          className="grid size-8 place-items-center rounded-lg border-0 bg-transparent p-0 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
         >
-          🔄
+          <RefreshCw className="size-4" aria-hidden="true" />
         </button>
       </div>
 
-      <div className="resumen-grid">
-        {/* Total de libros */}
-        <div className="resumen-card">
-          <div className="card-icon">📚</div>
-          <div className="card-content">
-            <div className="card-label">Total Libros</div>
-            <div className="card-value primary">{formatNumber(resumen.totalLibros)}</div>
+      <dl className="space-y-2.5">
+        {filas.map((f) => (
+          <div key={f.label} className="flex items-baseline justify-between gap-3">
+            <dt className="text-sm text-slate-500">{f.label}</dt>
+            <dd className={cn('text-sm font-semibold tabular-nums', f.tone)}>{f.value}</dd>
           </div>
-        </div>
+        ))}
+      </dl>
 
-        {/* Total de asientos */}
-        <div className="resumen-card">
-          <div className="card-icon">📝</div>
-          <div className="card-content">
-            <div className="card-label">Total Asientos</div>
-            <div className="card-value primary">{formatNumber(resumen.totalAsientos)}</div>
-          </div>
-        </div>
-
-        {/* Total debe */}
-        <div className="resumen-card">
-          <div className="card-icon">💰</div>
-          <div className="card-content">
-            <div className="card-label">Total Debe</div>
-            <div className="card-value debe">{formatCurrency(resumen.totalDebe)}</div>
-          </div>
-        </div>
-
-        {/* Total haber */}
-        <div className="resumen-card">
-          <div className="card-icon">💸</div>
-          <div className="card-content">
-            <div className="card-label">Total Haber</div>
-            <div className="card-value haber">{formatCurrency(resumen.totalHaber)}</div>
-          </div>
-        </div>
-
-        {/* Balance */}
-        <div className={`resumen-card balance ${isBalanceado() ? 'balanceado' : 'desbalanceado'}`}>
-          <div className="card-icon">{isBalanceado() ? '✅' : '⚠️'}</div>
-          <div className="card-content">
-            <div className="card-label">Balance</div>
-            <div className={`card-value ${isBalanceado() ? 'balanceado' : 'desbalanceado'}`}>
-              {formatCurrency(Math.abs(calcularBalance()))}
-            </div>
-            <div className="balance-status">
-              {isBalanceado() ? 'Balanceado' : 'Desbalanceado'}
-            </div>
-          </div>
-        </div>
-
-        {/* Asientos por estado */}
-        <div className="resumen-card estados">
-          <div className="card-icon">📋</div>
-          <div className="card-content">
-            <div className="card-label">Estados</div>
-            <div className="estados-breakdown">
-              <div className="estado-item">
-                <span className="estado-label">Borrador:</span>
-                <span className="estado-value">{formatNumber(resumen.asientosPorEstado.borrador || 0)}</span>
-              </div>
-              <div className="estado-item">
-                <span className="estado-label">Finalizado:</span>
-                <span className="estado-value">{formatNumber(resumen.asientosPorEstado.finalizado || 0)}</span>
-              </div>
-              <div className="estado-item">
-                <span className="estado-label">Enviado:</span>
-                <span className="estado-value">{formatNumber(resumen.asientosPorEstado.enviado || 0)}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Información adicional */}
-      <div className="resumen-footer">
-        <div className="info-item">
-          <span className="info-label">Último libro:</span>
-          <span className="info-value">
-            {resumen.ultimoLibro ? resumen.ultimoLibro.descripcion : 'N/A'}
-          </span>
-        </div>
-        
-        {resumen.ultimoLibro && (
-          <div className="info-item">
-            <span className="info-label">Fecha:</span>
-            <span className="info-value">
-              {new Date(resumen.ultimoLibro.fechaCreacion).toLocaleDateString('es-PE')}
-            </span>
-          </div>
+      {/* Balance */}
+      <div
+        className={cn(
+          'flex items-start gap-2.5 rounded-lg border px-3 py-2.5',
+          balanceado ? 'border-green-200 bg-green-50' : 'border-amber-200 bg-amber-50'
         )}
+      >
+        {balanceado ? (
+          <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-green-600" aria-hidden="true" />
+        ) : (
+          <TriangleAlert className="mt-0.5 size-4 shrink-0 text-amber-600" aria-hidden="true" />
+        )}
+        <div className="min-w-0">
+          <p
+            className={cn(
+              'text-xs font-medium tracking-wide uppercase',
+              balanceado ? 'text-green-700' : 'text-amber-700'
+            )}
+          >
+            {balanceado ? 'Balanceado' : 'Desbalanceado'}
+          </p>
+          <p
+            className={cn(
+              'text-sm font-bold tabular-nums',
+              balanceado ? 'text-green-800' : 'text-amber-800'
+            )}
+          >
+            {soles(Math.abs(balance))}
+          </p>
+        </div>
       </div>
-    </div>
+
+      {/* Estados */}
+      <div className="border-t border-slate-100 pt-3">
+        <p className="mb-2 text-xs font-medium tracking-wide text-slate-500 uppercase">
+          Asientos por estado
+        </p>
+        <dl className="space-y-1.5">
+          {estados.map((e) => (
+            <div key={e.label} className="flex items-baseline justify-between gap-3">
+              <dt className="text-sm text-slate-500">{e.label}</dt>
+              <dd className="text-sm font-semibold text-slate-800 tabular-nums">
+                {numero(e.value)}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      </div>
+
+      {/* Último libro */}
+      {resumen.ultimoLibro && (
+        <div className="border-t border-slate-100 pt-3">
+          <p className="mb-1 text-xs font-medium tracking-wide text-slate-500 uppercase">
+            Último libro
+          </p>
+          <p className="truncate text-sm font-medium text-slate-800">
+            {resumen.ultimoLibro.descripcion}
+          </p>
+          <p className="text-xs text-slate-500 tabular-nums">
+            {new Date(resumen.ultimoLibro.fechaCreacion).toLocaleDateString('es-PE')}
+          </p>
+        </div>
+      )}
+    </aside>
   );
 };
 

@@ -52,7 +52,6 @@ export const useSireAutoAuth = () => {
     setError(null);
     
     try {
-      console.log('🔐 [AUTO-AUTH] Iniciando autenticación automática...');
       
       const response = await apiClient.post<AutoAuthResponse>(
         '/api/v1/sire/auto-auth/auto-authenticate'
@@ -62,12 +61,9 @@ export const useSireAutoAuth = () => {
       
       const { results } = response.data;
       const totalAuthenticated = results.summary.successful_count + results.summary.already_authenticated_count;
-      
-      console.log(`✅ [AUTO-AUTH] Completado: ${totalAuthenticated}/${results.summary.total_processed} RUCs autenticados`);
-      
+
       // Mostrar resultados en consola para debugging
       if (results.successful.length > 0) {
-        console.log('✅ Autenticaciones exitosas:', results.successful);
       }
       
       if (results.failed.length > 0) {
@@ -91,11 +87,9 @@ export const useSireAutoAuth = () => {
    */
   const authenticateRuc = async (ruc: string): Promise<boolean> => {
     try {
-      console.log(`🔐 [AUTO-AUTH] Autenticando RUC específico: ${ruc}`);
       
       const response = await apiClient.post(`/api/v1/sire/auto-auth/authenticate/${ruc}`);
       
-      console.log(`✅ [AUTO-AUTH] RUC ${ruc} autenticado exitosamente`);
       return response.data.success;
       
     } catch (err: any) {

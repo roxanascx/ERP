@@ -1,16 +1,32 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  EmpresaList, 
-  EmpresaForm, 
+import { AlertCircle, Building2, X } from 'lucide-react';
+import {
+  EmpresaList,
+  EmpresaForm,
   SireConfig,
   type Empresa,
   type EmpresaCreate,
   type EmpresaUpdate,
-  type SireConfigType
+  type SireConfigType,
 } from '../components/empresa';
+import Modal from '../components/common/Modal';
 import { useEmpresa } from '../hooks/useEmpresa';
 import EmpresaApiService from '../services/empresaApi';
+
+/**
+ * Selector de empresa: la pantalla entre el login y el dashboard.
+ *
+ * No monta MainLayout a proposito: todavia no hay empresa activa, asi que un
+ * sidebar que apunta a modulos inaccesibles solo estorbaria.
+ *
+ * Antes esta pantalla mostraba la cabecera "Gestión de Empresas" DOS veces:
+ * una como titulo de pagina y otra dentro de la tarjeta de contadores.
+ */
+
+// ---------------------------------------------------------------------------
+// Pagina
+// ---------------------------------------------------------------------------
 
 const EmpresaPage: React.FC = () => {
   const navigate = useNavigate();
@@ -25,20 +41,18 @@ const EmpresaPage: React.FC = () => {
     eliminarEmpresa,
     seleccionarEmpresa,
     configurarSire,
-    limpiarError
+    limpiarError,
   } = useEmpresa();
 
-  // Estados para datos
   const [empresaEditando, setEmpresaEditando] = useState<Empresa | null>(null);
   const [empresaConfigSire, setEmpresaConfigSire] = useState<Empresa | null>(null);
 
-  // Estados para modales
   const [showEditModal, setShowEditModal] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showSireModal, setShowSireModal] = useState(false);
 
   // ============================================
-  // MANEJADORES DE EVENTOS
+  // MANEJADORES
   // ============================================
 
   const handleCreateNew = () => {
@@ -55,27 +69,23 @@ const EmpresaPage: React.FC = () => {
 
   const handleConfigSire = async (empresa: Empresa) => {
     try {
-      // Obtener los datos completos de la empresa para el modal SIRE
+      // El detalle completo trae las credenciales que el listado no incluye.
       const empresaCompleta = await EmpresaApiService.getEmpresaByRuc(empresa.ruc);
       setEmpresaConfigSire(empresaCompleta);
       setShowSireModal(true);
       limpiarError();
-    } catch (error) {
-      // El error será mostrado mediante el hook useEmpresa si es necesario
+    } catch {
+      // El error queda en el estado del hook.
     }
   };
 
   const handleSelectEmpresa = async (empresa: Empresa) => {
-    try {
-      const success = await seleccionarEmpresa(empresa.ruc);
-      if (success) {
-        // Tiempo optimizado para navegación fluida
-        setTimeout(() => {
-          navigate('/dashboard', { replace: true });
-        }, 400);
-      }
-    } catch (error) {
-      // ...
+    // `seleccionarEmpresa` ya deja el contexto actualizado antes de resolver,
+    // asi que se puede navegar de inmediato. Antes habia un setTimeout de
+    // 400 ms que no esperaba a nada: solo hacia parecer lenta la seleccion.
+    const success = await seleccionarEmpresa(empresa.ruc);
+    if (success) {
+      navigate('/dashboard', { replace: true });
     }
   };
 
@@ -83,41 +93,31 @@ const EmpresaPage: React.FC = () => {
     await eliminarEmpresa(ruc);
   };
 
-  // ============================================
-  // MANEJADORES DE FORMULARIOS
-  // ============================================
-
   const handleSubmitCreate = async (data: EmpresaCreate | EmpresaUpdate) => {
-    try {
-      const createData = data as EmpresaCreate;
-      const nuevaEmpresa = await crearEmpresa(createData);
-      if (nuevaEmpresa) {
-        setShowCreateModal(false);
-        // Opcional: seleccionar automáticamente la nueva empresa
-        await seleccionarEmpresa(nuevaEmpresa.ruc);
-      }
-    } catch (error) {
-      // El error ya se maneja en el hook useEmpresa
+    const nuevaEmpresa = await crearEmpresa(data as EmpresaCreate);
+    if (!nuevaEmpresa) return;
+
+    setShowCreateModal(false);
+    // Mismo destino que al seleccionar una empresa existente. Antes se
+    // seleccionaba pero el usuario se quedaba aqui, asi que habia dos caminos
+    // distintos para el mismo resultado.
+    const success = await seleccionarEmpresa(nuevaEmpresa.ruc);
+    if (success) {
+      navigate('/dashboard', { replace: true });
     }
   };
 
   const handleSubmitUpdate = async (data: EmpresaCreate | EmpresaUpdate) => {
     if (!empresaEditando) return;
-    try {
-      const updateData = data as EmpresaUpdate;
-      const empresaActualizada = await actualizarEmpresa(empresaEditando.ruc, updateData);
-      if (empresaActualizada) {
-        setShowEditModal(false);
-        setEmpresaEditando(null);
-      }
-    } catch (error) {
-      // El error ya se maneja en el hook useEmpresa
+    const empresaActualizada = await actualizarEmpresa(empresaEditando.ruc, data as EmpresaUpdate);
+    if (empresaActualizada) {
+      setShowEditModal(false);
+      setEmpresaEditando(null);
     }
   };
 
   const handleSubmitSireConfig = async (config: SireConfigType) => {
     if (!empresaConfigSire) return;
-    
     const success = await configurarSire(empresaConfigSire.ruc, config);
     if (success) {
       setShowSireModal(false);
@@ -135,241 +135,68 @@ const EmpresaPage: React.FC = () => {
   };
 
   // ============================================
-  // COMPONENTE MODAL
+  // RENDER
   // ============================================
-  
-  const Modal: React.FC<{
-    isOpen: boolean;
-    onClose: () => void;
-    title: string;
-    children: React.ReactNode;
-  }> = ({ isOpen, onClose, title, children }) => {
-    if (!isOpen) return null;
-
-    return (
-      <div style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 1000,
-        padding: 'clamp(16px, 4vw, 20px)'
-      }}>
-        <div style={{
-          backgroundColor: 'white',
-          borderRadius: 'clamp(12px, 3vw, 16px)',
-          boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
-          maxWidth: 'min(600px, 90vw)',
-          width: '100%',
-          maxHeight: '90vh',
-          overflow: 'auto',
-          position: 'relative'
-        }}>
-          {/* Header del Modal */}
-          <div style={{
-            padding: 'clamp(16px, 4vw, 24px)',
-            borderBottom: '1px solid #E5E7EB',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            backgroundColor: '#F9FAFB',
-            borderRadius: 'clamp(12px, 3vw, 16px) clamp(12px, 3vw, 16px) 0 0'
-          }}>
-            <h2 style={{
-              margin: 0,
-              fontSize: 'clamp(18px, 4vw, 20px)',
-              fontWeight: '600',
-              color: '#374151'
-            }}>
-              {title}
-            </h2>
-            <button
-              onClick={onClose}
-              style={{
-                background: 'none',
-                border: 'none',
-                fontSize: '24px',
-                cursor: 'pointer',
-                padding: '4px',
-                borderRadius: '6px',
-                color: '#6B7280',
-                transition: 'all 0.2s ease'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = '#F3F4F6';
-                e.currentTarget.style.color = '#374151';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = 'transparent';
-                e.currentTarget.style.color = '#6B7280';
-              }}
-            >
-              ×
-            </button>
-          </div>
-          
-          {/* Contenido del Modal */}
-          <div style={{ padding: 'clamp(16px, 4vw, 24px)' }}>
-            {children}
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  // ============================================
-  // RENDERIZADO CONDICIONAL
-  // ============================================
-
-  const renderContent = () => {
-    // Siempre mostrar la lista
-    return (
-      <EmpresaList
-        empresas={empresas}
-        empresaActual={empresaActual}
-        loading={loading}
-        error={error}
-        onSelectEmpresa={handleSelectEmpresa}
-        onEditEmpresa={handleEditEmpresa}
-        onDeleteEmpresa={handleDeleteEmpresa}
-        onConfigSire={handleConfigSire}
-        onCreateNew={handleCreateNew}
-      />
-    );
-  };
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      width: '100vw',
-      background: 'linear-gradient(135deg, #FDF2F8 0%, #FCF7F8 25%, #FEFEFE 50%, #F8FAFC 75%, #F1F5F9 100%)',
-      padding: 'clamp(16px, 4vw, 20px)',
-      boxSizing: 'border-box',
-      overflow: 'auto',
-      position: 'relative'
-    }}>
-      {/* Overlay sutil para mayor profundidad */}
-      <div style={{
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        background: 'radial-gradient(ellipse at center, rgba(239, 68, 68, 0.02) 0%, rgba(220, 38, 38, 0.01) 70%, rgba(185, 28, 28, 0.005) 100%)',
-        pointerEvents: 'none'
-      }}></div>
-      {/* Header mejorado - Pantalla completa */}
-      <div style={{
-        maxWidth: '100%',
-        width: '100%',
-        margin: '0 auto clamp(20px, 5vw, 32px) auto',
-        textAlign: 'center',
-        position: 'relative',
-        zIndex: 1
-      }}>
-        <h1 style={{
-          fontSize: 'clamp(28px, 7vw, 36px)',
-          fontWeight: '700',
-          margin: '0 0 clamp(8px, 2vw, 12px) 0',
-          letterSpacing: '-0.025em',
-          color: '#DC2626', // Color de respaldo
-          background: 'linear-gradient(135deg, #BE123C 0%, #DC2626 50%, #EF4444 100%)',
-          WebkitBackgroundClip: 'text',
-          WebkitTextFillColor: 'transparent',
-          backgroundClip: 'text',
-          filter: 'drop-shadow(0 1px 2px rgba(220, 38, 38, 0.1))'
-        }}>
-          🏢 Gestión de Empresas
-        </h1>
-        <p style={{
-          fontSize: 'clamp(16px, 4vw, 18px)',
-          margin: 0,
-          fontWeight: '500',
-          color: '#64748B'
-        }}>
-          Selecciona una empresa para acceder al sistema
-        </p>
-      </div>
+    <div className="min-h-screen bg-slate-50">
+      <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 sm:py-12">
+        {/* Cabecera (una sola) */}
+        <header className="mb-8 flex items-center gap-4">
+          <div className="grid size-12 shrink-0 place-items-center rounded-2xl bg-linear-to-br from-blue-500 to-indigo-600 text-white shadow-sm">
+            <Building2 className="size-6" aria-hidden="true" />
+          </div>
+          <div className="min-w-0">
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+              Selecciona una empresa
+            </h1>
+            <p className="text-sm text-slate-500">
+              Elige con qué empresa quieres trabajar para entrar al sistema.
+            </p>
+          </div>
+        </header>
 
-      {/* Mostrar errores globales */}
-      {hasError && (
-        <div style={{
-          maxWidth: '100%',
-          width: '100%',
-          margin: '0 auto clamp(16px, 4vw, 20px) auto',
-          padding: 'clamp(12px, 3vw, 16px)',
-          backgroundColor: '#fef2f2',
-          color: '#991b1b',
-          border: '2px solid #fca5a5',
-          borderRadius: 'clamp(8px, 2vw, 12px)',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          boxShadow: '0 4px 12px rgba(239, 68, 68, 0.15)',
-          boxSizing: 'border-box'
-        }}>
-          <span style={{ 
-            fontSize: 'clamp(14px, 3.5vw, 16px)',
-            fontWeight: '600'
-          }}>
-            ❌ {error}
-          </span>
-          <button
-            onClick={limpiarError}
-            style={{
-              background: 'none',
-              border: 'none',
-              fontSize: 'clamp(16px, 4vw, 18px)',
-              cursor: 'pointer',
-              color: '#991b1b',
-              padding: '4px',
-              borderRadius: '4px',
-              transition: 'background-color 0.2s ease'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = 'transparent';
-            }}
+        {/* Errores globales */}
+        {hasError && (
+          <div
+            role="alert"
+            className="mb-6 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3"
           >
-            ✖️
-          </button>
-        </div>
-      )}
+            <AlertCircle className="mt-0.5 size-5 shrink-0 text-red-600" aria-hidden="true" />
+            <p className="flex-1 text-sm font-medium text-red-800">{error}</p>
+            <button
+              type="button"
+              onClick={limpiarError}
+              aria-label="Descartar error"
+              className="grid size-7 shrink-0 place-items-center rounded border-0 bg-transparent p-0 text-red-500 hover:bg-red-100 hover:text-red-700"
+            >
+              <X className="size-4" aria-hidden="true" />
+            </button>
+          </div>
+        )}
 
-      {/* Contenido principal - Lista de empresas */}
-      <div style={{
-        maxWidth: '100%',
-        width: '100%',
-        margin: '0 auto',
-        boxSizing: 'border-box'
-      }}>
-        {renderContent()}
+        <EmpresaList
+          empresas={empresas}
+          empresaActual={empresaActual}
+          loading={loading}
+          error={error}
+          onSelectEmpresa={handleSelectEmpresa}
+          onEditEmpresa={handleEditEmpresa}
+          onDeleteEmpresa={handleDeleteEmpresa}
+          onConfigSire={handleConfigSire}
+          onCreateNew={handleCreateNew}
+        />
       </div>
 
       {/* Modales */}
-      <Modal
-        isOpen={showCreateModal}
-        onClose={handleCloseModals}
-        title="✨ Crear Nueva Empresa"
-      >
-        <EmpresaForm
-          onSubmit={handleSubmitCreate}
-          onCancel={handleCloseModals}
-          loading={loading}
-        />
+      <Modal isOpen={showCreateModal} onClose={handleCloseModals} title="Nueva empresa">
+        <EmpresaForm onSubmit={handleSubmitCreate} onCancel={handleCloseModals} loading={loading} />
       </Modal>
 
       <Modal
         isOpen={showEditModal}
         onClose={handleCloseModals}
-        title={`✏️ Editar Empresa: ${empresaEditando?.ruc || ''}`}
+        title={`Editar empresa ${empresaEditando?.ruc ?? ''}`}
       >
         {empresaEditando && (
           <EmpresaForm
@@ -384,7 +211,7 @@ const EmpresaPage: React.FC = () => {
       <Modal
         isOpen={showSireModal}
         onClose={handleCloseModals}
-        title={`🔐 Configurar SIRE: ${empresaConfigSire?.ruc || ''}`}
+        title={`Configurar SIRE · ${empresaConfigSire?.ruc ?? ''}`}
       >
         {empresaConfigSire && (
           <SireConfig

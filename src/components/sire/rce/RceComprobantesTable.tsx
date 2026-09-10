@@ -1,397 +1,226 @@
 /**
- * 📊 Tabla de Comprobantes RCE - Versión Optimizada con Cache
+ * Comprobantes RCE guardados en la base de datos local.
  */
-import { useState, useEffect } from 'react';
-import { rceComprobantesService, type RceComprobanteBD } from '../../../services/rceComprobantesService';
+
+import { useCallback, useEffect, useState } from 'react';
+import { AlertCircle, Cloud, Database, Loader2, TriangleAlert } from 'lucide-react';
+import {
+  rceComprobantesService,
+  type RceComprobanteBD,
+} from '../../../services/rceComprobantesService';
+import EmptyState from '../../common/EmptyState';
+import { cn } from '../../../lib/cn';
 
 interface Props {
   ruc: string;
   periodo?: string;
   onDataChange?: () => void;
-  onConsultarSunat?: () => void; // 🆕 Callback para navegar a consulta SUNAT
+  onConsultarSunat?: () => void;
 }
+
+const soles = (n: number): string =>
+  `S/ ${(n ?? 0).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+/**
+ * SUNAT devuelve las fechas en varios formatos. Se intenta ISO y, si falla,
+ * DD/MM/YYYY antes de darla por invalida.
+ */
+const formatDate = (dateStr: string): string => {
+  if (!dateStr || dateStr === 'Invalid Date' || !dateStr.trim()) return 'Fecha no válida';
+
+  const fecha = new Date(dateStr);
+  if (!isNaN(fecha.getTime())) return fecha.toLocaleDateString('es-PE');
+
+  if (dateStr.includes('/')) {
+    const [d, m, a] = dateStr.split('/');
+    if (d && m && a) {
+      const alternativa = new Date(`${a}-${m}-${d}`);
+      if (!isNaN(alternativa.getTime())) return alternativa.toLocaleDateString('es-PE');
+    }
+  }
+
+  return 'Fecha no válida';
+};
+
+const th = 'px-3 py-2.5 text-left text-xs font-semibold whitespace-nowrap text-white uppercase';
+const td = 'px-3 py-2.5 text-sm whitespace-nowrap text-slate-700';
 
 function RceComprobantesTable({ ruc, periodo, onConsultarSunat }: Props) {
   const [comprobantes, setComprobantes] = useState<RceComprobanteBD[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [stats, setStats] = useState<any>(null);
-  const [sinDatos, setSinDatos] = useState(false); // 🆕 Estado para detectar BD vacía
-  
-  // 🚀 Contexto de datos compartido para cache (COMENTADO TEMPORALMENTE)
-  // const { 
-  //   comprobantesDetallados, 
-  //   obtenerEstadoCache
-  // } = useRceData();
+  const [sinDatos, setSinDatos] = useState(false);
 
-  useEffect(() => {
-    if (ruc) {
-      loadComprobantes();
-      loadStats();
-    }
-    
-    // 🔄 Escuchar evento de actualización de datos
-    const handleDataUpdate = () => {
-      console.log('🔄 Datos actualizados, refrescando tabla BD...');
-      loadComprobantes();
-      loadStats();
-    };
-    
-    window.addEventListener('rce-data-updated', handleDataUpdate);
-    
-    return () => {
-      window.removeEventListener('rce-data-updated', handleDataUpdate);
-    };
-  }, [ruc, periodo]);
-
-  const loadComprobantes = async () => {
+  const loadComprobantes = useCallback(async () => {
+    setLoading(true);
+    setError(null);
     try {
-      setLoading(true);
-      setError(null);
-      
       const response = await rceComprobantesService.consultarComprobantes(ruc, {
-        periodo: periodo,
-        por_pagina: 2000 // 🆕 Nuevo límite para mostrar más registros
+        periodo,
+        por_pagina: 2000,
       });
-      
-      console.log('🔍 DEBUG: Datos de comprobantes de BD:', response.comprobantes);
-      if (response.comprobantes.length > 0) {
-        console.log('📅 Primer comprobante fecha_emision:', response.comprobantes[0].fecha_emision);
-      }
-      
       setComprobantes(response.comprobantes || []);
-      setSinDatos(response.comprobantes.length === 0); // 🆕 Detectar si BD está vacía
+      setSinDatos(response.comprobantes.length === 0);
     } catch (err: any) {
       setError(err.message || 'Error al cargar comprobantes');
     } finally {
       setLoading(false);
     }
-  };
+  }, [ruc, periodo]);
 
-  const loadStats = async () => {
+  const loadStats = useCallback(async () => {
     try {
-      const data = await rceComprobantesService.obtenerEstadisticas(ruc, periodo);
-      setStats(data);
+      setStats(await rceComprobantesService.obtenerEstadisticas(ruc, periodo));
     } catch (err) {
-      console.error('Error cargando estadísticas:', err);
+      console.error('Error cargando estadísticas RCE:', err);
     }
-  };
+  }, [ruc, periodo]);
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('es-PE', {
-      style: 'currency',
-      currency: 'PEN'
-    }).format(amount);
-  };
+  useEffect(() => {
+    if (!ruc) return;
 
-  const formatDate = (dateStr: string) => {
-    try {
-      // Validar que la fecha no esté vacía o sea inválida
-      if (!dateStr || dateStr === 'Invalid Date' || dateStr.trim() === '') {
-        return 'Fecha no válida';
-      }
-      
-      // Si viene en formato ISO (YYYY-MM-DD) o similar, crear fecha válida
-      const fecha = new Date(dateStr);
-      
-      // Verificar si la fecha es válida
-      if (isNaN(fecha.getTime())) {
-        // Intentar parsear formatos alternativos
-        if (dateStr.includes('/')) {
-          // Formato DD/MM/YYYY
-          const partes = dateStr.split('/');
-          if (partes.length === 3) {
-            const fechaFormateada = new Date(`${partes[2]}-${partes[1]}-${partes[0]}`);
-            if (!isNaN(fechaFormateada.getTime())) {
-              return fechaFormateada.toLocaleDateString('es-PE');
-            }
-          }
-        }
-        return 'Fecha inválida';
-      }
-      
-      return fecha.toLocaleDateString('es-PE');
-    } catch (error) {
-      console.warn('Error formateando fecha:', dateStr, error);
-      return 'Error en fecha';
-    }
-  };
+    void loadComprobantes();
+    void loadStats();
+
+    // La consulta a SUNAT guarda en la BD local y avisa por este evento.
+    const handleDataUpdate = () => {
+      void loadComprobantes();
+      void loadStats();
+    };
+
+    window.addEventListener('rce-data-updated', handleDataUpdate);
+    return () => window.removeEventListener('rce-data-updated', handleDataUpdate);
+  }, [ruc, loadComprobantes, loadStats]);
 
   return (
-    <div style={{ padding: '1rem' }}>
-      {/* Header con estadísticas */}
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'space-between', 
-        alignItems: 'center',
-        marginBottom: '1rem',
-        padding: '1rem',
-        background: '#f8fafc',
-        borderRadius: '8px',
-        border: '1px solid #e2e8f0'
-      }}>
-        <div>
-          <h3 style={{ margin: 0, color: '#1f2937' }}>
-            📊 Gestión Local de Comprobantes
+    <div className="space-y-4">
+      {/* Cabecera */}
+      <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+        <div className="min-w-0">
+          <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-900">
+            <Database className="size-4 text-slate-400" aria-hidden="true" />
+            Gestión local de comprobantes
           </h3>
-          <p style={{ margin: '0.25rem 0 0 0', color: '#6b7280', fontSize: '0.9rem' }}>
-            RUC: {ruc} {periodo && `| Período: ${periodo}`}
+          <p className="text-sm text-slate-500 tabular-nums">
+            RUC {ruc}
+            {periodo && ` · Período ${periodo}`}
           </p>
         </div>
-        
+
         {stats && (
-          <div style={{ display: 'flex', gap: '1rem', fontSize: '0.9rem' }}>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontWeight: 'bold', color: '#059669' }}>
+          <dl className="flex gap-6">
+            <div className="text-center">
+              <dd className="text-base font-bold text-emerald-600 tabular-nums">
                 {stats.total_comprobantes || 0}
-              </div>
-              <div style={{ color: '#6b7280' }}>Total</div>
+              </dd>
+              <dt className="text-xs text-slate-500">Total</dt>
             </div>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontWeight: 'bold', color: '#dc2626' }}>
-                {formatCurrency(stats.total_importe || 0)}
-              </div>
-              <div style={{ color: '#6b7280' }}>Importe</div>
+            <div className="text-center">
+              <dd className="text-base font-bold text-slate-900 tabular-nums">
+                {soles(stats.total_importe || 0)}
+              </dd>
+              <dt className="text-xs text-slate-500">Importe</dt>
             </div>
-          </div>
+          </dl>
         )}
       </div>
 
-      {/* Alertas de estado */}
+      {/* Avisos */}
       {!periodo && (
-        <div style={{
-          padding: '0.75rem 1rem',
-          background: '#fef3c7',
-          border: '1px solid #f59e0b',
-          borderRadius: '6px',
-          color: '#92400e',
-          marginBottom: '1rem',
-          fontSize: '0.9rem'
-        }}>
-          ⚠️ Seleccione un período para acceder a todas las funcionalidades
-        </div>
+        <p className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm font-medium text-amber-800">
+          <TriangleAlert className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+          Selecciona un período para acceder a todas las funcionalidades.
+        </p>
       )}
 
       {error && (
-        <div style={{
-          padding: '0.75rem 1rem',
-          background: '#fef2f2',
-          border: '1px solid #fecaca',
-          borderRadius: '6px',
-          color: '#dc2626',
-          marginBottom: '1rem',
-          fontSize: '0.9rem'
-        }}>
-          ❌ {error}
-        </div>
+        <p
+          role="alert"
+          className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-medium text-red-800"
+        >
+          <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+          {error}
+        </p>
       )}
 
       {loading && (
-        <div style={{
-          padding: '1rem',
-          background: '#f0f9ff',
-          border: '1px solid #0ea5e9',
-          borderRadius: '6px',
-          color: '#0369a1',
-          marginBottom: '1rem',
-          fontSize: '0.9rem',
-          textAlign: 'center'
-        }}>
-          ⏳ Procesando...
-        </div>
+        <p className="flex items-center gap-2 text-sm text-slate-500" role="status">
+          <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+          Procesando…
+        </p>
       )}
 
-      {/* Lista de comprobantes */}
+      {/* Contenido */}
       {comprobantes.length === 0 && !loading ? (
-        <div style={{
-          textAlign: 'center',
-          padding: '3rem',
-          background: sinDatos ? '#fef3c7' : '#f9fafb',
-          border: sinDatos ? '2px solid #f59e0b' : '2px dashed #d1d5db',
-          borderRadius: '8px',
-          color: sinDatos ? '#92400e' : '#6b7280'
-        }}>
-          <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>
-            {sinDatos ? '�' : '�📄'}
-          </div>
-          <h4 style={{ margin: '0 0 0.5rem 0' }}>
-            {sinDatos ? 'Base de datos lista para usar' : 'No hay comprobantes en la base de datos'}
-          </h4>
-          <p style={{ margin: 0, fontSize: '0.9rem' }}>
-            {sinDatos 
-              ? 'Esta es su gestión local de comprobantes. Para comenzar, consulte datos desde SUNAT.'
-              : periodo 
-                ? `No se encontraron comprobantes para el período ${periodo}`
-                : 'No hay comprobantes almacenados'
-            }
-          </p>
-          <p style={{ margin: '1rem 0 0 0', fontSize: '0.85rem', color: '#9ca3af' }}>
-            💡 Ve a <strong>"Consultar SUNAT"</strong> para obtener y auto-guardar comprobantes desde SUNAT
-          </p>
-          
-          {/* 🆕 Botón de acción rápida */}
-          {sinDatos && onConsultarSunat && (
-            <div style={{ marginTop: '1.5rem' }}>
-              <button
-                onClick={onConsultarSunat}
-                style={{
-                  background: '#3b82f6',
-                  color: 'white',
-                  border: 'none',
-                  padding: '0.75rem 1.5rem',
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  fontSize: '0.9rem',
-                  fontWeight: '600',
-                  boxShadow: '0 2px 4px rgba(59, 130, 246, 0.3)',
-                  transition: 'all 0.2s'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = '#2563eb';
-                  e.currentTarget.style.transform = 'translateY(-1px)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = '#3b82f6';
-                  e.currentTarget.style.transform = 'translateY(0)';
-                }}
-              >
-                🔄 Consultar SUNAT Ahora
-              </button>
-            </div>
+        <EmptyState
+          icon={Database}
+          title={sinDatos ? 'Base de datos lista para usar' : 'No hay comprobantes guardados'}
+          description={
+            sinDatos
+              ? 'Aún no hay comprobantes guardados localmente. Consulta a SUNAT para descargarlos.'
+              : 'No se encontraron comprobantes para el período seleccionado.'
+          }
+        >
+          {onConsultarSunat && (
+            <button
+              type="button"
+              onClick={onConsultarSunat}
+              className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+            >
+              <Cloud className="size-4" aria-hidden="true" />
+              Consultar SUNAT ahora
+            </button>
           )}
-        </div>
+        </EmptyState>
       ) : comprobantes.length > 0 ? (
-        <div style={{ 
-          border: '1px solid #e5e7eb', 
-          borderRadius: '8px',
-          overflow: 'hidden'
-        }}>
-          <div style={{ 
-            overflowX: 'auto',
-            maxHeight: '500px',
-            overflowY: 'auto'
-          }}>
-            <table style={{ 
-              width: '100%', 
-              borderCollapse: 'collapse',
-              fontSize: '0.9rem',
-              minWidth: '1260px' // Aumentado para acomodar la columna #
-            }}>
-              <thead>
-                <tr style={{ 
-                  background: '#2563eb', // Azul como en la vista detallada
-                  color: 'white',
-                  borderBottom: '1px solid #1d4ed8',
-                  position: 'sticky',
-                  top: 0
-                }}>
-                  <th style={{ padding: '0.75rem', textAlign: 'center', fontWeight: '600', color: 'white', width: '60px' }}>
-                    #
-                  </th>
-                  <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: '600', color: 'white' }}>
-                    RUC Proveedor
-                  </th>
-                  <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: '600', color: 'white' }}>
-                    Razón Social
-                  </th>
-                  <th style={{ padding: '0.75rem', textAlign: 'center', fontWeight: '600', color: 'white' }}>
-                    Tipo Doc.
-                  </th>
-                  <th style={{ padding: '0.75rem', textAlign: 'center', fontWeight: '600', color: 'white' }}>
-                    Serie
-                  </th>
-                  <th style={{ padding: '0.75rem', textAlign: 'center', fontWeight: '600', color: 'white' }}>
-                    Número
-                  </th>
-                  <th style={{ padding: '0.75rem', textAlign: 'center', fontWeight: '600', color: 'white' }}>
-                    Fecha Emisión
-                  </th>
-                  <th style={{ padding: '0.75rem', textAlign: 'right', fontWeight: '600', color: 'white' }}>
-                    Base Imponible
-                  </th>
-                  <th style={{ padding: '0.75rem', textAlign: 'right', fontWeight: '600', color: 'white' }}>
-                    IGV
-                  </th>
-                  <th style={{ padding: '0.75rem', textAlign: 'right', fontWeight: '600', color: 'white' }}>
-                    Valor No Gravado
-                  </th>
-                  <th style={{ padding: '0.75rem', textAlign: 'right', fontWeight: '600', color: 'white' }}>
-                    Total
-                  </th>
+        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+          <div className="max-h-[70vh] overflow-auto">
+            <table className="w-full border-collapse">
+              <thead className="sticky top-0 bg-blue-800">
+                <tr>
+                  <th scope="col" className={cn(th, 'w-14 text-center')}>#</th>
+                  <th scope="col" className={th}>RUC proveedor</th>
+                  <th scope="col" className={th}>Razón social</th>
+                  <th scope="col" className={cn(th, 'text-center')}>Tipo doc.</th>
+                  <th scope="col" className={cn(th, 'text-center')}>Serie</th>
+                  <th scope="col" className={cn(th, 'text-center')}>Número</th>
+                  <th scope="col" className={cn(th, 'text-center')}>Emisión</th>
+                  <th scope="col" className={cn(th, 'text-right')}>Base imponible</th>
+                  <th scope="col" className={cn(th, 'text-right')}>IGV</th>
+                  <th scope="col" className={cn(th, 'text-right')}>No gravado</th>
+                  <th scope="col" className={cn(th, 'text-right')}>Total</th>
                 </tr>
               </thead>
+
               <tbody>
                 {comprobantes.map((comp, index) => (
-                  <tr 
-                    key={comp.id || index}
-                    style={{ 
-                      borderBottom: '1px solid #e5e7eb',
-                      background: index % 2 === 0 ? 'white' : '#f9fafb'
-                    }}
+                  <tr
+                    key={`${comp.ruc_proveedor}-${comp.serie_comprobante}-${comp.numero_comprobante}-${index}`}
+                    className="border-b border-slate-100 last:border-0 odd:bg-slate-50/60 hover:bg-blue-50"
                   >
-                    {/* Número de fila */}
-                    <td style={{ 
-                      padding: '0.75rem', 
-                      textAlign: 'center',
-                      fontWeight: '600',
-                      color: '#6b7280',
-                      background: index % 2 === 0 ? '#f8fafc' : '#f1f5f9'
-                    }}>
+                    <td className={cn(td, 'text-center text-slate-400 tabular-nums')}>
                       {index + 1}
                     </td>
-                    
-                    {/* RUC Proveedor */}
-                    <td style={{ padding: '0.75rem', textAlign: 'left' }}>
-                      {comp.ruc_proveedor}
-                    </td>
-                    
-                    {/* Razón Social */}
-                    <td style={{ padding: '0.75rem', textAlign: 'left' }}>
+                    <td className={cn(td, 'font-mono')}>{comp.ruc_proveedor}</td>
+                    <td className={cn(td, 'max-w-64 truncate whitespace-normal')}>
                       {comp.razon_social_proveedor}
                     </td>
-                    
-                    {/* Tipo Documento */}
-                    <td style={{ padding: '0.75rem', textAlign: 'center' }}>
-                      {comp.tipo_documento}
-                    </td>
-                    
-                    {/* Serie */}
-                    <td style={{ padding: '0.75rem', textAlign: 'center' }}>
-                      {comp.serie_comprobante}
-                    </td>
-                    
-                    {/* Número */}
-                    <td style={{ padding: '0.75rem', textAlign: 'center' }}>
-                      {comp.numero_comprobante}
-                    </td>
-                    
-                    {/* Fecha Emisión */}
-                    <td style={{ padding: '0.75rem', textAlign: 'center' }}>
+                    <td className={cn(td, 'text-center')}>{comp.tipo_documento}</td>
+                    <td className={cn(td, 'text-center font-mono')}>{comp.serie_comprobante}</td>
+                    <td className={cn(td, 'text-center font-mono')}>{comp.numero_comprobante}</td>
+                    <td className={cn(td, 'text-center tabular-nums')}>
                       {formatDate(comp.fecha_emision)}
                     </td>
-                    
-                    {/* Base Imponible */}
-                    <td style={{ padding: '0.75rem', textAlign: 'right' }}>
-                      {formatCurrency(comp.base_imponible_gravada)}
+                    <td className={cn(td, 'text-right tabular-nums')}>
+                      {soles(comp.base_imponible_gravada)}
                     </td>
-                    
-                    {/* IGV */}
-                    <td style={{ padding: '0.75rem', textAlign: 'right' }}>
-                      {formatCurrency(comp.igv)}
+                    <td className={cn(td, 'text-right tabular-nums')}>{soles(comp.igv)}</td>
+                    <td className={cn(td, 'text-right tabular-nums')}>
+                      {soles(comp.valor_adquisicion_no_gravada)}
                     </td>
-                    
-                    {/* Valor No Gravado */}
-                    <td style={{ padding: '0.75rem', textAlign: 'right' }}>
-                      {formatCurrency(comp.valor_adquisicion_no_gravada)}
-                    </td>
-                    
-                    {/* Total */}
-                    <td style={{ 
-                      padding: '0.75rem', 
-                      textAlign: 'right',
-                      fontWeight: '500'
-                    }}>
-                      {formatCurrency(comp.importe_total)}
+                    <td className={cn(td, 'text-right font-semibold tabular-nums')}>
+                      {soles(comp.importe_total)}
                     </td>
                   </tr>
                 ))}

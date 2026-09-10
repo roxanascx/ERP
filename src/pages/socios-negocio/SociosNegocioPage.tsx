@@ -1,211 +1,31 @@
-import React, { useState, useEffect } from 'react';
-import { useSociosNegocio, useEmpresa } from '../../hooks';
+import React, { useEffect, useState } from 'react';
+import { Building2, CheckCircle2, Plus, Search, Users, X } from 'lucide-react';
+import { useSociosNegocio } from '../../hooks';
+import { useEmpresaValidation } from '../../hooks/useEmpresaValidation';
 import SociosNegocioTable from '../../components/socios-negocio/SociosNegocioTable';
 import SocioFormModal from '../../components/socios-negocio/SocioFormModal';
-import MainLayout from '../../components/MainLayout';
+import { StatCard, StatGrid } from '../../components/common/StatCard';
 import type { SocioNegocio } from '../../services/sociosNegocioApi';
+import { cn } from '../../lib/cn';
 
-// Componente de estadísticas
-const SociosNegocioStats: React.FC<{ stats: any }> = ({ stats }) => {
-  const statsStyle = {
-    container: {
-      display: 'grid',
-      gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-      gap: '20px',
-      marginBottom: '24px'
-    },
-    card: {
-      backgroundColor: '#ffffff',
-      padding: '20px',
-      borderRadius: '8px',
-      boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
-      border: '1px solid #e5e7eb',
-      textAlign: 'center' as const
-    },
-    icon: {
-      fontSize: '24px',
-      marginBottom: '8px'
-    },
-    value: {
-      fontSize: '28px',
-      fontWeight: 'bold',
-      color: '#1f2937',
-      margin: '0'
-    },
-    label: {
-      fontSize: '14px',
-      color: '#6b7280',
-      margin: '4px 0 0 0'
-    }
-  };
+const control = cn(
+  'w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900',
+  'placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none'
+);
+const labelClass = 'mb-1.5 block text-xs font-medium tracking-wide text-slate-500 uppercase';
 
-  return (
-    <div style={statsStyle.container}>
-      <div style={statsStyle.card}>
-        <div style={statsStyle.icon}>👥</div>
-        <p style={statsStyle.value}>{stats?.total || 0}</p>
-        <p style={statsStyle.label}>Total Socios</p>
-      </div>
-      <div style={statsStyle.card}>
-        <div style={statsStyle.icon}>🛒</div>
-        <p style={statsStyle.value}>{stats?.clientes || 0}</p>
-        <p style={statsStyle.label}>Clientes</p>
-      </div>
-      <div style={statsStyle.card}>
-        <div style={statsStyle.icon}>🏭</div>
-        <p style={statsStyle.value}>{stats?.proveedores || 0}</p>
-        <p style={statsStyle.label}>Proveedores</p>
-      </div>
-      <div style={statsStyle.card}>
-        <div style={statsStyle.icon}>✅</div>
-        <p style={statsStyle.value}>{stats?.activos || 0}</p>
-        <p style={statsStyle.label}>Activos</p>
-      </div>
-    </div>
-  );
-};
+interface Filtros {
+  search: string;
+  tipoSocio: string;
+  tipoDocumento: string;
+  estado: string;
+}
 
-// Componente de filtros
-const SociosNegocioFilters: React.FC<{
-  onSearchChange: (search: string) => void;
-  onTipoSocioChange: (tipo: string) => void;
-  onTipoDocumentoChange: (tipo: string) => void;
-  onEstadoChange: (estado: string) => void;
-  onClearFilters: () => void;
-}> = ({
-  onSearchChange,
-  onTipoSocioChange,
-  onTipoDocumentoChange,
-  onEstadoChange,
-  onClearFilters
-}) => {
-  const filtersStyle = {
-    container: {
-      backgroundColor: '#ffffff',
-      padding: '20px',
-      borderRadius: '8px',
-      boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
-      border: '1px solid #e5e7eb',
-      marginBottom: '24px'
-    },
-    row: {
-      display: 'grid',
-      gridTemplateColumns: '2fr 1fr 1fr 1fr auto',
-      gap: '16px',
-      alignItems: 'end'
-    },
-    inputGroup: {
-      display: 'flex',
-      flexDirection: 'column' as const,
-      gap: '6px'
-    },
-    label: {
-      fontSize: '14px',
-      fontWeight: '500',
-      color: '#374151'
-    },
-    input: {
-      padding: '10px 12px',
-      border: '1px solid #d1d5db',
-      borderRadius: '6px',
-      fontSize: '14px',
-      outline: 'none',
-      transition: 'border-color 0.2s ease'
-    },
-    select: {
-      padding: '10px 12px',
-      border: '1px solid #d1d5db',
-      borderRadius: '6px',
-      fontSize: '14px',
-      backgroundColor: '#ffffff',
-      cursor: 'pointer',
-      outline: 'none'
-    },
-    clearButton: {
-      padding: '10px 16px',
-      backgroundColor: '#f3f4f6',
-      color: '#374151',
-      border: '1px solid #d1d5db',
-      borderRadius: '6px',
-      fontSize: '14px',
-      cursor: 'pointer',
-      transition: 'background-color 0.2s ease'
-    }
-  };
-
-  return (
-    <div style={filtersStyle.container}>
-      <div style={filtersStyle.row}>
-        <div style={filtersStyle.inputGroup}>
-          <label style={filtersStyle.label}>Buscar</label>
-          <input
-            type="text"
-            placeholder="Buscar por nombre, documento..."
-            style={filtersStyle.input}
-            onChange={(e) => onSearchChange(e.target.value)}
-            onFocus={(e) => {
-              e.target.style.borderColor = '#3b82f6';
-            }}
-            onBlur={(e) => {
-              e.target.style.borderColor = '#d1d5db';
-            }}
-          />
-        </div>
-
-        <div style={filtersStyle.inputGroup}>
-          <label style={filtersStyle.label}>Tipo Socio</label>
-          <select
-            style={filtersStyle.select}
-            onChange={(e) => onTipoSocioChange(e.target.value)}
-          >
-            <option value="">Todos los tipos</option>
-            <option value="cliente">Cliente</option>
-            <option value="proveedor">Proveedor</option>
-            <option value="ambos">Ambos</option>
-          </select>
-        </div>
-
-        <div style={filtersStyle.inputGroup}>
-          <label style={filtersStyle.label}>Documento</label>
-          <select
-            style={filtersStyle.select}
-            onChange={(e) => onTipoDocumentoChange(e.target.value)}
-          >
-            <option value="">Todos los documentos</option>
-            <option value="RUC">RUC</option>
-            <option value="DNI">DNI</option>
-            <option value="CE">Carnet de Extranjería</option>
-            <option value="PASAPORTE">Pasaporte</option>
-          </select>
-        </div>
-
-        <div style={filtersStyle.inputGroup}>
-          <label style={filtersStyle.label}>Estado</label>
-          <select
-            style={filtersStyle.select}
-            onChange={(e) => onEstadoChange(e.target.value)}
-          >
-            <option value="">Todos los estados</option>
-            <option value="activo">Activo</option>
-            <option value="inactivo">Inactivo</option>
-          </select>
-        </div>
-
-        <button
-          style={filtersStyle.clearButton}
-          onClick={onClearFilters}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = '#e5e7eb';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = '#f3f4f6';
-          }}
-        >
-          Limpiar
-        </button>
-      </div>
-    </div>
-  );
+const FILTROS_VACIOS: Filtros = {
+  search: '',
+  tipoSocio: '',
+  tipoDocumento: '',
+  estado: '',
 };
 
 const SociosNegocioPage: React.FC = () => {
@@ -217,259 +37,238 @@ const SociosNegocioPage: React.FC = () => {
     updateSocio,
     deleteSocio,
     loadSocios,
-    loadStats
+    loadStats,
   } = useSociosNegocio();
 
-  const { empresaActual, cargarEmpresaActual } = useEmpresa();
+  const { empresaActual } = useEmpresaValidation();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingSocio, setEditingSocio] = useState<SocioNegocio | null>(null);
   const [filteredSocios, setFilteredSocios] = useState<SocioNegocio[]>([]);
+  const [filters, setFilters] = useState<Filtros>(FILTROS_VACIOS);
 
-  // Estados para filtros
-  const [filters, setFilters] = useState({
-    search: '',
-    tipoSocio: '',
-    tipoDocumento: '',
-    estado: ''
-  });
-
+  // Solo la lista: useSociosNegocio ya carga las estadisticas por su cuenta.
   useEffect(() => {
-    cargarEmpresaActual(); // Asegurar que la empresa esté cargada
-  }, []);
+    if (!empresaActual?.ruc) return;
+    void loadSocios();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [empresaActual?.ruc]);
 
-  // Cargar socios cuando la empresa esté disponible
-  useEffect(() => {
-    if (empresaActual?.ruc) {
-      loadSocios();
-      loadStats();
-    }
-  }, [empresaActual?.ruc, loadSocios, loadStats]);
-
-  // Función para validar empresa antes de abrir modal
-  const handleOpenModal = () => {
-    if (!empresaActual) {
-      alert('⚠️ Debe seleccionar una empresa antes de crear un socio de negocio.');
-      return;
-    }
-    
-    setEditingSocio(null);
-    setIsModalOpen(true);
-  };
-
+  // Filtrado en cliente sobre la lista ya cargada.
   useEffect(() => {
     let filtered = socios;
 
-    // Filtro de búsqueda
     if (filters.search) {
-      const searchLower = filters.search.toLowerCase();
-      filtered = filtered.filter(socio => 
-        socio.razon_social.toLowerCase().includes(searchLower) ||
-        socio.numero_documento.includes(searchLower) ||
-        (socio.nombre_comercial && socio.nombre_comercial.toLowerCase().includes(searchLower))
+      const q = filters.search.toLowerCase();
+      filtered = filtered.filter(
+        (socio) =>
+          socio.razon_social.toLowerCase().includes(q) ||
+          socio.numero_documento.includes(q) ||
+          socio.nombre_comercial?.toLowerCase().includes(q)
       );
     }
 
-    // Filtro por tipo de socio
     if (filters.tipoSocio) {
-      filtered = filtered.filter(socio => socio.tipo_socio === filters.tipoSocio);
+      filtered = filtered.filter((socio) => socio.tipo_socio === filters.tipoSocio);
     }
-
-    // Filtro por tipo de documento
     if (filters.tipoDocumento) {
-      filtered = filtered.filter(socio => socio.tipo_documento === filters.tipoDocumento);
+      filtered = filtered.filter((socio) => socio.tipo_documento === filters.tipoDocumento);
     }
-
-    // Filtro por estado
     if (filters.estado) {
-      const isActive = filters.estado === 'activo';
-      filtered = filtered.filter(socio => socio.activo === isActive);
+      const activo = filters.estado === 'activo';
+      filtered = filtered.filter((socio) => socio.activo === activo);
     }
 
     setFilteredSocios(filtered);
   }, [socios, filters]);
 
-  const pageStyles = {
-    container: {
-      maxWidth: '100%'
-    },
-    actions: {
-      display: 'flex',
-      gap: '12px',
-      flexWrap: 'wrap' as const,
-      marginBottom: '24px'
-    },
-    button: {
-      padding: '12px 24px',
-      borderRadius: '8px',
-      fontSize: '14px',
-      fontWeight: '500',
-      cursor: 'pointer',
-      border: 'none',
-      transition: 'all 0.2s ease',
-      display: 'flex',
-      alignItems: 'center',
-      gap: '8px'
-    },
-    buttonPrimary: {
-      backgroundColor: '#3b82f6',
-      color: '#ffffff'
-    },
-    buttonSecondary: {
-      backgroundColor: '#10b981',
-      color: '#ffffff'
+  // ---------------------------------------------------------------------------
+  // Acciones
+  // ---------------------------------------------------------------------------
+
+  const handleOpenModal = () => {
+    if (!empresaActual) {
+      window.alert('Debes seleccionar una empresa antes de crear un socio de negocio.');
+      return;
     }
+    setEditingSocio(null);
+    setIsModalOpen(true);
+  };
+
+  const refrescar = async () => {
+    await loadSocios();
+    await loadStats();
   };
 
   const handleCreateSocio = async (socioData: any) => {
-    try {
-      await createSocio(socioData);
-      await loadSocios();
-      await loadStats();
-      setIsModalOpen(false);
-    } catch (error) {
-      console.error('Error al crear socio:', error);
-    }
-  };
-
-  const handleEditSocio = (socio: SocioNegocio) => {
-    setEditingSocio(socio);
-    setIsModalOpen(true);
+    await createSocio(socioData);
+    await refrescar();
+    setIsModalOpen(false);
   };
 
   const handleUpdateSocio = async (socioData: any) => {
     if (!editingSocio) return;
-    
-    try {
-      await updateSocio(editingSocio.id, socioData);
-      await loadSocios();
-      await loadStats();
-      setIsModalOpen(false);
-      setEditingSocio(null);
-    } catch (error) {
-      console.error('Error al actualizar socio:', error);
-    }
+    await updateSocio(editingSocio.id, socioData);
+    await refrescar();
+    setIsModalOpen(false);
+    setEditingSocio(null);
   };
 
   const handleDeleteSocio = async (socioId: string) => {
     try {
       await deleteSocio(socioId);
-      await loadSocios();
-      await loadStats();
+      await refrescar();
     } catch (error) {
       console.error('Error al eliminar socio:', error);
     }
   };
 
-  const handleModalSubmit = editingSocio ? handleUpdateSocio : handleCreateSocio;
-
-  const handleClearFilters = () => {
-    setFilters({
-      search: '',
-      tipoSocio: '',
-      tipoDocumento: '',
-      estado: ''
-    });
-  };
+  const hayFiltros = Object.values(filters).some(Boolean);
 
   return (
-    <MainLayout
-      title="Socios de Negocio"
-      subtitle="Gestiona proveedores, clientes y socios comerciales"
-    >
-      <div style={pageStyles.container}>
-        
-        <div style={pageStyles.actions}>
+    <div className="space-y-5">
+      {/* Las tarjetas leian stats.total / .clientes / .proveedores / .activos,
+          nombres que no existen en SocioStatsResponse: mostraban siempre 0.
+          Los campos reales llevan el prefijo `total_`. */}
+      <StatGrid>
+        <StatCard label="Total socios" value={stats?.total_socios ?? 0} icon={Users} tone="blue" />
+        <StatCard label="Clientes" value={stats?.total_clientes ?? 0} icon={Users} tone="violet" />
+        <StatCard
+          label="Proveedores"
+          value={stats?.total_proveedores ?? 0}
+          icon={Building2}
+          tone="amber"
+        />
+        <StatCard
+          label="Activos"
+          value={stats?.total_activos ?? 0}
+          icon={CheckCircle2}
+          tone="green"
+        />
+      </StatGrid>
+
+      {/* Filtros y alta */}
+      <section className="space-y-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <div>
+            <label htmlFor="sn-buscar" className={labelClass}>
+              Buscar
+            </label>
+            <div className="relative">
+              <Search
+                className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-slate-400"
+                aria-hidden="true"
+              />
+              <input
+                id="sn-buscar"
+                type="search"
+                value={filters.search}
+                onChange={(e) => setFilters((prev) => ({ ...prev, search: e.target.value }))}
+                placeholder="Nombre o documento…"
+                className={cn(control, 'pl-9')}
+              />
+            </div>
+          </div>
+
+          <div>
+            <label htmlFor="sn-tipo" className={labelClass}>
+              Tipo de socio
+            </label>
+            <select
+              id="sn-tipo"
+              value={filters.tipoSocio}
+              onChange={(e) => setFilters((prev) => ({ ...prev, tipoSocio: e.target.value }))}
+              className={control}
+            >
+              <option value="">Todos los tipos</option>
+              <option value="cliente">Cliente</option>
+              <option value="proveedor">Proveedor</option>
+              <option value="ambos">Ambos</option>
+            </select>
+          </div>
+
+          <div>
+            <label htmlFor="sn-doc" className={labelClass}>
+              Documento
+            </label>
+            <select
+              id="sn-doc"
+              value={filters.tipoDocumento}
+              onChange={(e) => setFilters((prev) => ({ ...prev, tipoDocumento: e.target.value }))}
+              className={control}
+            >
+              <option value="">Todos los documentos</option>
+              <option value="RUC">RUC</option>
+              <option value="DNI">DNI</option>
+              <option value="CE">Carnet de extranjería</option>
+              <option value="PASAPORTE">Pasaporte</option>
+            </select>
+          </div>
+
+          <div>
+            <label htmlFor="sn-estado" className={labelClass}>
+              Estado
+            </label>
+            <select
+              id="sn-estado"
+              value={filters.estado}
+              onChange={(e) => setFilters((prev) => ({ ...prev, estado: e.target.value }))}
+              className={control}
+            >
+              <option value="">Todos los estados</option>
+              <option value="activo">Activo</option>
+              <option value="inactivo">Inactivo</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          {hayFiltros && (
+            <button
+              type="button"
+              onClick={() => setFilters(FILTROS_VACIOS)}
+              className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            >
+              <X className="size-4" aria-hidden="true" />
+              Limpiar filtros
+            </button>
+          )}
+
+          <span className="text-sm text-slate-500 tabular-nums">
+            {filteredSocios.length} {filteredSocios.length === 1 ? 'socio' : 'socios'}
+          </span>
+
           <button
-            style={{
-              ...pageStyles.button,
-              ...pageStyles.buttonSecondary
-            }}
+            type="button"
             onClick={handleOpenModal}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = '#059669';
-              e.currentTarget.style.transform = 'translateY(-1px)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = '#10b981';
-              e.currentTarget.style.transform = 'translateY(0)';
-            }}
+            className="ml-auto inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3.5 py-2 text-sm font-semibold text-white hover:bg-blue-700"
           >
-            + Agregar desde RUC
-          </button>
-          
-          <button
-            style={{
-              ...pageStyles.button,
-              ...pageStyles.buttonPrimary
-            }}
-            onClick={handleOpenModal}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = '#2563eb';
-              e.currentTarget.style.transform = 'translateY(-1px)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = '#3b82f6';
-              e.currentTarget.style.transform = 'translateY(0)';
-            }}
-          >
-            + Nuevo Socio
+            <Plus className="size-4" aria-hidden="true" />
+            Nuevo socio
           </button>
         </div>
-      </div>
+      </section>
 
-      {/* Estadísticas */}
-      <SociosNegocioStats stats={stats} />
-
-      {/* Filtros */}
-      <SociosNegocioFilters
-        onSearchChange={(search) => setFilters(prev => ({ ...prev, search }))}
-        onTipoSocioChange={(tipoSocio) => setFilters(prev => ({ ...prev, tipoSocio }))}
-        onTipoDocumentoChange={(tipoDocumento) => setFilters(prev => ({ ...prev, tipoDocumento }))}
-        onEstadoChange={(estado) => setFilters(prev => ({ ...prev, estado }))}
-        onClearFilters={handleClearFilters}
+      <SociosNegocioTable
+        socios={filteredSocios}
+        onEdit={(socio) => {
+          setEditingSocio(socio);
+          setIsModalOpen(true);
+        }}
+        onDelete={handleDeleteSocio}
+        loading={loading}
       />
 
-      {/* Tabla de socios */}
-      <div style={{ marginBottom: '24px' }}>
-        <h2 style={{ 
-          fontSize: '20px', 
-          fontWeight: '600', 
-          color: '#1f2937', 
-          margin: '0 0 16px 0',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px'
-        }}>
-          👥 Lista de Socios
-          <span style={{ 
-            fontSize: '14px', 
-            color: '#6b7280', 
-            fontWeight: 'normal' 
-          }}>
-            ({filteredSocios.length} {filteredSocios.length === 1 ? 'socio' : 'socios'})
-          </span>
-        </h2>
-        
-        <SociosNegocioTable
-          socios={filteredSocios}
-          onEdit={handleEditSocio}
-          onDelete={handleDeleteSocio}
-          loading={loading}
-        />
-      </div>
-
-      {/* Modal */}
       <SocioFormModal
         isOpen={isModalOpen}
         onClose={() => {
           setIsModalOpen(false);
           setEditingSocio(null);
         }}
-        onSubmit={handleModalSubmit}
+        onSubmit={editingSocio ? handleUpdateSocio : handleCreateSocio}
         socio={editingSocio}
       />
-    </MainLayout>
+    </div>
   );
 };
 

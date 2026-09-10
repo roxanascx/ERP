@@ -1,16 +1,30 @@
 /**
- * Página de Resumen RCE
- * Descargar reportes de período completo
+ * Resumen RCE: gestión local, consulta a SUNAT y reportes del período.
  * URL: /sire/rce/resumen
  */
 
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useCallback, useEffect, useState } from 'react';
+import {
+  AlertCircle,
+  BarChart3,
+  Cloud,
+  Database,
+  FileText,
+  Loader2,
+  RefreshCw,
+} from 'lucide-react';
 import { useEmpresaValidation } from '../../../hooks/useEmpresaValidation';
 import { useRceData } from '../../../contexts/RceDataContext';
 import { rceDataService } from '../../../services/rceDataService';
 import { rceComprobantesService } from '../../../services/rceComprobantesService';
 import RceComprobantesTable from '../../../components/sire/rce/RceComprobantesTable';
+import PeriodoSelector, {
+  periodoActual,
+  periodoToString,
+  type Periodo,
+} from '../../../components/common/PeriodoSelector';
+import EmptyState from '../../../components/common/EmptyState';
+import { cn } from '../../../lib/cn';
 import type { RceComprobantesDetalladosResponse } from '../../../types/rce';
 
 interface ResumenData {
@@ -19,74 +33,82 @@ interface ResumenData {
   archivosDisponibles: any[];
 }
 
-type VistaActiva = 'resumen' | 'detallado' | 'base_datos';
+type VistaActiva = 'base_datos' | 'detallado' | 'resumen';
+
+const VISTAS: { id: VistaActiva; label: string; icon: typeof Database }[] = [
+  { id: 'base_datos', label: 'Gestión local', icon: Database },
+  { id: 'detallado', label: 'Consultar SUNAT', icon: Cloud },
+  { id: 'resumen', label: 'Reportes', icon: BarChart3 },
+];
+
+/** Importes en soles, con separador de miles y dos decimales. */
+const soles = (n: number): string =>
+  `S/ ${n.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+/** Cabeceras de SUNAT abreviadas para que la tabla quepa. */
+const HEADERS_LEGIBLES: Record<string, string> = {
+  'Tipo de Documento': 'Tipo Doc.',
+  'Total Documentos': 'Cant.',
+  'BI Gravado DG': 'BI Gravado',
+  'IGV / IPM DG': 'IGV',
+  'BI Gravado DGNG': 'BI Grav. DGNG',
+  'IGV / IPM DGNG': 'IGV DGNG',
+  'BI Gravado DNG': 'BI Grav. DNG',
+  'IGV / IPM DNG': 'IGV DNG',
+  'Valor Adq. NG': 'Valor No Grav.',
+  ISC: 'ISC',
+  ICBPER: 'ICBPER',
+  'Otros Trib/ Cargos': 'Otros Tributos',
+  'Total CP': 'Total',
+};
+
+const thBase =
+  'whitespace-nowrap px-3 py-2.5 text-xs font-semibold text-white first:text-left';
+const tdBase = 'whitespace-nowrap px-3 py-2.5 text-xs text-slate-700';
 
 const RceResumenPage: React.FC = () => {
-  const navigate = useNavigate();
   const { empresaActual } = useEmpresaValidation();
-  
-  // 🚀 Contexto para cache de datos
-  const { 
+  const {
     setComprobantesDetallados: setComprobantesEnCache,
     setRucActual,
     setPeriodoActual,
-    setUltimaConsultaSunat
+    setUltimaConsultaSunat,
   } = useRceData();
-  
+
   const [resumenData, setResumenData] = useState<ResumenData | null>(null);
-  const [comprobantesDetallados, setComprobantesDetallados] = useState<RceComprobantesDetalladosResponse | null>(null);
+  const [comprobantesDetallados, setComprobantesDetallados] =
+    useState<RceComprobantesDetalladosResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadingDetallados, setLoadingDetallados] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [vistaActiva, setVistaActiva] = useState<VistaActiva>('base_datos'); // 🔄 Cambio: BD como vista por defecto
-  
-  // Estados separados para año y mes
-  const [selectedYear, setSelectedYear] = useState('2025');
-  const [selectedMonth, setSelectedMonth] = useState('07');
+  const [vistaActiva, setVistaActiva] = useState<VistaActiva>('base_datos');
+
+  // Antes el periodo arrancaba cableado en 2025/07, asi que la pantalla abria
+  // siempre en julio de 2025 en vez del mes en curso.
+  const [periodo, setPeriodo] = useState<Periodo>(periodoActual);
   const [selectedOpcion, setSelectedOpcion] = useState('1');
 
-  // Generar período de 6 dígitos (YYYYMM)
-  const selectedPeriod = `${selectedYear}${selectedMonth.padStart(2, '0')}`;
+  const selectedPeriod = periodoToString(periodo);
+  const ruc = empresaActual?.ruc;
 
-  // Lista de meses
-  const months = [
-    { value: '01', label: 'Enero' },
-    { value: '02', label: 'Febrero' },
-    { value: '03', label: 'Marzo' },
-    { value: '04', label: 'Abril' },
-    { value: '05', label: 'Mayo' },
-    { value: '06', label: 'Junio' },
-    { value: '07', label: 'Julio' },
-    { value: '08', label: 'Agosto' },
-    { value: '09', label: 'Septiembre' },
-    { value: '10', label: 'Octubre' },
-    { value: '11', label: 'Noviembre' },
-    { value: '12', label: 'Diciembre' }
-  ];
-
-  // Lista de años (últimos 5 años)
-  const currentYear = new Date().getFullYear();
-  const years = Array.from({ length: 5 }, (_, i) => (currentYear - i).toString());
-
-  const consultarResumen = async () => {
-    if (!empresaActual) return;
+  const consultarResumen = useCallback(async () => {
+    if (!ruc) return;
 
     setLoading(true);
     setError(null);
 
     try {
-      // Usar el nuevo servicio de datos con cache inteligente
-      const response = await rceDataService.obtenerResumen(empresaActual.ruc, selectedPeriod);
-      
+      const response = await rceDataService.obtenerResumen(ruc, selectedPeriod);
+
       if (response.exitoso) {
         setResumenData({
           totalRegistros: response.datos?.total_documentos || 0,
           resumenPeriodo: {
             ...response.datos,
             contenido_completo: response.contenido_completo,
-            periodo: response.periodo
+            periodo: response.periodo,
           },
-          archivosDisponibles: []
+          archivosDisponibles: [],
         });
       } else {
         setError('No se encontraron datos de resumen para el período seleccionado');
@@ -98,79 +120,44 @@ const RceResumenPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [ruc, selectedPeriod]);
 
-  const consultarComprobantesDetallados = async () => {
-    if (!empresaActual) return;
+  const consultarComprobantesDetallados = useCallback(async () => {
+    if (!ruc) return;
 
     setLoadingDetallados(true);
     setError(null);
 
     try {
-      console.log('🔄 Consultando comprobantes detallados desde SUNAT...');
-      
-      // Usar el servicio normal (ahora con cache deshabilitado por defecto)
-      const response = await rceDataService.obtenerComprobantesDetallados(
-        empresaActual.ruc, 
-        selectedPeriod
-      );
-      
-      if (response.exitoso) {
-        setComprobantesDetallados(response);
-        
-        // 🚀 GUARDAR EN CONTEXTO para evitar consultas futuras
-        if (response.comprobantes && response.comprobantes.length > 0) {
-          console.log(`📊 Guardando ${response.comprobantes.length} comprobantes en cache`);
-          setComprobantesEnCache(response.comprobantes as any); // TODO: Arreglar tipos
-          setRucActual(empresaActual.ruc);
-          setPeriodoActual(selectedPeriod);
-          setUltimaConsultaSunat(new Date());
-          
-          // 💾 AUTO-GUARDAR EN BASE DE DATOS (con verificación de duplicados)
-          console.log('💾 Auto-guardando en base de datos...');
-          console.log('🔍 DEBUG: Datos a enviar al backend:', {
-            ruc: empresaActual.ruc,
-            periodo: selectedPeriod,
-            comprobantes_count: response.comprobantes?.length || 0,
-            primer_comprobante_completo: JSON.stringify(response.comprobantes?.[0] || null, null, 2)
-          });
-          
-          try {
-            // Primero verificar si ya existen datos
-            const estadisticasExistentes = await rceComprobantesService.obtenerEstadisticas(
-              empresaActual.ruc,
-              selectedPeriod
-            );
-            
-            if (estadisticasExistentes.total_comprobantes > 0) {
-              console.log(`⚠️ Ya existen ${estadisticasExistentes.total_comprobantes} comprobantes. Actualizando...`);
-            } else {
-              console.log('🆕 No hay datos existentes. Guardando por primera vez...');
-            }
-            
-            const resultadoBD = await rceComprobantesService.guardarDesdeSupat(
-              empresaActual.ruc,
-              selectedPeriod,
-              { comprobantes: response.comprobantes }
-            );
-            
-            if (resultadoBD.exitoso) {
-              console.log('✅ Auto-guardado exitoso en BD:', {
-                nuevos: resultadoBD.total_nuevos,
-                actualizados: resultadoBD.total_actualizados
-              });
-              
-              // Disparar evento para refrescar la tabla de BD
-              window.dispatchEvent(new CustomEvent('rce-data-updated'));
-            }
-          } catch (errorBD) {
-            console.warn('⚠️ Error en auto-guardado BD (no crítico):', errorBD);
-            // No interrumpimos el flujo del usuario
-          }
-        }
-      } else {
+      const response = await rceDataService.obtenerComprobantesDetallados(ruc, selectedPeriod);
+
+      if (!response.exitoso) {
         setError('No se encontraron comprobantes detallados para el período seleccionado');
         setComprobantesDetallados(null);
+        return;
+      }
+
+      setComprobantesDetallados(response);
+
+      if (response.comprobantes && response.comprobantes.length > 0) {
+        setComprobantesEnCache(response.comprobantes as any);
+        setRucActual(ruc);
+        setPeriodoActual(selectedPeriod);
+        setUltimaConsultaSunat(new Date());
+
+        // Auto-guardado en la base de datos local. Si falla no se interrumpe
+        // al usuario: los datos ya estan en pantalla.
+        try {
+          const resultadoBD = await rceComprobantesService.guardarDesdeSupat(ruc, selectedPeriod, {
+            comprobantes: response.comprobantes,
+          });
+
+          if (resultadoBD.exitoso) {
+            window.dispatchEvent(new CustomEvent('rce-data-updated'));
+          }
+        } catch (errorBD) {
+          console.warn('Error en el auto-guardado local (no crítico):', errorBD);
+        }
       }
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Error consultando comprobantes detallados');
@@ -178,861 +165,418 @@ const RceResumenPage: React.FC = () => {
     } finally {
       setLoadingDetallados(false);
     }
-  };
+  }, [
+    ruc,
+    selectedPeriod,
+    setComprobantesEnCache,
+    setRucActual,
+    setPeriodoActual,
+    setUltimaConsultaSunat,
+  ]);
 
   useEffect(() => {
-    consultarResumen();
-  }, [selectedPeriod, selectedOpcion, empresaActual]);
+    void consultarResumen();
+  }, [consultarResumen, selectedOpcion]);
 
-  if (!empresaActual) {
-    return (
-      <div style={{
-        minHeight: '100vh',
-        background: 'linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)',
-        padding: '20px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center'
-      }}>
-        <div style={{ background: 'white', padding: '2rem', borderRadius: '12px', textAlign: 'center' }}>
-          <h2>🏢 Empresa no encontrada</h2>
-          <button onClick={() => navigate('/empresas')}>
-            Seleccionar Empresa
-          </button>
-        </div>
-      </div>
-    );
-  }
+  const irADetallado = () => {
+    setVistaActiva('detallado');
+    if (!comprobantesDetallados && !loadingDetallados) {
+      void consultarComprobantesDetallados();
+    }
+  };
+
+  // RequireEmpresa garantiza que hay empresa: esta guarda solo estrecha el tipo.
+  if (!empresaActual) return null;
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: 'linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)',
-      padding: '20px'
-    }}>
-      {/* Header de navegación */}
-      <div style={{
-        background: 'white',
-        padding: '1rem 2rem',
-        borderRadius: '12px',
-        marginBottom: '2rem',
-        boxShadow: '0 2px 10px rgba(0, 0, 0, 0.1)'
-      }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
-            {/* Breadcrumbs */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-              <button
-                onClick={() => navigate('/sire')}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: '#3b82f6',
-                  cursor: 'pointer',
-                  fontSize: '0.9rem'
-                }}
-              >
-                SIRE
-              </button>
-              <span style={{ color: '#6b7280' }}>›</span>
-              <button
-                onClick={() => navigate('/sire/rce')}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: '#3b82f6',
-                  cursor: 'pointer',
-                  fontSize: '0.9rem'
-                }}
-              >
-                RCE
-              </button>
-              <span style={{ color: '#6b7280' }}>›</span>
-              <span style={{ color: '#374151', fontWeight: 'bold', fontSize: '0.9rem' }}>
-                Resumen
-              </span>
-            </div>
-            
-            {/* Título principal */}
-            <h1 style={{ 
-              margin: 0, 
-              fontSize: '1.8rem', 
-              fontWeight: 'bold',
-              color: '#f59e0b',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem'
-            }}>
-              📊 Resumen de Período RCE
-            </h1>
-          </div>
-          
-          <div style={{ display: 'flex', gap: '1rem' }}>
-            <button
-              onClick={() => navigate('/sire/rce')}
-              style={{
-                background: '#f3f4f6',
-                border: 'none',
-                padding: '0.5rem 1rem',
-                borderRadius: '8px',
-                color: '#374151',
-                cursor: 'pointer',
-                fontSize: '0.9rem'
-              }}
-            >
-              ← Volver a RCE
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Información de la Empresa y Controles */}
-      <div style={{
-        background: 'white',
-        padding: '1.5rem',
-        borderRadius: '12px',
-        marginBottom: '2rem',
-        boxShadow: '0 2px 10px rgba(0, 0, 0, 0.1)'
-      }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-          <div style={{ display: 'flex', gap: '2rem', alignItems: 'center' }}>
-            <div>
-              <strong>{empresaActual.ruc}</strong> - {empresaActual.razon_social}
-            </div>
-            {resumenData && (
-              <div>
-                <span style={{ color: '#f59e0b', fontWeight: 'bold' }}>{resumenData.totalRegistros}</span> registros
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Controles */}
-        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
-          {/* Selector de Año */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <label style={{ fontWeight: 'bold' }}>Año:</label>
-            <select
-              value={selectedYear}
-              onChange={(e) => setSelectedYear(e.target.value)}
-              style={{
-                padding: '0.5rem',
-                borderRadius: '6px',
-                border: '1px solid #d1d5db',
-                fontSize: '0.9rem',
-                minWidth: '80px'
-              }}
-            >
-              {years.map(year => (
-                <option key={year} value={year}>{year}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Selector de Mes */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <label style={{ fontWeight: 'bold' }}>Mes:</label>
-            <select
-              value={selectedMonth}
-              onChange={(e) => setSelectedMonth(e.target.value)}
-              style={{
-                padding: '0.5rem',
-                borderRadius: '6px',
-                border: '1px solid #d1d5db',
-                fontSize: '0.9rem',
-                minWidth: '120px'
-              }}
-            >
-              {months.map(month => (
-                <option key={month.value} value={month.value}>
-                  {month.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Mostrar período calculado */}
-          <div style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: '0.5rem',
-            background: '#f3f4f6',
-            padding: '0.5rem 1rem',
-            borderRadius: '6px',
-            border: '1px solid #e5e7eb'
-          }}>
-            <label style={{ fontWeight: 'bold', color: '#374151' }}>Período:</label>
-            <span style={{ 
-              fontWeight: 'bold', 
-              color: '#1f2937',
-              fontFamily: 'monospace'
-            }}>
-              {selectedPeriod}
-            </span>
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <label style={{ fontWeight: 'bold' }}>Opción:</label>
-            <select
-              value={selectedOpcion}
-              onChange={(e) => setSelectedOpcion(e.target.value)}
-              style={{
-                padding: '0.5rem',
-                borderRadius: '6px',
-                border: '1px solid #d1d5db',
-                fontSize: '0.9rem'
-              }}
-            >
-              <option value="1">Resumen General</option>
-              <option value="2">Detalle Completo</option>
-              <option value="3">Solo Errores</option>
-            </select>
-          </div>
-          
-          <button
-            onClick={consultarResumen}
-            disabled={loading}
-            style={{
-              background: '#f59e0b',
-              color: 'white',
-              border: 'none',
-              padding: '0.5rem 1rem',
-              borderRadius: '6px',
-              cursor: loading ? 'not-allowed' : 'pointer',
-              opacity: loading ? 0.6 : 1
-            }}
+    <div className="space-y-6">
+      {/* ------------------------------------------------------------------ */}
+      {/* Periodo y opciones                                                 */}
+      {/* ------------------------------------------------------------------ */}
+      <PeriodoSelector value={periodo} onChange={setPeriodo} disabled={loading}>
+        <div className="flex items-center gap-2">
+          <label htmlFor="rce-opcion" className="text-sm font-medium text-slate-600">
+            Opción
+          </label>
+          <select
+            id="rce-opcion"
+            value={selectedOpcion}
+            onChange={(e) => setSelectedOpcion(e.target.value)}
+            className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none"
           >
-            {loading ? '⏳ Consultando...' : '🔄 Consultar'}
-          </button>
+            <option value="1">Resumen general</option>
+            <option value="2">Detalle completo</option>
+            <option value="3">Solo errores</option>
+          </select>
         </div>
 
-        {/* Toggle de Vistas */}
-        <div style={{ 
-          marginTop: '1.5rem', 
-          padding: '1rem',
-          background: '#f8fafc',
-          borderRadius: '8px',
-          border: '1px solid #e2e8f0'
-        }}>
-          <div style={{ marginBottom: '0.5rem' }}>
-            <strong>Vista:</strong>
-          </div>
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
-            {/* 💾 Base de Datos - PRINCIPAL */}
-            <button
-              onClick={() => setVistaActiva('base_datos')}
-              style={{
-                background: vistaActiva === 'base_datos' ? '#10b981' : '#e5e7eb',
-                color: vistaActiva === 'base_datos' ? 'white' : '#374151',
-                border: vistaActiva === 'base_datos' ? '2px solid #059669' : '1px solid #d1d5db',
-                padding: '0.75rem 1.25rem',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                fontSize: '0.95rem',
-                fontWeight: vistaActiva === 'base_datos' ? 'bold' : 'normal',
-                boxShadow: vistaActiva === 'base_datos' ? '0 2px 4px rgba(16, 185, 129, 0.3)' : 'none'
-              }}
-            >
-              � Gestión Local
-            </button>
-            
-            {/* 📋 Vista Detallada - SECUNDARIO */}
-            <button
-              onClick={() => {
-                setVistaActiva('detallado');
-                if (!comprobantesDetallados && !loadingDetallados) {
-                  consultarComprobantesDetallados();
-                }
-              }}
-              style={{
-                background: vistaActiva === 'detallado' ? '#3b82f6' : '#e5e7eb',
-                color: vistaActiva === 'detallado' ? 'white' : '#374151',
-                border: 'none',
-                padding: '0.5rem 1rem',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontSize: '0.9rem',
-                fontWeight: vistaActiva === 'detallado' ? 'bold' : 'normal'
-              }}
-            >
-              📋 Consultar SUNAT
-            </button>
+        <button
+          type="button"
+          onClick={consultarResumen}
+          disabled={loading}
+          className="inline-flex items-center gap-2 rounded-lg bg-amber-500 px-3.5 py-2 text-sm font-semibold text-white hover:bg-amber-600 disabled:opacity-60"
+        >
+          {loading ? (
+            <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+          ) : (
+            <RefreshCw className="size-4" aria-hidden="true" />
+          )}
+          {loading ? 'Consultando…' : 'Consultar'}
+        </button>
+      </PeriodoSelector>
 
-            {/* 📊 Vista Resumen - TERCIARIO */}
-            <button
-              onClick={() => setVistaActiva('resumen')}
-              style={{
-                background: vistaActiva === 'resumen' ? '#3b82f6' : '#e5e7eb',
-                color: vistaActiva === 'resumen' ? 'white' : '#374151',
-                border: 'none',
-                padding: '0.5rem 1rem',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontSize: '0.9rem',
-                fontWeight: vistaActiva === 'resumen' ? 'bold' : 'normal'
-              }}
-            >
-              � Reportes
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Contenido principal */}
-      <div style={{
-        background: 'white',
-        borderRadius: '12px',
-        padding: '2rem',
-        boxShadow: '0 2px 10px rgba(0, 0, 0, 0.1)'
-      }}>
-        {error && (
-          <div style={{
-            background: '#fef2f2',
-            border: '1px solid #fecaca',
-            padding: '0.75rem',
-            borderRadius: '6px',
-            marginBottom: '1rem',
-            color: '#dc2626',
-            fontSize: '0.9rem'
-          }}>
-            ❌ {error}
-          </div>
-        )}
-
-        {loading && (
-          <div style={{ textAlign: 'center', padding: '2rem' }}>
-            <div style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>⏳</div>
-            <p style={{ color: '#6b7280', fontSize: '0.9rem' }}>Cargando...</p>
-          </div>
-        )}
-
-        {!loading && !resumenData && !error && vistaActiva === 'resumen' && (
-          <div style={{ textAlign: 'center', padding: '3rem', color: '#6b7280' }}>
-            <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📊</div>
-            <h3>No hay datos de resumen</h3>
-            <p>No se encontraron datos para el período {selectedPeriod}</p>
-          </div>
-        )}
-
-        {/* Vista Resumen */}
-        {!loading && resumenData && vistaActiva === 'resumen' && (
-          <div>
-            <div style={{ 
-              display: 'flex', 
-              justifyContent: 'space-between', 
-              alignItems: 'center', 
-              marginBottom: '1.5rem' 
-            }}>
-              <h2 style={{ margin: 0, color: '#374151' }}>
-                📊 Reportes y Análisis - Período {selectedPeriod}
-              </h2>
-              
+      {/* ------------------------------------------------------------------ */}
+      {/* Vistas                                                             */}
+      {/* ------------------------------------------------------------------ */}
+      <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div role="tablist" className="flex border-b border-slate-200">
+          {VISTAS.map(({ id, label, icon: Icon }) => {
+            const isActive = vistaActiva === id;
+            return (
               <button
-                onClick={() => setVistaActiva('base_datos')}
-                style={{
-                  background: '#10b981',
-                  color: 'white',
-                  border: 'none',
-                  padding: '0.5rem 1rem',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  fontSize: '0.85rem',
-                  fontWeight: '500'
-                }}
+                key={id}
+                type="button"
+                role="tab"
+                aria-selected={isActive}
+                onClick={() => (id === 'detallado' ? irADetallado() : setVistaActiva(id))}
+                className={cn(
+                  'flex flex-1 items-center justify-center gap-2 border-0 border-b-2 bg-transparent px-4 py-3.5 text-sm font-semibold transition-colors',
+                  isActive
+                    ? 'border-emerald-600 bg-emerald-50/60 text-emerald-700'
+                    : 'border-transparent text-slate-500 hover:bg-slate-50 hover:text-slate-800'
+                )}
               >
-                ← Volver a Gestión Local
+                <Icon className="size-4" aria-hidden="true" />
+                {label}
               </button>
+            );
+          })}
+        </div>
+
+        <div className="p-5 sm:p-6">
+          {error && (
+            <div
+              role="alert"
+              className="mb-5 flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3"
+            >
+              <AlertCircle className="mt-0.5 size-5 shrink-0 text-red-600" aria-hidden="true" />
+              <p className="text-sm font-medium text-red-800">{error}</p>
             </div>
+          )}
 
-            {/* Descripción de propósito */}
-            <div style={{
-              padding: '1rem',
-              background: '#fef3c7',
-              border: '1px solid #f59e0b',
-              borderRadius: '8px',
-              marginBottom: '1.5rem',
-              fontSize: '0.9rem',
-              color: '#92400e'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                <span style={{ fontSize: '1.1rem' }}>📊</span>
-                <strong>Reportes y Estadísticas</strong>
-              </div>
-              <p style={{ margin: 0, lineHeight: '1.4' }}>
-                Aquí puede ver resúmenes consolidados y reportes estadísticos de sus comprobantes. 
-                Ideal para análisis de períodos y generación de informes gerenciales.
-              </p>
-            </div>
-            
-            {/* Estadísticas generales */}
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-              gap: '0.75rem',
-              marginBottom: '1.5rem'
-            }}>
-              <div style={{
-                background: '#f0fdf4',
-                padding: '0.75rem',
-                borderRadius: '6px',
-                textAlign: 'center'
-              }}>
-                <div style={{ fontSize: '1.2rem', marginBottom: '0.2rem' }}>📋</div>
-                <div style={{ fontWeight: 'bold', fontSize: '1rem' }}>{resumenData.totalRegistros}</div>
-                <div style={{ color: '#6b7280', fontSize: '0.8rem' }}>Registros</div>
-              </div>
-              
-              <div style={{
-                background: '#fef3c7',
-                padding: '0.75rem',
-                borderRadius: '6px',
-                textAlign: 'center'
-              }}>
-                <div style={{ fontSize: '1.2rem', marginBottom: '0.2rem' }}>📁</div>
-                <div style={{ fontWeight: 'bold', fontSize: '1rem' }}>{resumenData.archivosDisponibles.length}</div>
-                <div style={{ color: '#6b7280', fontSize: '0.8rem' }}>Archivos</div>
-              </div>
-              
-              <div style={{
-                background: '#dbeafe',
-                padding: '0.75rem',
-                borderRadius: '6px',
-                textAlign: 'center'
-              }}>
-                <div style={{ fontSize: '1.2rem', marginBottom: '0.2rem' }}>📅</div>
-                <div style={{ fontWeight: 'bold', fontSize: '1rem' }}>{selectedPeriod}</div>
-                <div style={{ color: '#6b7280', fontSize: '0.8rem' }}>Período</div>
-              </div>
-              
-              <div style={{
-                background: '#f0f9ff',
-                padding: '0.75rem',
-                borderRadius: '6px',
-                textAlign: 'center'
-              }}>
-                <div style={{ fontSize: '1.2rem', marginBottom: '0.2rem' }}>💰</div>
-                <div style={{ fontWeight: 'bold', fontSize: '1rem' }}>
-                  {resumenData.resumenPeriodo?.total_cp ? `S/ ${resumenData.resumenPeriodo.total_cp}` : 'N/A'}
-                </div>
-                <div style={{ color: '#6b7280', fontSize: '0.8rem' }}>Total CP</div>
-              </div>
-            </div>
+          {/* ---------------------------------------------------------- */}
+          {/* Gestion local                                              */}
+          {/* ---------------------------------------------------------- */}
+          {vistaActiva === 'base_datos' && (
+            <RceComprobantesTable
+              ruc={empresaActual.ruc}
+              periodo={selectedPeriod}
+              onDataChange={() => {}}
+              onConsultarSunat={irADetallado}
+            />
+          )}
 
-            {/* Tabla de Resumen Detallado estilo SUNAT */}
-            {resumenData.resumenPeriodo && resumenData.resumenPeriodo.contenido_completo && (
-              <div style={{
-                background: '#f9fafb',
-                padding: '1.5rem',
-                borderRadius: '8px',
-                marginBottom: '2rem'
-              }}>
-                <h3 style={{ margin: '0 0 1.5rem 0', color: '#374151', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  � Resumen Detallado por Tipo de Documento
-                </h3>
-                
-                {(() => {
-                  const contenido = resumenData.resumenPeriodo.contenido_completo;
-                  const lineas = contenido.split('\n').filter((linea: string) => linea.trim() !== '');
-                  
-                  if (lineas.length === 0) return null;
-                  
-                  // Primera línea son los headers
-                  const headers = lineas[0].split('|').map((h: string) => h.trim());
-                  
-                  // Separar facturas individuales del total
-                  const todasLasFilas = lineas.slice(1).map((linea: string) => 
-                    linea.split('|').map((celda: string) => celda.trim())
-                  );
-                  
-                  // Filtrar solo las facturas (excluir TOTAL)
-                  const facturas = todasLasFilas.filter((fila: string[]) => 
-                    !fila[0] || !fila[0].toUpperCase().includes('TOTAL')
-                  );
-
-                  // Mapeo de headers más legibles
-                  const headersLegibles = headers.map((header: string) => {
-                    const mapa: { [key: string]: string } = {
-                      'Tipo de Documento': 'Tipo Doc.',
-                      'Total Documentos': 'Cant.',
-                      'BI Gravado DG': 'BI Gravado',
-                      'IGV / IPM DG': 'IGV',
-                      'BI Gravado DGNG': 'BI Grav. DGNG',
-                      'IGV / IPM DGNG': 'IGV DGNG',
-                      'BI Gravado DNG': 'BI Grav. DNG',
-                      'IGV / IPM DNG': 'IGV DNG',
-                      'Valor Adq. NG': 'Valor No Grav.',
-                      'ISC': 'ISC',
-                      'ICBPER': 'ICBPER',
-                      'Otros Trib/ Cargos': 'Otros Tributos',
-                      'Total CP': 'Total'
-                    };
-                    return mapa[header] || header;
-                  });
-                  
-                  return (
-                    <>
-                      {/* Información sobre los comprobantes encontrados */}
-                      {facturas.length > 0 && (
-                        <div style={{ 
-                          background: '#e0f2fe', 
-                          padding: '12px', 
-                          borderRadius: '8px', 
-                          marginBottom: '1rem',
-                          border: '1px solid #0891b2'
-                        }}>
-                          <p style={{ margin: 0, color: '#0e7490', fontSize: '0.9rem', fontWeight: '500' }}>
-                            📄 Se encontraron <strong>{facturas.length}</strong> comprobante(s) individual(es) para el período {resumenData.resumenPeriodo.periodo}
-                          </p>
-                        </div>
-                      )}
-
-                      {/* Tabla de Facturas Individuales */}
-                      {facturas.length > 0 && (
-                        <div style={{ overflowX: 'auto', marginBottom: '2rem' }}>
-                          <table style={{
-                            width: '100%',
-                            borderCollapse: 'collapse',
-                            background: 'white',
-                            borderRadius: '8px',
-                            overflow: 'hidden',
-                            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
-                          }}>
-                            <thead>
-                              <tr style={{ background: '#1e40af', color: 'white' }}>
-                                {headersLegibles.map((header: string, index: number) => (
-                                  <th key={index} style={{
-                                    padding: '12px 8px',
-                                    textAlign: index === 0 ? 'left' : 'center',
-                                    fontSize: '0.85rem',
-                                    fontWeight: '600',
-                                    whiteSpace: 'nowrap',
-                                    borderRight: index < headersLegibles.length - 1 ? '1px solid rgba(255,255,255,0.2)' : 'none'
-                                  }}>
-                                    {header}
-                                  </th>
-                                ))}
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {facturas.map((fila: string[], rowIndex: number) => (
-                                <tr key={rowIndex} style={{
-                                  background: rowIndex % 2 === 0 ? '#f8fafc' : 'white',
-                                  borderBottom: '1px solid #e2e8f0',
-                                  transition: 'background-color 0.2s',
-                                }}
-                                onMouseEnter={(e) => e.currentTarget.style.background = '#e0f2fe'}
-                                onMouseLeave={(e) => e.currentTarget.style.background = rowIndex % 2 === 0 ? '#f8fafc' : 'white'}
-                                >
-                                  {fila.map((celda: string, cellIndex: number) => (
-                                    <td key={cellIndex} style={{
-                                      padding: '10px 8px',
-                                      fontSize: '0.8rem',
-                                      borderRight: cellIndex < fila.length - 1 ? '1px solid #e2e8f0' : 'none',
-                                      color: '#374151',
-                                      textAlign: cellIndex === 0 ? 'left' : 'right',
-                                      whiteSpace: 'nowrap'
-                                    }}>
-                                      {/* Formatear números monetarios */}
-                                      {cellIndex === 0 
-                                        ? celda // Texto para "Tipo de Documento"
-                                        : cellIndex === 1 
-                                          ? celda // Número entero para "Cantidad"
-                                          : !isNaN(parseFloat(celda))
-                                            ? `S/ ${parseFloat(celda).toFixed(2)}`
-                                            : celda
-                                      }
-                                    </td>
-                                  ))}
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      )}
-                    </>
-                  );
-                })()}
+          {/* ---------------------------------------------------------- */}
+          {/* Consulta directa a SUNAT                                   */}
+          {/* ---------------------------------------------------------- */}
+          {vistaActiva === 'detallado' && (
+            <div className="space-y-5">
+              <div className="rounded-lg border border-cyan-200 bg-cyan-50 px-4 py-3">
+                <p className="mb-0.5 text-sm font-semibold text-cyan-900">Consulta directa a SUNAT</p>
+                <p className="text-sm text-cyan-800">
+                  Obtiene los comprobantes más recientes desde SUNAT. Los datos se guardan
+                  automáticamente en tu base de datos local para futuras consultas.
+                </p>
               </div>
-            )}
 
-            {/* Archivos disponibles */}
-            {resumenData.archivosDisponibles.length > 0 && (
-              <div>
-                <h3 style={{ margin: '0 0 1rem 0', color: '#374151' }}>📁 Archivos Disponibles</h3>
-                <div style={{ display: 'grid', gap: '1rem' }}>
-                  {resumenData.archivosDisponibles.map((archivo: any, index: number) => (
-                    <div
-                      key={index}
-                      style={{
-                        border: '1px solid #e5e7eb',
-                        borderRadius: '8px',
-                        padding: '1rem',
-                        background: '#fafafa'
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <span style={{ fontSize: '1.2rem' }}>📄</span>
-                        <strong>{archivo.nombre || `Archivo ${index + 1}`}</strong>
-                      </div>
-                      {archivo.descripcion && (
-                        <p style={{ margin: '0.5rem 0 0 1.7rem', color: '#6b7280', fontSize: '0.9rem' }}>
-                          {archivo.descripcion}
-                        </p>
-                      )}
-                    </div>
+              {loadingDetallados && (
+                <div className="space-y-2" aria-busy="true">
+                  {[0, 1, 2, 3].map((i) => (
+                    <div key={i} className="h-10 animate-pulse rounded bg-slate-100" />
                   ))}
                 </div>
-              </div>
-            )}
-          </div>
-        )}
+              )}
 
-        {/* Vista Detallada */}
-        {vistaActiva === 'detallado' && (
-          <div>
-            <div style={{ 
-              display: 'flex', 
-              justifyContent: 'space-between', 
-              alignItems: 'center', 
-              marginBottom: '1.5rem' 
-            }}>
-              <h2 style={{ margin: 0, color: '#374151' }}>
-                � Consulta desde SUNAT - Período {selectedPeriod}
-              </h2>
-              
-              <button
-                onClick={() => setVistaActiva('base_datos')}
-                style={{
-                  background: '#10b981',
-                  color: 'white',
-                  border: 'none',
-                  padding: '0.5rem 1rem',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  fontSize: '0.85rem',
-                  fontWeight: '500'
-                }}
-              >
-                ← Volver a Gestión Local
-              </button>
-            </div>
-
-            {/* Descripción de propósito */}
-            <div style={{
-              padding: '1rem',
-              background: '#e0f2fe',
-              border: '1px solid #0891b2',
-              borderRadius: '8px',
-              marginBottom: '1.5rem',
-              fontSize: '0.9rem',
-              color: '#0e7490'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                <span style={{ fontSize: '1.1rem' }}>🔄</span>
-                <strong>Consulta Directa SUNAT</strong>
-              </div>
-              <p style={{ margin: 0, lineHeight: '1.4' }}>
-                Aquí puede consultar y obtener los comprobantes más recientes directamente desde SUNAT. 
-                Los datos se guardarán automáticamente en su base de datos local para futuras consultas.
-              </p>
-            </div>
-
-            {loadingDetallados && (
-              <div style={{ textAlign: 'center', padding: '2rem' }}>
-                <div style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>⏳</div>
-                <p style={{ color: '#6b7280', fontSize: '0.9rem' }}>Descargando datos...</p>
-              </div>
-            )}
-
-            {!loadingDetallados && !comprobantesDetallados && (
-              <div style={{ textAlign: 'center', padding: '2rem', color: '#6b7280' }}>
-                <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>📋</div>
-                <p>Sin datos disponibles</p>
-                <button
-                  onClick={consultarComprobantesDetallados}
-                  style={{
-                    background: '#3b82f6',
-                    color: 'white',
-                    border: 'none',
-                    padding: '0.5rem 1rem',
-                    borderRadius: '6px',
-                    cursor: 'pointer',
-                    fontSize: '0.9rem'
-                  }}
+              {!loadingDetallados && !comprobantesDetallados && (
+                <EmptyState
+                  icon={Cloud}
+                  title="Sin datos descargados"
+                  description={`Consulta a SUNAT los comprobantes del período ${selectedPeriod}.`}
                 >
-                  Cargar Datos
-                </button>
-              </div>
-            )}
+                  <button
+                    type="button"
+                    onClick={consultarComprobantesDetallados}
+                    className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+                  >
+                    <Cloud className="size-4" aria-hidden="true" />
+                    Cargar datos
+                  </button>
+                </EmptyState>
+              )}
 
-            {!loadingDetallados && comprobantesDetallados && comprobantesDetallados.exitoso && (
-              <div>
-                {/* Tabla de comprobantes detallados */}
-                <div style={{ overflowX: 'auto' }}>
-                  <table style={{
-                    width: '100%',
-                    borderCollapse: 'collapse',
-                    background: 'white',
-                    borderRadius: '8px',
-                    overflow: 'hidden',
-                    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
-                  }}>
-                    <thead>
-                      <tr style={{ background: '#1e40af', color: 'white' }}>
-                        <th style={{ padding: '12px 8px', textAlign: 'left', fontSize: '0.85rem', fontWeight: '600' }}>
-                          RUC Proveedor
-                        </th>
-                        <th style={{ padding: '12px 8px', textAlign: 'left', fontSize: '0.85rem', fontWeight: '600' }}>
-                          Razón Social
-                        </th>
-                        <th style={{ padding: '12px 8px', textAlign: 'center', fontSize: '0.85rem', fontWeight: '600' }}>
-                          Tipo Doc.
-                        </th>
-                        <th style={{ padding: '12px 8px', textAlign: 'center', fontSize: '0.85rem', fontWeight: '600' }}>
-                          Serie
-                        </th>
-                        <th style={{ padding: '12px 8px', textAlign: 'center', fontSize: '0.85rem', fontWeight: '600' }}>
-                          Número
-                        </th>
-                        <th style={{ padding: '12px 8px', textAlign: 'center', fontSize: '0.85rem', fontWeight: '600' }}>
-                          Fecha Emisión
-                        </th>
-                        <th style={{ padding: '12px 8px', textAlign: 'right', fontSize: '0.85rem', fontWeight: '600' }}>
-                          Base Imponible
-                        </th>
-                        <th style={{ padding: '12px 8px', textAlign: 'right', fontSize: '0.85rem', fontWeight: '600' }}>
-                          IGV
-                        </th>
-                        <th style={{ padding: '12px 8px', textAlign: 'right', fontSize: '0.85rem', fontWeight: '600' }}>
-                          Valor No Gravado
-                        </th>
-                        <th style={{ padding: '12px 8px', textAlign: 'right', fontSize: '0.85rem', fontWeight: '600' }}>
-                          Total
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {comprobantesDetallados.comprobantes.map((comprobante, index) => (
-                        <tr 
-                          key={index}
-                          style={{
-                            background: index % 2 === 0 ? '#f8fafc' : 'white',
-                            borderBottom: '1px solid #e2e8f0'
-                          }}
-                        >
-                          <td style={{ padding: '10px 8px', fontSize: '0.8rem', color: '#374151' }}>
-                            {comprobante.ruc_proveedor}
-                          </td>
-                          <td style={{ padding: '10px 8px', fontSize: '0.8rem', color: '#374151' }}>
-                            {comprobante.razon_social_proveedor}
-                          </td>
-                          <td style={{ padding: '10px 8px', fontSize: '0.8rem', color: '#374151', textAlign: 'center' }}>
-                            {comprobante.tipo_documento}
-                          </td>
-                          <td style={{ padding: '10px 8px', fontSize: '0.8rem', color: '#374151', textAlign: 'center' }}>
-                            {comprobante.serie_comprobante}
-                          </td>
-                          <td style={{ padding: '10px 8px', fontSize: '0.8rem', color: '#374151', textAlign: 'center' }}>
-                            {comprobante.numero_comprobante}
-                          </td>
-                          <td style={{ padding: '10px 8px', fontSize: '0.8rem', color: '#374151', textAlign: 'center' }}>
-                            {comprobante.fecha_emision}
-                          </td>
-                          <td style={{ padding: '10px 8px', fontSize: '0.8rem', color: '#374151', textAlign: 'right' }}>
-                            S/ {comprobante.base_imponible_gravada.toFixed(2)}
-                          </td>
-                          <td style={{ padding: '10px 8px', fontSize: '0.8rem', color: '#374151', textAlign: 'right' }}>
-                            S/ {comprobante.igv.toFixed(2)}
-                          </td>
-                          <td style={{ padding: '10px 8px', fontSize: '0.8rem', color: '#374151', textAlign: 'right' }}>
-                            S/ {comprobante.valor_adquisicion_no_gravada.toFixed(2)}
-                          </td>
-                          <td style={{ padding: '10px 8px', fontSize: '0.8rem', color: '#374151', textAlign: 'right', fontWeight: 'bold' }}>
-                            S/ {comprobante.importe_total.toFixed(2)}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+              {!loadingDetallados && comprobantesDetallados?.exitoso === false && (
+                <div
+                  role="alert"
+                  className="flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3"
+                >
+                  <AlertCircle className="mt-0.5 size-5 shrink-0 text-red-600" aria-hidden="true" />
+                  <p className="text-sm font-medium text-red-800">
+                    {comprobantesDetallados.mensaje}
+                  </p>
                 </div>
+              )}
 
-                {/* Totales */}
-                {comprobantesDetallados.totales && (
-                  <div style={{
-                    background: '#f8fafc',
-                    padding: '1rem',
-                    borderRadius: '6px',
-                    marginTop: '1rem',
-                    border: '1px solid #e2e8f0'
-                  }}>
-                    <h4 style={{ margin: '0 0 0.5rem 0', color: '#374151', fontSize: '0.95rem' }}>
-                      💰 Totales
-                    </h4>
-                    <div style={{
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-                      gap: '0.75rem'
-                    }}>
+              {!loadingDetallados && comprobantesDetallados?.exitoso && (
+                <>
+                  <div className="overflow-x-auto rounded-lg border border-slate-200">
+                    <table className="w-full border-collapse">
+                      <thead className="bg-blue-800">
+                        <tr>
+                          <th className={thBase}>RUC proveedor</th>
+                          <th className={thBase}>Razón social</th>
+                          <th className={thBase}>Tipo doc.</th>
+                          <th className={thBase}>Serie</th>
+                          <th className={thBase}>Número</th>
+                          <th className={thBase}>Emisión</th>
+                          <th className={cn(thBase, 'text-right')}>Base imponible</th>
+                          <th className={cn(thBase, 'text-right')}>IGV</th>
+                          <th className={cn(thBase, 'text-right')}>No gravado</th>
+                          <th className={cn(thBase, 'text-right')}>Total</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {comprobantesDetallados.comprobantes.map((c, index) => (
+                          <tr
+                            key={index}
+                            className="border-b border-slate-100 last:border-0 odd:bg-slate-50/60 hover:bg-blue-50"
+                          >
+                            <td className={cn(tdBase, 'font-mono')}>{c.ruc_proveedor}</td>
+                            <td className={cn(tdBase, 'max-w-55 truncate whitespace-normal')}>
+                              {c.razon_social_proveedor}
+                            </td>
+                            <td className={cn(tdBase, 'text-center')}>{c.tipo_documento}</td>
+                            <td className={cn(tdBase, 'text-center')}>{c.serie_comprobante}</td>
+                            <td className={cn(tdBase, 'text-center')}>{c.numero_comprobante}</td>
+                            <td className={cn(tdBase, 'text-center tabular-nums')}>
+                              {c.fecha_emision}
+                            </td>
+                            <td className={cn(tdBase, 'text-right tabular-nums')}>
+                              {soles(c.base_imponible_gravada)}
+                            </td>
+                            <td className={cn(tdBase, 'text-right tabular-nums')}>{soles(c.igv)}</td>
+                            <td className={cn(tdBase, 'text-right tabular-nums')}>
+                              {soles(c.valor_adquisicion_no_gravada)}
+                            </td>
+                            <td className={cn(tdBase, 'text-right font-semibold tabular-nums')}>
+                              {soles(c.importe_total)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {comprobantesDetallados.totales && (
+                    <div className="grid gap-4 rounded-lg border border-slate-200 bg-slate-50 p-4 sm:grid-cols-3">
                       <div>
-                        <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>Base Imponible</div>
-                        <div style={{ fontSize: '1rem', color: '#059669', fontWeight: 'bold' }}>
-                          S/ {comprobantesDetallados.totales.total_base_imponible.toFixed(2)}
-                        </div>
+                        <p className="text-xs font-medium tracking-wide text-slate-500 uppercase">
+                          Base imponible
+                        </p>
+                        <p className="text-lg font-bold text-emerald-600 tabular-nums">
+                          {soles(comprobantesDetallados.totales.total_base_imponible)}
+                        </p>
                       </div>
                       <div>
-                        <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>IGV</div>
-                        <div style={{ fontSize: '1rem', color: '#dc2626', fontWeight: 'bold' }}>
-                          S/ {comprobantesDetallados.totales.total_igv.toFixed(2)}
-                        </div>
+                        <p className="text-xs font-medium tracking-wide text-slate-500 uppercase">
+                          IGV
+                        </p>
+                        <p className="text-lg font-bold text-red-600 tabular-nums">
+                          {soles(comprobantesDetallados.totales.total_igv)}
+                        </p>
                       </div>
                       <div>
-                        <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>Total</div>
-                        <div style={{ fontSize: '1rem', color: '#1f2937', fontWeight: 'bold' }}>
-                          S/ {comprobantesDetallados.totales.total_general.toFixed(2)}
-                        </div>
+                        <p className="text-xs font-medium tracking-wide text-slate-500 uppercase">
+                          Total
+                        </p>
+                        <p className="text-lg font-bold text-slate-900 tabular-nums">
+                          {soles(comprobantesDetallados.totales.total_general)}
+                        </p>
                       </div>
                     </div>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+
+          {/* ---------------------------------------------------------- */}
+          {/* Reportes                                                   */}
+          {/* ---------------------------------------------------------- */}
+          {vistaActiva === 'resumen' && (
+            <div className="space-y-5">
+              <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
+                <p className="mb-0.5 text-sm font-semibold text-amber-900">
+                  Reportes y estadísticas
+                </p>
+                <p className="text-sm text-amber-800">
+                  Resúmenes consolidados de tus comprobantes, para análisis de período e informes.
+                </p>
+              </div>
+
+              {loading && (
+                <div className="space-y-2" aria-busy="true">
+                  {[0, 1, 2].map((i) => (
+                    <div key={i} className="h-16 animate-pulse rounded bg-slate-100" />
+                  ))}
+                </div>
+              )}
+
+              {!loading && !resumenData && !error && (
+                <EmptyState
+                  icon={BarChart3}
+                  title="No hay datos de resumen"
+                  description={`No se encontraron datos para el período ${selectedPeriod}.`}
+                />
+              )}
+
+              {!loading && resumenData && (
+                <>
+                  <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                    {[
+                      { label: 'Registros', value: String(resumenData.totalRegistros), tone: 'bg-green-50 text-green-700' },
+                      { label: 'Archivos', value: String(resumenData.archivosDisponibles.length), tone: 'bg-amber-50 text-amber-700' },
+                      { label: 'Período', value: selectedPeriod, tone: 'bg-blue-50 text-blue-700' },
+                      {
+                        label: 'Total CP',
+                        value: resumenData.resumenPeriodo?.total_cp
+                          ? `S/ ${resumenData.resumenPeriodo.total_cp}`
+                          : '—',
+                        tone: 'bg-sky-50 text-sky-700',
+                      },
+                    ].map((stat) => (
+                      <div
+                        key={stat.label}
+                        className={cn('rounded-lg px-4 py-3 text-center', stat.tone)}
+                      >
+                        <p className="text-lg font-bold tabular-nums">{stat.value}</p>
+                        <p className="text-xs font-medium tracking-wide uppercase opacity-80">
+                          {stat.label}
+                        </p>
+                      </div>
+                    ))}
                   </div>
-                )}
-              </div>
-            )}
 
-            {!loadingDetallados && comprobantesDetallados && !comprobantesDetallados.exitoso && (
-              <div style={{
-                background: '#fef2f2',
-                border: '1px solid #fecaca',
-                padding: '0.75rem',
-                borderRadius: '6px',
-                color: '#dc2626',
-                fontSize: '0.9rem',
-                marginBottom: '1rem'
-              }}>
-                ❌ {comprobantesDetallados.mensaje}
-              </div>
-            )}
-          </div>
-        )}
+                  {resumenData.resumenPeriodo?.contenido_completo && (
+                    <ResumenPorTipoDocumento
+                      contenido={resumenData.resumenPeriodo.contenido_completo}
+                      periodo={resumenData.resumenPeriodo.periodo}
+                    />
+                  )}
 
-        {/* Vista de Base de Datos */}
-        {vistaActiva === 'base_datos' && (
-          <div>
-            <RceComprobantesTable
-              ruc={empresaActual!.ruc}
-              periodo={selectedPeriod}
-              onDataChange={() => {
-                // Opcional: refrescar otros datos cuando cambien los comprobantes
-                console.log('Datos de comprobantes actualizados');
-              }}
-              onConsultarSunat={() => {
-                // 🆕 Cambiar a vista detallada y consultar SUNAT
-                setVistaActiva('detallado');
-                if (!comprobantesDetallados && !loadingDetallados) {
-                  consultarComprobantesDetallados();
-                }
-              }}
-            />
-          </div>
-        )}
+                  {resumenData.archivosDisponibles.length > 0 && (
+                    <div>
+                      <h3 className="mb-2 text-sm font-semibold text-slate-900">
+                        Archivos disponibles
+                      </h3>
+                      <ul className="grid gap-2">
+                        {resumenData.archivosDisponibles.map((archivo: any, index: number) => (
+                          <li
+                            key={index}
+                            className="flex items-start gap-2 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3"
+                          >
+                            <FileText
+                              className="mt-0.5 size-4 shrink-0 text-slate-400"
+                              aria-hidden="true"
+                            />
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium text-slate-800">
+                                {archivo.nombre || `Archivo ${index + 1}`}
+                              </p>
+                              {archivo.descripcion && (
+                                <p className="text-sm text-slate-500">{archivo.descripcion}</p>
+                              )}
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+        </div>
+      </section>
+    </div>
+  );
+};
+
+/**
+ * SUNAT devuelve el resumen como texto plano con columnas separadas por "|".
+ * Se parsea a tabla, descartando la fila de TOTAL.
+ */
+const ResumenPorTipoDocumento: React.FC<{ contenido: string; periodo?: string }> = ({
+  contenido,
+  periodo,
+}) => {
+  const lineas = contenido.split('\n').filter((l) => l.trim() !== '');
+  if (lineas.length === 0) return null;
+
+  const headers = lineas[0].split('|').map((h) => h.trim());
+  const headersLegibles = headers.map((h) => HEADERS_LEGIBLES[h] || h);
+
+  const filas = lineas
+    .slice(1)
+    .map((linea) => linea.split('|').map((celda) => celda.trim()))
+    .filter((fila) => !fila[0] || !fila[0].toUpperCase().includes('TOTAL'));
+
+  if (filas.length === 0) return null;
+
+  return (
+    <div className="space-y-3">
+      <h3 className="text-sm font-semibold text-slate-900">
+        Resumen por tipo de documento
+      </h3>
+
+      <p className="rounded-lg border border-cyan-200 bg-cyan-50 px-4 py-2.5 text-sm text-cyan-900">
+        Se encontraron <strong className="tabular-nums">{filas.length}</strong> comprobante(s)
+        {periodo ? ` para el período ${periodo}` : ''}.
+      </p>
+
+      <div className="overflow-x-auto rounded-lg border border-slate-200">
+        <table className="w-full border-collapse">
+          <thead className="bg-blue-800">
+            <tr>
+              {headersLegibles.map((header, i) => (
+                <th key={i} className={cn(thBase, i > 0 && 'text-center')}>
+                  {header}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {filas.map((fila, rowIndex) => (
+              <tr
+                key={rowIndex}
+                className="border-b border-slate-100 last:border-0 odd:bg-slate-50/60 hover:bg-blue-50"
+              >
+                {fila.map((celda, cellIndex) => {
+                  // La primera columna es texto y la segunda un contador; el
+                  // resto son importes.
+                  const esImporte = cellIndex > 1 && !isNaN(parseFloat(celda));
+                  return (
+                    <td
+                      key={cellIndex}
+                      className={cn(tdBase, cellIndex > 0 && 'text-right tabular-nums')}
+                    >
+                      {esImporte ? soles(parseFloat(celda)) : celda}
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   );

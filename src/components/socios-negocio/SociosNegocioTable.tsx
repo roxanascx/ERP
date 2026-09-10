@@ -1,5 +1,8 @@
 import React from 'react';
+import { Loader2, Pencil, Trash2, Users } from 'lucide-react';
 import type { SocioNegocio } from '../../services/sociosNegocioApi';
+import EmptyState from '../common/EmptyState';
+import { cn } from '../../lib/cn';
 
 interface SociosNegocioTableProps {
   socios: SocioNegocio[];
@@ -8,245 +11,149 @@ interface SociosNegocioTableProps {
   loading?: boolean;
 }
 
+const TIPO_SOCIO_TONE: Record<string, string> = {
+  proveedor: 'bg-amber-100 text-amber-800',
+  cliente: 'bg-blue-100 text-blue-800',
+  ambos: 'bg-violet-100 text-violet-800',
+};
+
+const th = 'px-3 py-2.5 text-left text-xs font-semibold tracking-wide text-slate-600 uppercase';
+const td = 'px-3 py-3 text-sm text-slate-700';
+
 const SociosNegocioTable: React.FC<SociosNegocioTableProps> = ({
   socios,
   onEdit,
   onDelete,
-  loading = false
+  loading = false,
 }) => {
-  const tableStyles = {
-    container: {
-      backgroundColor: '#ffffff',
-      borderRadius: '8px',
-      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
-      overflow: 'hidden',
-      border: '1px solid #e5e7eb'
-    },
-    table: {
-      width: '100%',
-      borderCollapse: 'collapse' as const
-    },
-    header: {
-      backgroundColor: '#f8fafc',
-      borderBottom: '2px solid #e5e7eb'
-    },
-    headerCell: {
-      padding: '16px 12px',
-      textAlign: 'left' as const,
-      fontSize: '14px',
-      fontWeight: '600',
-      color: '#374151',
-      borderRight: '1px solid #e5e7eb'
-    },
-    row: {
-      borderBottom: '1px solid #f1f5f9',
-      transition: 'background-color 0.2s ease'
-    },
-    rowHover: {
-      backgroundColor: '#f8fafc'
-    },
-    cell: {
-      padding: '12px',
-      fontSize: '14px',
-      color: '#374151',
-      borderRight: '1px solid #f1f5f9'
-    },
-    badge: {
-      padding: '4px 8px',
-      borderRadius: '12px',
-      fontSize: '12px',
-      fontWeight: '500',
-      textTransform: 'capitalize' as const
-    },
-    badgeCliente: {
-      backgroundColor: '#dbeafe',
-      color: '#1e40af'
-    },
-    badgeProveedor: {
-      backgroundColor: '#d1fae5',
-      color: '#065f46'
-    },
-    badgeAmbos: {
-      backgroundColor: '#fef3c7',
-      color: '#92400e'
-    },
-    actionButton: {
-      padding: '6px 12px',
-      margin: '0 2px',
-      borderRadius: '4px',
-      border: 'none',
-      fontSize: '12px',
-      fontWeight: '500',
-      cursor: 'pointer',
-      transition: 'background-color 0.2s ease'
-    },
-    editButton: {
-      backgroundColor: '#3b82f6',
-      color: 'white'
-    },
-    editButtonHover: {
-      backgroundColor: '#2563eb'
-    },
-    deleteButton: {
-      backgroundColor: '#ef4444',
-      color: 'white'
-    },
-    deleteButtonHover: {
-      backgroundColor: '#dc2626'
-    },
-    emptyState: {
-      textAlign: 'center' as const,
-      padding: '48px 24px',
-      color: '#6b7280'
-    },
-    loadingState: {
-      textAlign: 'center' as const,
-      padding: '48px 24px',
-      color: '#6b7280',
-      fontSize: '14px'
-    }
-  };
-
-  const getBadgeStyle = (tipoSocio: string) => {
-    switch (tipoSocio.toLowerCase()) {
-      case 'cliente':
-        return { ...tableStyles.badge, ...tableStyles.badgeCliente };
-      case 'proveedor':
-        return { ...tableStyles.badge, ...tableStyles.badgeProveedor };
-      case 'ambos':
-        return { ...tableStyles.badge, ...tableStyles.badgeAmbos };
-      default:
-        return { ...tableStyles.badge, ...tableStyles.badgeCliente };
-    }
-  };
-
-  const formatDocument = (tipoDoc: string, numeroDoc: string) => {
-    return `${tipoDoc}: ${numeroDoc}`;
-  };
-
   if (loading) {
     return (
-      <div style={tableStyles.container}>
-        <div style={tableStyles.loadingState}>
-          <div>🔄 Cargando socios de negocio...</div>
-        </div>
+      <div
+        className="flex items-center justify-center rounded-xl border border-slate-200 bg-white py-16"
+        role="status"
+      >
+        <Loader2 className="size-5 animate-spin text-blue-600" aria-hidden="true" />
+        <span className="ml-3 text-sm text-slate-500">Cargando socios de negocio…</span>
       </div>
     );
   }
 
   if (socios.length === 0) {
     return (
-      <div style={tableStyles.container}>
-        <div style={tableStyles.emptyState}>
-          <div style={{ fontSize: '48px', marginBottom: '16px' }}>👥</div>
-          <h3 style={{ margin: '0 0 8px 0', fontSize: '18px', color: '#374151' }}>
-            No hay socios registrados
-          </h3>
-          <p style={{ margin: '0', fontSize: '14px' }}>
-            Comienza agregando tu primer socio de negocio
-          </p>
-        </div>
-      </div>
+      <EmptyState
+        icon={Users}
+        title="No hay socios registrados"
+        description="Empieza agregando tu primer socio de negocio."
+      />
     );
   }
 
   return (
-    <div style={tableStyles.container}>
-      <table style={tableStyles.table}>
-        <thead style={tableStyles.header}>
-          <tr>
-            <th style={tableStyles.headerCell}>Documento</th>
-            <th style={tableStyles.headerCell}>Razón Social</th>
-            <th style={tableStyles.headerCell}>Tipo</th>
-            <th style={tableStyles.headerCell}>Email</th>
-            <th style={tableStyles.headerCell}>Teléfono</th>
-            <th style={tableStyles.headerCell}>Estado</th>
-            <th style={{ ...tableStyles.headerCell, borderRight: 'none' }}>Acciones</th>
-          </tr>
-        </thead>
-        <tbody>
-          {socios.map((socio) => (
-            <tr 
-              key={socio.id} 
-              style={tableStyles.row}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = tableStyles.rowHover.backgroundColor;
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = 'transparent';
-              }}
-            >
-              <td style={tableStyles.cell}>
-                {formatDocument(socio.tipo_documento, socio.numero_documento)}
-              </td>
-              <td style={tableStyles.cell}>
-                <div style={{ fontWeight: '500' }}>{socio.razon_social}</div>
-                {socio.nombre_comercial && (
-                  <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px' }}>
-                    {socio.nombre_comercial}
-                  </div>
-                )}
-              </td>
-              <td style={tableStyles.cell}>
-                <span style={getBadgeStyle(socio.tipo_socio)}>
-                  {socio.tipo_socio}
-                </span>
-              </td>
-              <td style={tableStyles.cell}>
-                {socio.email || '-'}
-              </td>
-              <td style={tableStyles.cell}>
-                {socio.telefono || '-'}
-              </td>
-              <td style={tableStyles.cell}>
-                <span style={{
-                  ...tableStyles.badge,
-                  backgroundColor: socio.activo ? '#d1fae5' : '#fee2e2',
-                  color: socio.activo ? '#065f46' : '#991b1b'
-                }}>
-                  {socio.activo ? 'Activo' : 'Inactivo'}
-                </span>
-              </td>
-              <td style={{ ...tableStyles.cell, borderRight: 'none' }}>
-                <button
-                  style={{
-                    ...tableStyles.actionButton,
-                    ...tableStyles.editButton
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = tableStyles.editButtonHover.backgroundColor;
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = tableStyles.editButton.backgroundColor;
-                  }}
-                  onClick={() => onEdit(socio)}
-                >
-                  ✏️ Editar
-                </button>
-                <button
-                  style={{
-                    ...tableStyles.actionButton,
-                    ...tableStyles.deleteButton
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = tableStyles.deleteButtonHover.backgroundColor;
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = tableStyles.deleteButton.backgroundColor;
-                  }}
-                  onClick={() => {
-                    if (window.confirm(`¿Estás seguro de eliminar a ${socio.razon_social}?`)) {
-                      onDelete(socio.id);
-                    }
-                  }}
-                >
-                  🗑️ Eliminar
-                </button>
-              </td>
+    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse">
+          <thead className="bg-slate-50">
+            <tr className="border-b border-slate-200">
+              <th scope="col" className={th}>Documento</th>
+              <th scope="col" className={th}>Razón social</th>
+              <th scope="col" className={th}>Tipo</th>
+              <th scope="col" className={th}>Email</th>
+              <th scope="col" className={th}>Teléfono</th>
+              <th scope="col" className={cn(th, 'text-center')}>Estado</th>
+              <th scope="col" className={cn(th, 'text-right')}>Acciones</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+
+          <tbody>
+            {socios.map((socio) => (
+              <tr
+                key={socio.id}
+                className="border-b border-slate-100 last:border-0 hover:bg-slate-50"
+              >
+                <td className={td}>
+                  <span className="text-xs font-medium text-slate-500">{socio.tipo_documento}</span>
+                  <span className="block font-mono">{socio.numero_documento}</span>
+                </td>
+
+                <td className={td}>
+                  <p className="max-w-64 truncate font-medium text-slate-900">
+                    {socio.razon_social}
+                  </p>
+                  {socio.nombre_comercial && (
+                    <p className="max-w-64 truncate text-xs text-slate-500">
+                      {socio.nombre_comercial}
+                    </p>
+                  )}
+                </td>
+
+                <td className={td}>
+                  <span
+                    className={cn(
+                      'rounded-full px-2 py-0.5 text-xs font-medium capitalize',
+                      TIPO_SOCIO_TONE[socio.tipo_socio] ?? 'bg-slate-100 text-slate-700'
+                    )}
+                  >
+                    {socio.tipo_socio}
+                  </span>
+                </td>
+
+                <td className={cn(td, 'max-w-48 truncate')}>
+                  {socio.email || <span className="text-slate-400">—</span>}
+                </td>
+
+                <td className={cn(td, 'tabular-nums')}>
+                  {socio.telefono || <span className="text-slate-400">—</span>}
+                </td>
+
+                <td className={cn(td, 'text-center')}>
+                  <span
+                    className={cn(
+                      'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium',
+                      socio.activo ? 'bg-green-50 text-green-700' : 'bg-slate-100 text-slate-500'
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        'size-1.5 rounded-full',
+                        socio.activo ? 'bg-green-500' : 'bg-slate-400'
+                      )}
+                      aria-hidden="true"
+                    />
+                    {socio.activo ? 'Activo' : 'Inactivo'}
+                  </span>
+                </td>
+
+                <td className={cn(td, 'text-right')}>
+                  <div className="inline-flex gap-1">
+                    <button
+                      type="button"
+                      onClick={() => onEdit(socio)}
+                      title="Editar socio"
+                      aria-label={`Editar ${socio.razon_social}`}
+                      className="grid size-8 place-items-center rounded-lg border-0 bg-transparent p-0 text-slate-400 hover:bg-blue-50 hover:text-blue-600"
+                    >
+                      <Pencil className="size-4" aria-hidden="true" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (window.confirm(`¿Eliminar a ${socio.razon_social}?`)) {
+                          onDelete(socio.id);
+                        }
+                      }}
+                      title="Eliminar socio"
+                      aria-label={`Eliminar ${socio.razon_social}`}
+                      className="grid size-8 place-items-center rounded-lg border-0 bg-transparent p-0 text-slate-400 hover:bg-red-50 hover:text-red-600"
+                    >
+                      <Trash2 className="size-4" aria-hidden="true" />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 };

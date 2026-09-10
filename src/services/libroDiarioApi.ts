@@ -39,12 +39,9 @@ export class LibroDiarioApiService {
   static async obtenerLibroDiario(libroId: string): Promise<LibroDiario> {
     const response = await libroDiarioApi.get(`/${libroId}`);
     const libroBackend = response.data;
-    
-    console.log('📥 Libro del backend:', libroBackend);
-    
+
     // Transformar asientos del formato backend al frontend
     const asientosTransformados = this.transformarAsientosDeBackend(libroBackend.asientos || []);
-    console.log('🔄 Asientos transformados:', asientosTransformados);
     
     return {
       ...libroBackend,
@@ -152,11 +149,9 @@ export class LibroDiarioApiService {
   }
   
   static async agregarAsiento(libroId: string, asiento: Omit<AsientoContable, 'id'>): Promise<AsientoContable> {
-    console.log('📤 Enviando asiento:', asiento);
     
     // Transformar cada detalle en un asiento separado para el backend
     const asientosBackend = this.transformarAsientoParaBackend(asiento);
-    console.log('🔄 Asientos transformados para backend:', asientosBackend);
     
     // Enviar cada detalle como un asiento separado
     const resultados: any[] = [];
@@ -164,9 +159,7 @@ export class LibroDiarioApiService {
       const response = await libroDiarioApi.post(`/${libroId}/asientos`, asientoBackend);
       resultados.push(response.data);
     }
-    
-    console.log('✅ Asientos creados:', resultados);
-    
+
     // Retornar el asiento original con un ID generado
     return {
       ...asiento,
@@ -177,8 +170,6 @@ export class LibroDiarioApiService {
   static async actualizarAsiento(libroId: string, asientoId: string, asiento: Partial<AsientoContable>): Promise<AsientoContable> {
     // Para asientos agrupados del frontend, necesitamos eliminar y recrear
     if (asientoId.startsWith('asiento-')) {
-      console.log('✏️ Editando asiento con ID artificial:', asientoId);
-      console.log('📝 Datos del asiento a actualizar:', asiento);
       
       // 1. Eliminar asiento existente
       await this.eliminarAsiento(libroId, asientoId);
@@ -201,11 +192,9 @@ export class LibroDiarioApiService {
   }
   
   static async eliminarAsiento(libroId: string, asientoId: string): Promise<{ message: string }> {
-    console.log('🗑️ SERVICIO ACTUALIZADO - Eliminando asiento:', { libroId, asientoId });
     
     // Si es un ID artificial del frontend, necesitamos obtener el libro completo para encontrar los IDs reales
     if (asientoId.startsWith('asiento-')) {
-      console.log('🗑️ Eliminando asiento con ID artificial:', asientoId);
       
       // Obtener libro completo para encontrar los IDs reales del backend
       const libro = await this.obtenerLibroDiario(libroId);
@@ -214,9 +203,7 @@ export class LibroDiarioApiService {
       if (!asiento || !asiento._backendIds) {
         throw new Error('No se encontraron los IDs del backend para eliminar el asiento');
       }
-      
-      console.log('🔍 IDs del backend a eliminar:', asiento._backendIds);
-      
+
       // Eliminar cada línea del asiento
       const promesasEliminacion = asiento._backendIds.map((backendId: string) => 
         libroDiarioApi.delete(`/${libroId}/asientos/${backendId}`)
@@ -226,7 +213,6 @@ export class LibroDiarioApiService {
       
       return { message: `Asiento ${asiento.numero} eliminado correctamente` };
     } else {
-      console.log('🗑️ Eliminando asiento con ID real del backend:', asientoId);
       // ID directo del backend
       const response = await libroDiarioApi.delete(`/${libroId}/asientos/${asientoId}`);
       return response.data;

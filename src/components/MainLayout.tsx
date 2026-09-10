@@ -1,345 +1,281 @@
-import React, { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { Link, Outlet, useLocation } from 'react-router-dom';
+import { Building2, ChevronLeft, ChevronRight, Menu, X } from 'lucide-react';
 import { useEmpresaValidation } from '../hooks/useEmpresaValidation';
+import { MAIN_NAV, isActivePath, resolvePageMeta } from '../config/navigation';
+import { cn } from '../lib/cn';
+import Breadcrumbs from './common/Breadcrumbs';
 
 interface MainLayoutProps {
-  children: React.ReactNode;
+  /**
+   * Opcional. Si no se pasa, el layout renderiza <Outlet /> y funciona como
+   * route layout (uso recomendado). El modo `children` se mantiene solo para
+   * paginas que aun no se han migrado al router anidado.
+   */
+  children?: React.ReactNode;
+  /** Override manual del titulo. Por defecto se resuelve desde la ruta. */
   title?: string;
   subtitle?: string;
 }
 
-const MainLayout: React.FC<MainLayoutProps> = ({ 
-  children, 
-  title = 'ERP Sistema', 
-  subtitle = 'Panel de control y gestión empresarial' 
-}) => {
+const SIDEBAR_STORAGE_KEY = 'erp:sidebar-collapsed';
+
+/**
+ * Chrome principal de la aplicacion: sidebar + cabecera.
+ *
+ * Migrado a Tailwind. Lo que cambia respecto a la version con estilos inline:
+ *
+ *   - Responsive real. Antes el sidebar era `position: fixed` con un ancho de
+ *     70/280px pasara lo que pasara, asi que en movil se comia la pantalla y
+ *     no habia forma de cerrarlo. Ahora en <lg es un drawer con fondo oscuro,
+ *     que se cierra con Escape, con el fondo o al navegar.
+ *   - :hover y :focus-visible son CSS de verdad, no 100 handlers de JS que no
+ *     responden al teclado.
+ *   - Iconos de lucide-react en vez de emojis.
+ */
+const MainLayout: React.FC<MainLayoutProps> = ({ children, title, subtitle }) => {
   const { empresaActual } = useEmpresaValidation();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
 
-  const sidebarItems = [
-    { icon: '🏠', title: 'Dashboard', link: '/dashboard' },
-    { icon: '🤝', title: 'Socios de Negocio', link: '/socios-negocio' },
-    { icon: '📊', title: 'SIRE', link: '/sire' },
-    { icon: '🏢', title: 'Proveedores', link: '#' },
-    { icon: '👥', title: 'Clientes', link: '#' },
-    { icon: '💰', title: 'Contabilidad', link: '/contabilidad' },
-    { icon: '📦', title: 'Inventario', link: '#' },
-    { icon: '👤', title: 'Empleados', link: '#' },
-    { icon: '📈', title: 'Reportes', link: '#' },
-    { icon: '⚙️', title: 'Configuración', link: '#' },
-  ];
-
-  const isActiveRoute = (path: string) => {
-    if (path === '/dashboard') {
-      return location.pathname === '/dashboard';
+  // Colapsado en escritorio: se recuerda entre navegaciones y recargas.
+  const [collapsed, setCollapsed] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem(SIDEBAR_STORAGE_KEY) === 'true';
+    } catch {
+      return false;
     }
-    return location.pathname.startsWith(path);
+  });
+
+  // Drawer en movil: siempre arranca cerrado.
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  const toggleCollapsed = () => {
+    setCollapsed((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem(SIDEBAR_STORAGE_KEY, String(next));
+      } catch {
+        /* almacenamiento no disponible: sigue funcionando en memoria */
+      }
+      return next;
+    });
   };
 
-  return (
-    <div style={{
-      minHeight: '100vh',
-      background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 25%, #e2e8f0 50%, #cbd5e1 75%, #94a3b8 100%)',
-      backgroundSize: '400% 400%',
-      animation: 'subtleShift 20s ease infinite',
-      display: 'flex',
-      fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif",
-      position: 'relative',
-      overflow: 'hidden'
-    }}>
-      <style>
-        {`
-          @keyframes subtleShift {
-            0%, 100% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-          }
-        `}
-      </style>
+  // Al navegar, el drawer se cierra: en movil el contenido queda tapado.
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [location.pathname]);
 
-      {/* Sidebar */}
-      <div style={{
-        width: sidebarOpen ? '280px' : '70px',
-        background: 'rgba(255, 255, 255, 0.95)',
-        backdropFilter: 'blur(20px)',
-        borderRight: '1px solid rgba(226, 232, 240, 0.8)',
-        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-        position: 'fixed',
-        left: 0,
-        top: 0,
-        height: '100vh',
-        zIndex: 1000,
-        boxShadow: '4px 0 24px rgba(0, 0, 0, 0.04)'
-      }}>
-        {/* Sidebar Header */}
-        <div style={{
-          padding: '20px',
-          borderBottom: '1px solid rgba(226, 232, 240, 0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '12px'
-        }}>
-          <div style={{
-            width: '40px',
-            height: '40px',
-            background: 'linear-gradient(135deg, #3b82f6, #6366f1)',
-            borderRadius: '12px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '20px',
-            flexShrink: 0
-          }}>
-            📊
+  // Escape cierra el drawer.
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMobileOpen(false);
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [mobileOpen]);
+
+  const meta = resolvePageMeta(location.pathname);
+  const pageTitle = title ?? meta.title;
+  const pageSubtitle = subtitle ?? meta.subtitle;
+
+  return (
+    <div className="min-h-screen bg-slate-50">
+      {/* Fondo del drawer (solo movil) */}
+      <div
+        onClick={() => setMobileOpen(false)}
+        aria-hidden="true"
+        className={cn(
+          'fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-[2px] transition-opacity duration-200 lg:hidden',
+          mobileOpen ? 'opacity-100' : 'pointer-events-none opacity-0'
+        )}
+      />
+
+      {/* ------------------------------------------------------------------ */}
+      {/* Sidebar                                                            */}
+      {/* ------------------------------------------------------------------ */}
+      <aside
+        aria-label="Navegación principal"
+        className={cn(
+          'fixed inset-y-0 left-0 z-50 flex flex-col border-r border-slate-200 bg-white',
+          'transition-[transform,width] duration-300 ease-out',
+          'w-[280px]',
+          mobileOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full',
+          'lg:translate-x-0 lg:shadow-none',
+          collapsed ? 'lg:w-[76px]' : 'lg:w-[280px]'
+        )}
+      >
+        {/* Marca */}
+        <div className="flex h-16 shrink-0 items-center gap-3 border-b border-slate-200 px-4">
+          <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-linear-to-br from-blue-500 to-indigo-600 text-white shadow-sm">
+            <Building2 className="size-5" aria-hidden="true" />
           </div>
-          {sidebarOpen && (
-            <div style={{ overflow: 'hidden' }}>
-              <div style={{
-                fontSize: '18px',
-                fontWeight: '700',
-                color: '#1e293b',
-                lineHeight: '1.2'
-              }}>
-                ERP System
-              </div>
-              <div style={{
-                fontSize: '12px',
-                color: '#64748b',
-                marginTop: '2px'
-              }}>
-                Panel de Control
-              </div>
-            </div>
-          )}
+          <div className={cn('min-w-0 flex-1', collapsed && 'lg:hidden')}>
+            <p className="truncate text-sm font-bold text-slate-900">Sistema ERP</p>
+            <p className="truncate text-xs text-slate-500">Panel de control</p>
+          </div>
+
+          {/* Cerrar drawer (solo movil) */}
+          <button
+            type="button"
+            onClick={() => setMobileOpen(false)}
+            aria-label="Cerrar menú"
+            className="grid size-9 shrink-0 place-items-center rounded-lg border-0 bg-transparent p-0 text-slate-500 hover:bg-slate-100 hover:text-slate-900 lg:hidden"
+          >
+            <X className="size-5" aria-hidden="true" />
+          </button>
         </div>
 
-        {/* Navigation Items */}
-        <div style={{ padding: '20px 0', flex: 1, overflowY: 'auto' }}>
-          {sidebarItems.map((item, index) => {
-            const isActive = isActiveRoute(item.link);
-            const isDisabled = item.link === '#';
-            
-            const ItemContent = (
-              <div style={{
-                padding: sidebarOpen ? '12px 20px' : '12px',
-                margin: sidebarOpen ? '0 12px 8px' : '0 8px 8px',
-                borderRadius: '12px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '12px',
-                cursor: isDisabled ? 'not-allowed' : 'pointer',
-                background: isActive 
-                  ? 'linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(99, 102, 241, 0.1))' 
-                  : 'transparent',
-                color: isActive ? '#1e40af' : isDisabled ? '#94a3b8' : '#334155',
-                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                transform: isActive ? 'translateX(4px)' : 'none',
-                borderLeft: isActive ? '3px solid #3b82f6' : '3px solid transparent',
-                fontSize: '14px',
-                fontWeight: isActive ? '600' : '500',
-                opacity: isDisabled ? 0.5 : 1
-              }}
-              onMouseEnter={(e) => {
-                if (!isDisabled && !isActive) {
-                  e.currentTarget.style.background = 'rgba(148, 163, 184, 0.08)';
-                  e.currentTarget.style.transform = 'translateX(2px)';
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!isDisabled && !isActive) {
-                  e.currentTarget.style.background = 'transparent';
-                  e.currentTarget.style.transform = 'none';
-                }
-              }}
-            >
-              <span style={{ 
-                fontSize: '18px', 
-                flexShrink: 0,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: '24px',
-                height: '24px'
-              }}>
-                {item.icon}
-              </span>
-              {sidebarOpen && (
-                <span style={{ 
-                  overflow: 'hidden', 
-                  whiteSpace: 'nowrap'
-                }}>
-                  {item.title}
-                </span>
-              )}
-            </div>
+        {/* Navegacion */}
+        <nav className="flex-1 space-y-1 overflow-y-auto p-3">
+          {MAIN_NAV.map((item) => {
+            const Icon = item.icon;
+            const isActive = item.enabled && isActivePath(location.pathname, item.path);
+
+            const inner = (
+              <>
+                <Icon
+                  className={cn(
+                    'size-5 shrink-0',
+                    isActive ? 'text-blue-600' : 'text-slate-400 group-hover:text-slate-600'
+                  )}
+                  aria-hidden="true"
+                />
+                <span className={cn('truncate', collapsed && 'lg:hidden')}>{item.label}</span>
+                {item.badge && (
+                  <span
+                    className={cn(
+                      'ml-auto rounded-full bg-blue-100 px-1.5 py-0.5 text-[10px] font-bold text-blue-700',
+                      collapsed && 'lg:hidden'
+                    )}
+                  >
+                    {item.badge}
+                  </span>
+                )}
+              </>
             );
 
-            if (isDisabled) {
+            const shared = cn(
+              'group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
+              collapsed && 'lg:justify-center lg:px-0'
+            );
+
+            if (!item.enabled) {
               return (
-                <div key={index}>
-                  {ItemContent}
-                </div>
+                <span
+                  key={item.id}
+                  aria-disabled="true"
+                  title={`${item.label} — próximamente`}
+                  className={cn(shared, 'cursor-not-allowed text-slate-400')}
+                >
+                  {inner}
+                </span>
               );
             }
 
             return (
-              <Link 
-                key={index} 
-                to={item.link} 
-                style={{ textDecoration: 'none' }}
+              <Link
+                key={item.id}
+                to={item.path}
+                aria-current={isActive ? 'page' : undefined}
+                title={collapsed ? item.label : undefined}
+                className={cn(
+                  shared,
+                  'no-underline hover:no-underline',
+                  'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600',
+                  isActive
+                    ? 'bg-blue-50 text-blue-700'
+                    : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
+                )}
               >
-                {ItemContent}
+                {inner}
               </Link>
             );
           })}
-        </div>
+        </nav>
 
-        {/* Sidebar Toggle */}
-        <div style={{
-          padding: '20px',
-          borderTop: '1px solid rgba(226, 232, 240, 0.5)'
-        }}>
+        {/* Colapsar (solo escritorio) */}
+        <div className="hidden shrink-0 border-t border-slate-200 p-3 lg:block">
           <button
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            style={{
-              width: '100%',
-              padding: '12px',
-              background: 'rgba(59, 130, 246, 0.1)',
-              border: 'none',
-              borderRadius: '8px',
-              color: '#3b82f6',
-              cursor: 'pointer',
-              fontSize: '14px',
-              fontWeight: '500',
-              transition: 'all 0.2s ease',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '8px'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = 'rgba(59, 130, 246, 0.15)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'rgba(59, 130, 246, 0.1)';
-            }}
+            type="button"
+            onClick={toggleCollapsed}
+            aria-expanded={!collapsed}
+            aria-label={collapsed ? 'Expandir menú lateral' : 'Contraer menú lateral'}
+            className={cn(
+              'flex w-full items-center gap-2 rounded-lg border-0 bg-transparent px-3 py-2 text-sm font-medium text-slate-600',
+              'hover:bg-slate-100 hover:text-slate-900',
+              collapsed && 'justify-center px-0'
+            )}
           >
-            <span style={{ fontSize: '16px' }}>
-              {sidebarOpen ? '←' : '→'}
-            </span>
-            {sidebarOpen && <span>Contraer</span>}
+            {collapsed ? (
+              <ChevronRight className="size-5 shrink-0" aria-hidden="true" />
+            ) : (
+              <>
+                <ChevronLeft className="size-5 shrink-0" aria-hidden="true" />
+                <span>Contraer</span>
+              </>
+            )}
           </button>
         </div>
-      </div>
+      </aside>
 
-      {/* Main Content */}
-      <div style={{
-        flex: 1,
-        marginLeft: sidebarOpen ? '280px' : '70px',
-        transition: 'margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-        display: 'flex',
-        flexDirection: 'column',
-        minHeight: '100vh'
-      }}>
-        {/* Header */}
-        <header style={{
-          background: 'rgba(255, 255, 255, 0.95)',
-          backdropFilter: 'blur(20px)',
-          borderBottom: '1px solid rgba(226, 232, 240, 0.8)',
-          padding: '24px 32px',
-          position: 'sticky',
-          top: 0,
-          zIndex: 900,
-          boxShadow: '0 4px 6px rgba(0, 0, 0, 0.02)'
-        }}>
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center'
-          }}>
-            <div>
-              <h1 style={{
-                fontSize: '28px',
-                fontWeight: '700',
-                color: '#1e293b',
-                margin: 0,
-                lineHeight: '1.2'
-              }}>
-                {title}
+      {/* ------------------------------------------------------------------ */}
+      {/* Contenido                                                          */}
+      {/* ------------------------------------------------------------------ */}
+      <div
+        className={cn(
+          'flex min-h-screen flex-col transition-[padding] duration-300 ease-out',
+          collapsed ? 'lg:pl-[76px]' : 'lg:pl-[280px]'
+        )}
+      >
+        <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/90 backdrop-blur-md">
+          <div className="flex items-center gap-3 px-4 py-3 sm:px-6 lg:py-4">
+            {/* Abrir drawer (solo movil) */}
+            <button
+              type="button"
+              onClick={() => setMobileOpen(true)}
+              aria-label="Abrir menú"
+              aria-expanded={mobileOpen}
+              className="grid size-10 shrink-0 place-items-center rounded-lg border-0 bg-transparent p-0 text-slate-600 hover:bg-slate-100 hover:text-slate-900 lg:hidden"
+            >
+              <Menu className="size-5" aria-hidden="true" />
+            </button>
+
+            <div className="min-w-0 flex-1">
+              <Breadcrumbs />
+              <h1 className="truncate text-lg font-bold tracking-tight text-slate-900 sm:text-xl lg:text-2xl">
+                {pageTitle}
               </h1>
-              <p style={{
-                fontSize: '16px',
-                color: '#64748b',
-                margin: '4px 0 0 0',
-                lineHeight: '1.4'
-              }}>
-                {subtitle}
-              </p>
+              <p className="hidden truncate text-sm text-slate-500 sm:block">{pageSubtitle}</p>
             </div>
 
-            {/* Company Info */}
             {empresaActual && (
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '16px',
-                background: 'rgba(99, 102, 241, 0.08)',
-                padding: '12px 20px',
-                borderRadius: '12px',
-                border: '1px solid rgba(99, 102, 241, 0.2)'
-              }}>
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    color: '#1e293b'
-                  }}>
-                    🏢 {empresaActual.ruc}
-                  </div>
-                  <div style={{
-                    fontSize: '13px',
-                    color: '#64748b',
-                    textTransform: 'uppercase'
-                  }}>
+              <div className="flex shrink-0 items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+                <div className="hidden min-w-0 text-right sm:block">
+                  <p className="truncate text-sm font-semibold text-slate-900">
+                    {empresaActual.ruc}
+                  </p>
+                  <p className="max-w-[220px] truncate text-xs text-slate-500">
                     {empresaActual.razon_social}
-                  </div>
+                  </p>
                 </div>
                 <Link
                   to="/empresas"
-                  style={{
-                    padding: '8px 16px',
-                    background: 'rgba(99, 102, 241, 0.1)',
-                    color: '#4f46e5',
-                    textDecoration: 'none',
-                    borderRadius: '8px',
-                    fontSize: '12px',
-                    fontWeight: '500',
-                    transition: 'all 0.2s ease',
-                    border: '1px solid rgba(99, 102, 241, 0.2)'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'rgba(99, 102, 241, 0.15)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'rgba(99, 102, 241, 0.1)';
-                  }}
+                  className={cn(
+                    'shrink-0 rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 no-underline',
+                    'border border-slate-200 hover:bg-slate-100 hover:no-underline',
+                    'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600'
+                  )}
                 >
-                  Cambiar empresa
+                  Cambiar
                 </Link>
               </div>
             )}
           </div>
         </header>
 
-        {/* Page Content */}
-        <main style={{
-          flex: 1,
-          padding: '32px',
-          maxWidth: '100%',
-          overflow: 'auto'
-        }}>
-          {children}
-        </main>
+        <main className="flex-1 p-4 sm:p-6">{children ?? <Outlet />}</main>
       </div>
     </div>
   );

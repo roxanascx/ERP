@@ -23,16 +23,18 @@ export const PLEEstadisticas: React.FC<PLEEstadisticasProps> = ({
   dashboardData,
   onRefresh
 }) => {
-  // Mock data for demonstration
-  const estadisticas: PLEEstadistica = {
-    total_archivos: 24,
-    archivos_pendientes: 2,
-    archivos_validados: 20,
-    archivos_enviados: 18,
-    errores_recientes: 1,
-    ultimo_generado: '2025-08-27',
-    tamaño_total: 15728640, // 15 MB
-    registros_totales: 3420
+  // Antes eran cifras inventadas (24 archivos, 15 MB, 3420 registros) que se
+  // mostraban como si fueran reales. Ahora salen del dashboard; si no hay
+  // datos, los contadores quedan a cero.
+  const estadisticas: PLEEstadistica = dashboardData?.estadisticas ?? {
+    total_archivos: 0,
+    archivos_pendientes: 0,
+    archivos_validados: 0,
+    archivos_enviados: 0,
+    errores_recientes: 0,
+    ultimo_generado: '',
+    tamaño_total: 0,
+    registros_totales: 0,
   };
 
   const formatFileSize = (bytes: number) => {

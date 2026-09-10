@@ -18,6 +18,9 @@ import type {
   RceEstadoProceso
 } from '../types/rce';
 
+/** Periodo AAAAMM del mes en curso. Antes habia un '202507' cableado. */
+const periodoActual = () => new Date().toISOString().substring(0, 7).replace('-', '');
+
 // ========================================
 // TIPOS DEL HOOK
 // ========================================
@@ -173,20 +176,15 @@ export const useRce = (options: UseRceOptions): UseRceReturn => {
   // ========================================
 
   const cargarPropuestas = useCallback(async (periodo?: string) => {
-    console.log('🔄 [RCE Hook] Iniciando carga de propuestas para RUC:', ruc, 'Periodo:', periodo);
     try {
       // 🚀 USANDO ENDPOINT DIRECTO QUE FUNCIONA
-      const response = await fetch(`/api/v1/sire/rce/sunat/propuestas?ruc=${ruc}&periodo=${periodo || '202507'}`);
+      const response = await fetch(`/api/v1/sire/rce/sunat/propuestas?ruc=${ruc}&periodo=${periodo || periodoActual()}`);
       const data = await response.json();
-      
-      console.log('📥 [RCE Hook] Respuesta propuestas recibida:', data);
-      
+
       if (data.exitoso) {
-        console.log('✅ [RCE Hook] Propuestas cargadas exitosamente via endpoint directo');
         // Simular estructura de propuestas para compatibilidad
         setPropuestas([]);
       } else {
-        console.log('❌ [RCE Hook] Error en respuesta propuestas:', data.mensaje);
         setPropuestas([]);
       }
     } catch (error) {
@@ -204,7 +202,7 @@ export const useRce = (options: UseRceOptions): UseRceReturn => {
         propuestas_total: 0,
         procesos_activos: 0,
         tickets_pendientes: 0,
-        ultimo_periodo: periodo || '202507',
+        ultimo_periodo: periodo || periodoActual(),
         fecha_actualizacion: new Date().toISOString()
       };
       setEstado(nuevoEstado);
@@ -213,13 +211,13 @@ export const useRce = (options: UseRceOptions): UseRceReturn => {
     }
   }, [ruc, handleError]);
 
-  const cargarTicketsActivos = useCallback(async () => {
+  const cargarTicketsActivos = useCallback(async (periodo?: string) => {
     if (loadingTickets) return;
     
     setLoadingTickets(true);
     try {
       // 🚀 USANDO ENDPOINT DIRECTO QUE FUNCIONA
-      const response = await fetch(`/api/v1/sire/rce/sunat/tickets?ruc=${ruc}&periodo_ini=202507&periodo_fin=202507`);
+      const response = await fetch(`/api/v1/sire/rce/sunat/tickets?ruc=${ruc}&periodo_ini=${periodo || periodoActual()}&periodo_fin=${periodo || periodoActual()}`);
       const data = await response.json();
       
       if (data.exitoso && data.datos) {
@@ -235,13 +233,10 @@ export const useRce = (options: UseRceOptions): UseRceReturn => {
   }, [ruc, loadingTickets, handleError]);
 
   const cargarDatos = useCallback(async (periodo?: string) => {
-    console.log('🎯 [RCE Hook] cargarDatos llamado con periodo:', periodo, 'loading actual:', loading);
     if (loading) {
-      console.log('⏸️ [RCE Hook] Ya está cargando, saltando...');
       return;
     }
     
-    console.log('🎯 [RCE Hook] Iniciando carga...');
     setLoading(true);
     clearError();
     
@@ -252,13 +247,11 @@ export const useRce = (options: UseRceOptions): UseRceReturn => {
     abortController.current = new AbortController();
 
     try {
-      console.log('🔄 [RCE Hook] Iniciando carga completa de datos...');
       await Promise.all([
         cargarEstadoGeneral(periodo),
         cargarTicketsActivos(),
         cargarPropuestas(periodo)
       ]);
-      console.log('✅ [RCE Hook] Carga completa de datos finalizada');
       
       actualizarTimestamp();
     } catch (error) {

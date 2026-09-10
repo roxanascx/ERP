@@ -1,6 +1,20 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
+import {
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
+  ChevronDown,
+  ChevronRight,
+  ChevronsDownUp,
+  ChevronsUpDown,
+  Inbox,
+  Pencil,
+  Trash2,
+} from 'lucide-react';
 import type { CuentaContable } from '../../../types/contabilidad';
 import SearchHighlight from '../../common/SearchHighlight';
+import EmptyState from '../../common/EmptyState';
+import { cn } from '../../../lib/cn';
 
 interface PlanContableTableProps {
   cuentas: CuentaContable[];
@@ -10,7 +24,7 @@ interface PlanContableTableProps {
   onToggleActivarCuenta: (cuenta: CuentaContable) => void;
   cuentaSeleccionada?: string;
   onCuentaSelect: (cuenta: CuentaContable) => void;
-  searchTerm?: string; // Nuevo prop para el término de búsqueda
+  searchTerm?: string;
 }
 
 interface CuentaConHijos extends CuentaContable {
@@ -18,6 +32,30 @@ interface CuentaConHijos extends CuentaContable {
   expandido?: boolean;
   tieneHijos?: boolean;
 }
+
+// ---------------------------------------------------------------------------
+// Presentacion
+// ---------------------------------------------------------------------------
+
+const NATURALEZA_TONE: Record<string, string> = {
+  DEUDORA: 'bg-amber-100 text-amber-800',
+  ACREEDORA: 'bg-emerald-100 text-emerald-800',
+  'DEUDORA/ACREEDORA': 'bg-indigo-100 text-indigo-800',
+};
+
+const NIVELES: Record<number, { label: string; tone: string }> = {
+  1: { label: 'Clase', tone: 'bg-red-100 text-red-800' },
+  2: { label: 'Grupo', tone: 'bg-orange-100 text-orange-800' },
+  3: { label: 'Subgrupo', tone: 'bg-amber-100 text-amber-800' },
+  4: { label: 'Cuenta', tone: 'bg-lime-100 text-lime-800' },
+  5: { label: 'Subcuenta', tone: 'bg-emerald-100 text-emerald-800' },
+  6: { label: 'Divisionaria', tone: 'bg-blue-100 text-blue-800' },
+  7: { label: 'Subdivisionaria', tone: 'bg-pink-100 text-pink-800' },
+  8: { label: 'Auxiliar', tone: 'bg-slate-100 text-slate-700' },
+};
+
+const th = 'px-3 py-2.5 text-left text-xs font-semibold tracking-wide text-slate-600 uppercase';
+const td = 'px-3 py-2.5 text-sm text-slate-700';
 
 const PlanContableTable: React.FC<PlanContableTableProps> = ({
   cuentas,
@@ -27,43 +65,39 @@ const PlanContableTable: React.FC<PlanContableTableProps> = ({
   onToggleActivarCuenta,
   cuentaSeleccionada,
   onCuentaSelect,
-  searchTerm = '' // Valor por defecto
+  searchTerm = '',
 }) => {
   const [sortField, setSortField] = useState<keyof CuentaContable>('codigo');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
 
-  // Función para construir la estructura jerárquica
-  const construirJerarquia = (cuentas: CuentaContable[]): CuentaConHijos[] => {
+  // -------------------------------------------------------------------------
+  // Jerarquia: el codigo contable ES el arbol (1 -> 10 -> 101 -> 1011...)
+  // -------------------------------------------------------------------------
+
+  const construirJerarquia = (lista: CuentaContable[]): CuentaConHijos[] => {
     const mapa = new Map<string, CuentaConHijos>();
     const raices: CuentaConHijos[] = [];
 
-    // Ordenar cuentas por código antes de procesar
-    const cuentasOrdenadas = [...cuentas].sort((a, b) => a.codigo.localeCompare(b.codigo));
+    const ordenadas = [...lista].sort((a, b) => a.codigo.localeCompare(b.codigo));
 
-    // Crear nodos con información adicional
-    cuentasOrdenadas.forEach(cuenta => {
-      const nodo: CuentaConHijos = {
+    ordenadas.forEach((cuenta) => {
+      mapa.set(cuenta.codigo, {
         ...cuenta,
         hijos: [],
         expandido: expandedNodes.has(cuenta.codigo),
-        tieneHijos: false
-      };
-      mapa.set(cuenta.codigo, nodo);
+        tieneHijos: false,
+      });
     });
 
-    // Construir relaciones padre-hijo de manera más precisa
-    cuentasOrdenadas.forEach(cuenta => {
+    ordenadas.forEach((cuenta) => {
       const nodo = mapa.get(cuenta.codigo)!;
-      
-      // Buscar el padre más cercano basado en la longitud del código
+
+      // El padre es el prefijo mas largo que exista en el plan.
       let padre: CuentaConHijos | undefined;
-      
-      // Para códigos de más de 1 dígito, buscar el padre
       if (cuenta.codigo.length > 1) {
         for (let i = cuenta.codigo.length - 1; i > 0; i--) {
-          const codigoPadre = cuenta.codigo.substring(0, i);
-          padre = mapa.get(codigoPadre);
+          padre = mapa.get(cuenta.codigo.substring(0, i));
           if (padre) break;
         }
       }
@@ -72,51 +106,31 @@ const PlanContableTable: React.FC<PlanContableTableProps> = ({
         padre.hijos!.push(nodo);
         padre.tieneHijos = true;
       } else {
-        // Solo las cuentas de nivel 1 (1 dígito) deben ser raíces
-        if (cuenta.codigo.length === 1) {
-          raices.push(nodo);
-        }
+        raices.push(nodo);
       }
     });
 
-    // Ordenar cada nivel por código
     const ordenarNodos = (nodos: CuentaConHijos[]) => {
       nodos.sort((a, b) => {
-        // Ordenamiento numérico para códigos de cuenta
-        const aNum = parseInt(a.codigo);
-        const bNum = parseInt(b.codigo);
-        if (!isNaN(aNum) && !isNaN(bNum)) {
+        const aNum = parseInt(a.codigo, 10);
+        const bNum = parseInt(b.codigo, 10);
+        if (!isNaN(aNum) && !isNaN(bNum) && a.codigo.length === b.codigo.length) {
           return aNum - bNum;
         }
         return a.codigo.localeCompare(b.codigo);
       });
-      
-      nodos.forEach(nodo => {
-        if (nodo.hijos && nodo.hijos.length > 0) {
-          ordenarNodos(nodo.hijos);
-        }
-      });
+      nodos.forEach((n) => n.hijos && ordenarNodos(n.hijos));
     };
 
     ordenarNodos(raices);
     return raices;
   };
 
-  // Función para aplanar la jerarquía para mostrar en tabla
   const aplanarJerarquia = (nodos: CuentaConHijos[]): CuentaConHijos[] => {
     let resultado: CuentaConHijos[] = [];
 
-    nodos.forEach(nodo => {
-      // Calcular el nivel basado en la longitud del código
-      const nivelReal = nodo.codigo.length - 1; // 0 para nivel 1, 1 para nivel 2, etc.
-      
-      // Agregar el nodo actual con el nivel correcto
-      resultado.push({ 
-        ...nodo, 
-        nivel: nivelReal
-      });
-
-      // Si está expandido, agregar sus hijos
+    nodos.forEach((nodo) => {
+      resultado.push({ ...nodo, nivel: nodo.codigo.length - 1 });
       if (nodo.expandido && nodo.hijos && nodo.hijos.length > 0) {
         resultado = resultado.concat(aplanarJerarquia(nodo.hijos));
       }
@@ -126,809 +140,322 @@ const PlanContableTable: React.FC<PlanContableTableProps> = ({
   };
 
   const toggleExpansion = (codigo: string) => {
-    const newExpanded = new Set(expandedNodes);
-    if (newExpanded.has(codigo)) {
-      newExpanded.delete(codigo);
-    } else {
-      newExpanded.add(codigo);
-    }
-    setExpandedNodes(newExpanded);
+    setExpandedNodes((prev) => {
+      const next = new Set(prev);
+      if (next.has(codigo)) next.delete(codigo);
+      else next.add(codigo);
+      return next;
+    });
   };
+
+  const expandirTodo = () => setExpandedNodes(new Set(cuentas.map((c) => c.codigo)));
+  const colapsarTodo = () => setExpandedNodes(new Set());
 
   const handleSort = (field: keyof CuentaContable) => {
     if (sortField === field) {
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+      setSortDirection((d) => (d === 'asc' ? 'desc' : 'asc'));
     } else {
       setSortField(field);
       setSortDirection('asc');
     }
   };
 
-  // Construir la vista de cuentas (jerárquica o plana según si hay búsqueda)
-  const cuentasParaMostrar = React.useMemo(() => {
-    // Si hay término de búsqueda, mostrar lista plana de resultados
-    if (searchTerm && searchTerm.trim()) {
-      return cuentas.map(cuenta => ({
-        ...cuenta,
-        expandido: false,
-        tieneHijos: false,
-        hijos: []
-      }));
+  const hayBusqueda = Boolean(searchTerm && searchTerm.trim());
+
+  // Con busqueda activa se muestra lista plana de resultados; sin ella, el arbol.
+  const cuentasParaMostrar = useMemo(() => {
+    if (hayBusqueda) {
+      return cuentas.map((c) => ({ ...c, expandido: false, tieneHijos: false, hijos: [] }));
     }
-    
-    // Si no hay búsqueda, construir jerarquía normal
-    const jerarquia = construirJerarquia(cuentas);
-    return aplanarJerarquia(jerarquia);
-  }, [cuentas, expandedNodes, searchTerm]);
+    return aplanarJerarquia(construirJerarquia(cuentas));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cuentas, expandedNodes, hayBusqueda]);
 
-  const sortedCuentas = React.useMemo(() => {
-    // Si hay búsqueda, no necesitamos mantener jerarquía, podemos ordenar libremente
-    if (searchTerm && searchTerm.trim()) {
-      const sorted = [...cuentasParaMostrar].sort((a, b) => {
-        const aValue = String(a[sortField] || '');
-        const bValue = String(b[sortField] || '');
-        
-        if (sortDirection === 'asc') {
-          return aValue.localeCompare(bValue);
-        } else {
-          return bValue.localeCompare(aValue);
-        }
-      });
-      return sorted;
-    }
-    
-    // Para vista jerárquica, mantener orden jerárquico
-    return cuentasParaMostrar;
-  }, [cuentasParaMostrar, sortField, sortDirection, searchTerm]);
+  const sortedCuentas = useMemo(() => {
+    // Ordenar libremente solo tiene sentido en lista plana: en el arbol
+    // romperia la relacion padre-hijo.
+    if (!hayBusqueda) return cuentasParaMostrar;
 
-  const SortIcon = ({ field }: { field: keyof CuentaContable }) => {
-    if (sortField !== field) {
-      return (
-        <svg style={{ width: '1rem', height: '1rem', color: '#9ca3af' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
-        </svg>
-      );
-    }
-    
-    return (
-      <svg 
-        style={{ width: '1rem', height: '1rem', color: '#3b82f6' }} 
-        fill="none" 
-        stroke="currentColor" 
-        viewBox="0 0 24 24"
-      >
-        {sortDirection === 'asc' ? (
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-        ) : (
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-        )}
-      </svg>
-    );
-  };
+    return [...cuentasParaMostrar].sort((a, b) => {
+      const aValue = String(a[sortField] || '');
+      const bValue = String(b[sortField] || '');
+      return sortDirection === 'asc'
+        ? aValue.localeCompare(bValue)
+        : bValue.localeCompare(aValue);
+    });
+  }, [cuentasParaMostrar, sortField, sortDirection, hayBusqueda]);
 
-  const getNaturalezaBadge = (naturaleza: string) => {
-    const colores = {
-      'DEUDORA': { bg: '#fef3c7', color: '#92400e' },
-      'ACREEDORA': { bg: '#d1fae5', color: '#065f46' },
-      'DEUDORA/ACREEDORA': { bg: '#e0e7ff', color: '#3730a3' }
-    };
-
-    const colorConfig = colores[naturaleza as keyof typeof colores] || { bg: '#f3f4f6', color: '#374151' };
-
-    return (
-      <span style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        padding: '0.125rem 0.5rem',
-        borderRadius: '0.25rem',
-        fontSize: '0.75rem',
-        fontWeight: '500',
-        background: colorConfig.bg,
-        color: colorConfig.color
-      }}>
-        {naturaleza}
-      </span>
-    );
-  };
-
-  const getNivelBadge = (codigo: string, nivel?: number) => {
-    // Detectar nivel automáticamente basado en el código
-    const nivelDetectado = nivel || codigo.length;
-    
-    const colores = {
-      1: { bg: '#fee2e2', color: '#991b1b', icon: '🏛️' },
-      2: { bg: '#fed7aa', color: '#9a3412', icon: '📁' },
-      3: { bg: '#fef3c7', color: '#92400e', icon: '📂' },
-      4: { bg: '#d9f99d', color: '#365314', icon: '📄' },
-      5: { bg: '#a7f3d0', color: '#064e3b', icon: '📄' },
-      6: { bg: '#bfdbfe', color: '#1e40af', icon: '📄' },
-      7: { bg: '#fce7f3', color: '#be185d', icon: '📄' },
-      8: { bg: '#f3f4f6', color: '#374151', icon: '📄' }
-    };
-
-    const nombres = {
-      1: 'Clase',
-      2: 'Grupo',
-      3: 'Subgrupo',
-      4: 'Cuenta',
-      5: 'Subcuenta',
-      6: 'Divisionaria',
-      7: 'Subdivisionaria',
-      8: 'Auxiliar'
-    };
-
-    const colorConfig = colores[nivelDetectado as keyof typeof colores] || { bg: '#f3f4f6', color: '#374151', icon: '📄' };
-
-    return (
-      <span style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: '4px',
-        padding: '0.125rem 0.5rem',
-        borderRadius: '0.375rem',
-        fontSize: '0.75rem',
-        fontWeight: '500',
-        background: colorConfig.bg,
-        color: colorConfig.color
-      }}>
-        <span style={{ fontSize: '12px' }}>{colorConfig.icon}</span>
-        {nombres[nivelDetectado as keyof typeof nombres] || `Nivel ${nivelDetectado}`}
-      </span>
-    );
-  };
-
-  const getEstadoToggle = (cuenta: CuentaContable) => {
-    const esSubcuenta = cuenta.codigo.length >= 4;
-    
-    if (!esSubcuenta) {
-      // Para cuentas padre (Clase, Grupo, Subgrupo), solo mostrar estado sin toggle
-      return (
-        <span style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: '4px',
-          padding: '4px 8px',
-          borderRadius: '12px',
-          fontSize: '10px',
-          fontWeight: '600',
-          background: cuenta.activa ? '#dcfce7' : '#f3f4f6',
-          color: cuenta.activa ? '#166534' : '#6b7280',
-          border: `1px solid ${cuenta.activa ? '#bbf7d0' : '#d1d5db'}`
-        }}>
-          <span style={{ fontSize: '8px' }}>
-            {cuenta.activa ? '●' : '○'}
-          </span>
-          {cuenta.activa ? 'ON' : 'OFF'}
-        </span>
-      );
-    }
-
-    // Para subcuentas (nivel 4+), mostrar botón toggle estilo switch
-    return (
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          onToggleActivarCuenta(cuenta);
-        }}
-        style={{
-          position: 'relative',
-          width: '56px',
-          height: '28px',
-          borderRadius: '14px',
-          border: 'none',
-          background: cuenta.activa 
-            ? 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)' 
-            : 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
-          cursor: 'pointer',
-          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-          outline: 'none',
-          boxShadow: cuenta.activa 
-            ? '0 4px 12px rgba(34, 197, 94, 0.25)' 
-            : '0 4px 12px rgba(239, 68, 68, 0.25)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: cuenta.activa ? 'flex-end' : 'flex-start',
-          padding: '2px'
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.transform = 'scale(1.05)';
-          e.currentTarget.style.boxShadow = cuenta.activa 
-            ? '0 6px 16px rgba(34, 197, 94, 0.4)' 
-            : '0 6px 16px rgba(239, 68, 68, 0.4)';
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.transform = 'scale(1)';
-          e.currentTarget.style.boxShadow = cuenta.activa 
-            ? '0 4px 12px rgba(34, 197, 94, 0.25)' 
-            : '0 4px 12px rgba(239, 68, 68, 0.25)';
-        }}
-        title={cuenta.activa ? 'Clic para desactivar' : 'Clic para activar'}
-      >
-        {/* Círculo deslizante */}
-        <div style={{
-          width: '24px',
-          height: '24px',
-          borderRadius: '50%',
-          background: 'white',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontSize: '10px',
-          fontWeight: 'bold',
-          color: cuenta.activa ? '#22c55e' : '#ef4444',
-          boxShadow: '0 2px 6px rgba(0, 0, 0, 0.15)',
-          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
-        }}>
-          {cuenta.activa ? '✓' : '✕'}
-        </div>
-        
-        {/* Texto ON/OFF */}
-        <div style={{
-          position: 'absolute',
-          left: cuenta.activa ? '6px' : 'auto',
-          right: cuenta.activa ? 'auto' : '6px',
-          fontSize: '8px',
-          fontWeight: '700',
-          color: 'rgba(255, 255, 255, 0.9)',
-          letterSpacing: '0.5px',
-          textShadow: '0 1px 2px rgba(0, 0, 0, 0.3)'
-        }}>
-          {cuenta.activa ? 'ON' : 'OFF'}
-        </div>
-      </button>
-    );
-  };
+  // -------------------------------------------------------------------------
+  // Estados vacio / cargando
+  // -------------------------------------------------------------------------
 
   if (loading) {
     return (
-      <div style={{
-        background: 'white',
-        boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
-        overflow: 'hidden',
-        borderRadius: '0.5rem'
-      }}>
-        <div style={{ padding: '1.5rem' }}>
-          <div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <div style={{ height: '1rem', background: '#e5e7eb', borderRadius: '0.25rem', width: '100%' }}></div>
-              <div style={{ height: '1rem', background: '#e5e7eb', borderRadius: '0.25rem', width: '75%' }}></div>
-              <div style={{ height: '1rem', background: '#e5e7eb', borderRadius: '0.25rem', width: '50%' }}></div>
-              <div style={{ height: '1rem', background: '#e5e7eb', borderRadius: '0.25rem', width: '83.333333%' }}></div>
-              <div style={{ height: '1rem', background: '#e5e7eb', borderRadius: '0.25rem', width: '66.666667%' }}></div>
-            </div>
-          </div>
-        </div>
+      <div className="space-y-2 rounded-xl border border-slate-200 bg-white p-5" aria-busy="true">
+        {['w-full', 'w-3/4', 'w-1/2', 'w-5/6', 'w-2/3'].map((w) => (
+          <div key={w} className={cn('h-4 animate-pulse rounded bg-slate-200', w)} />
+        ))}
       </div>
     );
   }
 
   if (cuentas.length === 0) {
     return (
-      <div style={{
-        background: 'white',
-        boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
-        overflow: 'hidden',
-        borderRadius: '0.5rem'
-      }}>
-        <div style={{ padding: '1.5rem' }}>
-          <div style={{ textAlign: 'center' }}>
-            <svg 
-              style={{ 
-                margin: '0 auto',
-                height: '3rem',
-                width: '3rem',
-                color: '#9ca3af'
-              }}
-              fill="none" 
-              stroke="currentColor" 
-              viewBox="0 0 24 24"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-            </svg>
-            <h3 style={{ 
-              marginTop: '0.5rem',
-              fontSize: '0.875rem',
-              fontWeight: '500',
-              color: '#111827'
-            }}>
-              No hay cuentas
-            </h3>
-            <p style={{
-              marginTop: '0.25rem',
-              fontSize: '0.875rem',
-              color: '#6b7280'
-            }}>
-              No se encontraron cuentas contables con los filtros aplicados.
-            </p>
-          </div>
-        </div>
-      </div>
+      <EmptyState
+        icon={Inbox}
+        title="No hay cuentas"
+        description="No se encontraron cuentas contables con los filtros aplicados."
+      />
     );
   }
 
-  const expandirTodo = () => {
-    const todosCodigos = new Set<string>();
-    const agregarCodigos = (cuentas: CuentaContable[]) => {
-      cuentas.forEach(cuenta => {
-        todosCodigos.add(cuenta.codigo);
-      });
-    };
-    agregarCodigos(cuentas);
-    setExpandedNodes(todosCodigos);
-  };
+  // -------------------------------------------------------------------------
+  // Cabecera ordenable
+  // -------------------------------------------------------------------------
 
-  const colapsarTodo = () => {
-    setExpandedNodes(new Set());
+  const SortableTh: React.FC<{ field: keyof CuentaContable; children: React.ReactNode }> = ({
+    field,
+    children,
+  }) => {
+    const activo = sortField === field;
+    const Icon = !activo ? ArrowUpDown : sortDirection === 'asc' ? ArrowUp : ArrowDown;
+
+    return (
+      <th scope="col" className={th}>
+        <button
+          type="button"
+          onClick={() => handleSort(field)}
+          aria-sort={activo ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
+          className="inline-flex items-center gap-1.5 border-0 bg-transparent p-0 text-xs font-semibold tracking-wide text-slate-600 uppercase hover:text-slate-900"
+        >
+          {children}
+          <Icon
+            className={cn('size-3.5', activo ? 'text-blue-600' : 'text-slate-400')}
+            aria-hidden="true"
+          />
+        </button>
+      </th>
+    );
   };
 
   return (
-    <div style={{
-      background: 'white',
-      boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
-      overflow: 'hidden',
-      borderRadius: '0.5rem'
-    }}>
-      {/* Controles de expansión */}
-      <div style={{
-        padding: '12px 16px',
-        borderBottom: '1px solid #e5e7eb',
-        backgroundColor: '#f8fafc',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center'
-      }}>
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-          fontSize: '14px',
-          color: '#64748b'
-        }}>
-          <span>🌳</span>
-          <span>Vista Jerárquica - {sortedCuentas.length} cuentas mostradas</span>
+    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+      {/* Barra de expansion: solo util en vista de arbol */}
+      {!hayBusqueda && (
+        <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-2.5">
+          <span className="text-sm text-slate-500 tabular-nums">
+            {sortedCuentas.length.toLocaleString('es-PE')} visibles de{' '}
+            {cuentas.length.toLocaleString('es-PE')}
+          </span>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={expandirTodo}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+            >
+              <ChevronsUpDown className="size-3.5" aria-hidden="true" />
+              Expandir todo
+            </button>
+            <button
+              type="button"
+              onClick={colapsarTodo}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+            >
+              <ChevronsDownUp className="size-3.5" aria-hidden="true" />
+              Colapsar todo
+            </button>
+          </div>
         </div>
-        
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <button
-            onClick={expandirTodo}
-            style={{
-              padding: '6px 12px',
-              fontSize: '12px',
-              fontWeight: '500',
-              color: '#374151',
-              backgroundColor: '#f3f4f6',
-              border: '1px solid #d1d5db',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px',
-              transition: 'all 0.15s ease-in-out'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = '#e5e7eb';
-              e.currentTarget.style.borderColor = '#9ca3af';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = '#f3f4f6';
-              e.currentTarget.style.borderColor = '#d1d5db';
-            }}
-            title="Expandir todas las cuentas"
-          >
-            <svg style={{ width: '12px', height: '12px' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-            </svg>
-            Expandir Todo
-          </button>
-          
-          <button
-            onClick={colapsarTodo}
-            style={{
-              padding: '6px 12px',
-              fontSize: '12px',
-              fontWeight: '500',
-              color: '#374151',
-              backgroundColor: '#f3f4f6',
-              border: '1px solid #d1d5db',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px',
-              transition: 'all 0.15s ease-in-out'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = '#e5e7eb';
-              e.currentTarget.style.borderColor = '#9ca3af';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = '#f3f4f6';
-              e.currentTarget.style.borderColor = '#d1d5db';
-            }}
-            title="Colapsar todas las cuentas"
-          >
-            <svg style={{ width: '12px', height: '12px' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
-            </svg>
-            Colapsar Todo
-          </button>
-        </div>
-      </div>
+      )}
 
-      <div style={{ overflowX: 'auto' }}>
-        <table style={{ minWidth: '100%', borderCollapse: 'separate', borderSpacing: 0 }}>
-          <thead style={{ background: '#f9fafb' }}>
-            <tr>
-              <th
-                scope="col"
-                style={{
-                  padding: '0.75rem 1.5rem',
-                  textAlign: 'left',
-                  fontSize: '0.75rem',
-                  fontWeight: '500',
-                  color: '#6b7280',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
-                  cursor: 'pointer',
-                  transition: 'background-color 0.15s ease-in-out'
-                }}
-                onClick={() => handleSort('codigo')}
-                onMouseEnter={(e) => e.currentTarget.style.background = '#f3f4f6'}
-                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                  <span>Código</span>
-                  <SortIcon field="codigo" />
-                </div>
-              </th>
-              <th
-                scope="col"
-                style={{
-                  padding: '0.75rem 1.5rem',
-                  textAlign: 'left',
-                  fontSize: '0.75rem',
-                  fontWeight: '500',
-                  color: '#6b7280',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
-                  cursor: 'pointer',
-                  transition: 'background-color 0.15s ease-in-out'
-                }}
-                onClick={() => handleSort('descripcion')}
-                onMouseEnter={(e) => e.currentTarget.style.background = '#f3f4f6'}
-                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                  <span>Descripción</span>
-                  <SortIcon field="descripcion" />
-                </div>
-              </th>
-              <th
-                scope="col"
-                style={{
-                  padding: '0.75rem 1.5rem',
-                  textAlign: 'left',
-                  fontSize: '0.75rem',
-                  fontWeight: '500',
-                  color: '#6b7280',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
-                  cursor: 'pointer',
-                  transition: 'background-color 0.15s ease-in-out'
-                }}
-                onClick={() => handleSort('nivel')}
-                onMouseEnter={(e) => e.currentTarget.style.background = '#f3f4f6'}
-                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                  <span>Nivel</span>
-                  <SortIcon field="nivel" />
-                </div>
-              </th>
-              <th
-                scope="col"
-                style={{
-                  padding: '0.75rem 1.5rem',
-                  textAlign: 'left',
-                  fontSize: '0.75rem',
-                  fontWeight: '500',
-                  color: '#6b7280',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
-                  cursor: 'pointer',
-                  transition: 'background-color 0.15s ease-in-out'
-                }}
-                onClick={() => handleSort('naturaleza')}
-                onMouseEnter={(e) => e.currentTarget.style.background = '#f3f4f6'}
-                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                  <span>Naturaleza</span>
-                  <SortIcon field="naturaleza" />
-                </div>
-              </th>
-              <th
-                scope="col"
-                style={{
-                  padding: '0.75rem 1rem',
-                  textAlign: 'center',
-                  fontSize: '0.75rem',
-                  fontWeight: '500',
-                  color: '#6b7280',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
-                  cursor: 'pointer',
-                  transition: 'background-color 0.15s ease-in-out',
-                  width: '100px', // Ancho aún más compacto
-                  minWidth: '100px'
-                }}
-                onClick={() => handleSort('activa')}
-                onMouseEnter={(e) => e.currentTarget.style.background = '#f3f4f6'}
-                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.25rem' }}>
-                  <span>Estado</span>
-                  <SortIcon field="activa" />
-                </div>
-              </th>
-              <th
-                scope="col"
-                style={{
-                  padding: '0.75rem 1.5rem',
-                  textAlign: 'right',
-                  fontSize: '0.75rem',
-                  fontWeight: '500',
-                  color: '#6b7280',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em'
-                }}
-              >
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse">
+          <thead className="bg-slate-50">
+            <tr className="border-b border-slate-200">
+              <SortableTh field="codigo">Código</SortableTh>
+              <SortableTh field="descripcion">Descripción</SortableTh>
+              <SortableTh field="nivel">Nivel</SortableTh>
+              <SortableTh field="naturaleza">Naturaleza</SortableTh>
+              <SortableTh field="activa">Estado</SortableTh>
+              <th scope="col" className={cn(th, 'text-right')}>
                 Acciones
               </th>
             </tr>
           </thead>
-          <tbody style={{ background: 'white' }}>
+
+          <tbody>
             {sortedCuentas.map((cuenta) => {
-              // En modo de búsqueda, no usar jerarquía
-              const modoBusqueda = searchTerm && searchTerm.trim();
-              const nivelIndentacion = modoBusqueda ? 0 : (cuenta.nivel || (cuenta.codigo.length - 1));
-              const tieneHijos = modoBusqueda ? false : cuenta.tieneHijos;
+              const seleccionada = cuentaSeleccionada === cuenta.codigo;
               const estaExpandido = expandedNodes.has(cuenta.codigo);
-              
+              const sangria = hayBusqueda ? 0 : Math.max(0, cuenta.codigo.length - 1);
+              const nivelInfo = NIVELES[cuenta.codigo.length] ?? {
+                label: `Nivel ${cuenta.codigo.length}`,
+                tone: 'bg-slate-100 text-slate-700',
+              };
+              // Solo las subcuentas (nivel 4+) se pueden activar o desactivar.
+              const esSubcuenta = cuenta.codigo.length >= 4;
+
               return (
                 <tr
                   key={cuenta.codigo}
-                  style={{
-                    cursor: 'pointer',
-                    transition: 'background-color 0.15s ease-in-out',
-                    background: cuentaSeleccionada === cuenta.codigo ? '#eff6ff' : 'transparent',
-                    borderLeft: cuentaSeleccionada === cuenta.codigo ? '4px solid #3b82f6' : 'none'
-                  }}
-                  onMouseEnter={(e) => {
-                    if (cuentaSeleccionada !== cuenta.codigo) {
-                      e.currentTarget.style.background = '#f9fafb';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (cuentaSeleccionada !== cuenta.codigo) {
-                      e.currentTarget.style.background = 'transparent';
-                    }
-                  }}
                   onClick={() => onCuentaSelect(cuenta)}
+                  className={cn(
+                    'cursor-pointer border-b border-slate-100 transition-colors last:border-0',
+                    seleccionada ? 'bg-blue-50' : 'hover:bg-slate-50',
+                    !cuenta.activa && 'opacity-60'
+                  )}
                 >
-                  <td style={{ 
-                    padding: '1rem 1.5rem',
-                    whiteSpace: 'nowrap',
-                    borderBottom: '1px solid #e5e7eb'
-                  }}>
-                    <div style={{ 
-                      display: 'flex', 
-                      alignItems: 'center',
-                      paddingLeft: `${nivelIndentacion * 20}px` // Indentación por nivel
-                    }}>
-                      {/* Botón de expansión/colapso */}
-                      {tieneHijos ? (
+                  {/* Codigo, con sangria segun profundidad */}
+                  <td className={td}>
+                    <div
+                      className="flex items-center gap-1.5"
+                      style={{ paddingLeft: `${sangria * 16}px` }}
+                    >
+                      {cuenta.tieneHijos ? (
                         <button
+                          type="button"
                           onClick={(e) => {
                             e.stopPropagation();
                             toggleExpansion(cuenta.codigo);
                           }}
-                          style={{
-                            background: 'none',
-                            border: 'none',
-                            padding: '4px',
-                            cursor: 'pointer',
-                            marginRight: '8px',
-                            borderRadius: '4px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            width: '20px',
-                            height: '20px',
-                            color: '#6b7280',
-                            transition: 'all 0.15s ease-in-out'
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = '#f3f4f6';
-                            e.currentTarget.style.color = '#374151';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = 'transparent';
-                            e.currentTarget.style.color = '#6b7280';
-                          }}
-                          title={estaExpandido ? 'Colapsar' : 'Expandir'}
+                          aria-expanded={estaExpandido}
+                          aria-label={estaExpandido ? 'Colapsar' : 'Expandir'}
+                          className="grid size-5 shrink-0 place-items-center rounded border-0 bg-transparent p-0 text-slate-400 hover:bg-slate-200 hover:text-slate-700"
                         >
-                          <svg 
-                            style={{ 
-                              width: '12px', 
-                              height: '12px',
-                              transform: estaExpandido ? 'rotate(90deg)' : 'rotate(0deg)',
-                              transition: 'transform 0.15s ease-in-out'
-                            }} 
-                            fill="none" 
-                            stroke="currentColor" 
-                            viewBox="0 0 24 24"
-                          >
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                          </svg>
+                          {estaExpandido ? (
+                            <ChevronDown className="size-4" aria-hidden="true" />
+                          ) : (
+                            <ChevronRight className="size-4" aria-hidden="true" />
+                          )}
                         </button>
                       ) : (
-                        <div style={{ width: '28px', marginRight: '8px' }} />
+                        <span className="size-5 shrink-0" aria-hidden="true" />
                       )}
-                      
-                      {/* Código de la cuenta */}
-                      <div style={{ 
-                        fontSize: '0.875rem',
-                        fontFamily: 'monospace',
-                        fontWeight: cuenta.codigo.length <= 3 ? '700' : '500', // Negrita para códigos de 1-3 dígitos
-                        color: '#111827'
-                      }}>
-                        <SearchHighlight 
-                          text={cuenta.codigo} 
-                          searchTerm={searchTerm}
-                        />
-                      </div>
-                      
-                      {/* Badge de clase contable - Solo para niveles 1, 2 y 3 */}
-                      <div style={{ marginLeft: '0.5rem' }}>
-                        {cuenta.clase_contable && cuenta.codigo.length <= 3 && (
-                          <span style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            padding: '0.125rem 0.5rem',
-                            borderRadius: '0.25rem',
-                            fontSize: '0.75rem',
-                            fontWeight: '500',
-                            background: '#f3f4f6',
-                            color: '#1f2937'
-                          }}>
-                            Clase {cuenta.clase_contable}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </td>
-                  
-                  <td style={{ 
-                    padding: '1rem 1.5rem',
-                    borderBottom: '1px solid #e5e7eb'
-                  }}>
-                    <div style={{ 
-                      fontSize: '0.875rem', 
-                      color: '#111827', 
-                      fontWeight: cuenta.codigo.length <= 3 ? '600' : '400', // Negrita para cuentas principales (1-3 dígitos)
-                      marginBottom: '2px'
-                    }}>
-                      <SearchHighlight 
-                        text={cuenta.descripcion} 
-                        searchTerm={searchTerm}
-                      />
-                    </div>
-                    <div style={{ fontSize: '0.75rem', color: '#6b7280', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      {cuenta.cuenta_padre && (
-                        <span>Padre: {cuenta.cuenta_padre}</span>
-                      )}
-                      {tieneHijos && (
-                        <span style={{ 
-                          color: '#059669',
-                          fontWeight: '500'
-                        }}>
-                          {cuenta.hijos?.length || 0} subcuentas
+
+                      <span className="font-mono text-sm font-semibold text-slate-900">
+                        <SearchHighlight text={cuenta.codigo} searchTerm={searchTerm} />
+                      </span>
+
+                      {cuenta.clase_contable && cuenta.codigo.length <= 3 && (
+                        <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-600">
+                          Clase {cuenta.clase_contable}
                         </span>
                       )}
                     </div>
                   </td>
-                  
-                  <td style={{ 
-                    padding: '1rem 1.5rem',
-                    whiteSpace: 'nowrap',
-                    borderBottom: '1px solid #e5e7eb'
-                  }}>
-                    {getNivelBadge(cuenta.codigo, cuenta.nivel)}
+
+                  {/* Descripcion */}
+                  <td className={td}>
+                    <span className="font-medium text-slate-900">
+                      <SearchHighlight text={cuenta.descripcion} searchTerm={searchTerm} />
+                    </span>
+                    <span className="mt-0.5 block text-xs text-slate-500">
+                      {cuenta.cuenta_padre && <>Padre: {cuenta.cuenta_padre}</>}
+                      {cuenta.hijos && cuenta.hijos.length > 0 && (
+                        <>
+                          {cuenta.cuenta_padre ? ' · ' : ''}
+                          {cuenta.hijos.length} subcuentas
+                        </>
+                      )}
+                    </span>
                   </td>
-                  
-                  <td style={{ 
-                    padding: '1rem 1.5rem',
-                    whiteSpace: 'nowrap',
-                    borderBottom: '1px solid #e5e7eb'
-                  }}>
-                    {getNaturalezaBadge(cuenta.naturaleza)}
+
+                  {/* Nivel */}
+                  <td className={td}>
+                    <span
+                      className={cn(
+                        'inline-flex rounded px-2 py-0.5 text-xs font-medium',
+                        nivelInfo.tone
+                      )}
+                    >
+                      {nivelInfo.label}
+                    </span>
                   </td>
-                  
-                  <td style={{ 
-                    padding: '1rem',
-                    whiteSpace: 'nowrap',
-                    borderBottom: '1px solid #e5e7eb',
-                    textAlign: 'center',
-                    width: '100px'
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      {getEstadoToggle(cuenta)}
-                    </div>
+
+                  {/* Naturaleza */}
+                  <td className={td}>
+                    <span
+                      className={cn(
+                        'inline-flex rounded px-2 py-0.5 text-xs font-medium',
+                        NATURALEZA_TONE[cuenta.naturaleza] ?? 'bg-slate-100 text-slate-700'
+                      )}
+                    >
+                      {cuenta.naturaleza}
+                    </span>
                   </td>
-                  
-                  <td style={{ 
-                    padding: '1rem 1.5rem',
-                    whiteSpace: 'nowrap',
-                    textAlign: 'right',
-                    borderBottom: '1px solid #e5e7eb'
-                  }}>
-                    <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+
+                  {/* Estado */}
+                  <td className={td}>
+                    {esSubcuenta ? (
                       <button
+                        type="button"
+                        role="switch"
+                        aria-checked={cuenta.activa}
+                        aria-label={`${cuenta.activa ? 'Desactivar' : 'Activar'} cuenta ${cuenta.codigo}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onToggleActivarCuenta(cuenta);
+                        }}
+                        className={cn(
+                          'relative inline-flex h-6 w-11 shrink-0 rounded-full border-0 p-0 transition-colors',
+                          cuenta.activa ? 'bg-green-500' : 'bg-slate-300'
+                        )}
+                      >
+                        <span
+                          aria-hidden="true"
+                          className={cn(
+                            'absolute top-0.5 size-5 rounded-full bg-white shadow transition-transform',
+                            cuenta.activa ? 'translate-x-5.5' : 'translate-x-0.5'
+                          )}
+                        />
+                      </button>
+                    ) : (
+                      <span
+                        className={cn(
+                          'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium',
+                          cuenta.activa
+                            ? 'bg-green-50 text-green-700'
+                            : 'bg-slate-100 text-slate-500'
+                        )}
+                      >
+                        <span
+                          className={cn(
+                            'size-1.5 rounded-full',
+                            cuenta.activa ? 'bg-green-500' : 'bg-slate-400'
+                          )}
+                          aria-hidden="true"
+                        />
+                        {cuenta.activa ? 'Activa' : 'Inactiva'}
+                      </span>
+                    )}
+                  </td>
+
+                  {/* Acciones */}
+                  <td className={cn(td, 'text-right')}>
+                    <div className="inline-flex gap-1">
+                      <button
+                        type="button"
                         onClick={(e) => {
                           e.stopPropagation();
                           onEditarCuenta(cuenta);
                         }}
-                        style={{
-                          color: '#2563eb',
-                          padding: '0.25rem',
-                          borderRadius: '0.25rem',
-                          border: 'none',
-                          background: 'transparent',
-                          cursor: 'pointer',
-                          transition: 'all 0.15s ease-in-out'
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.color = '#1d4ed8';
-                          e.currentTarget.style.background = '#dbeafe';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.color = '#2563eb';
-                          e.currentTarget.style.background = 'transparent';
-                        }}
                         title="Editar cuenta"
+                        aria-label={`Editar cuenta ${cuenta.codigo}`}
+                        className="grid size-8 place-items-center rounded-lg border-0 bg-transparent p-0 text-slate-400 hover:bg-blue-50 hover:text-blue-600"
                       >
-                        <svg style={{ width: '1rem', height: '1rem' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                        </svg>
+                        <Pencil className="size-4" aria-hidden="true" />
                       </button>
                       <button
+                        type="button"
                         onClick={(e) => {
                           e.stopPropagation();
                           onEliminarCuenta(cuenta);
                         }}
-                        style={{
-                          color: '#dc2626',
-                          padding: '0.25rem',
-                          borderRadius: '0.25rem',
-                          border: 'none',
-                          background: 'transparent',
-                          cursor: 'pointer',
-                          transition: 'all 0.15s ease-in-out'
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.color = '#b91c1c';
-                          e.currentTarget.style.background = '#fee2e2';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.color = '#dc2626';
-                          e.currentTarget.style.background = 'transparent';
-                        }}
                         title="Eliminar cuenta"
+                        aria-label={`Eliminar cuenta ${cuenta.codigo}`}
+                        className="grid size-8 place-items-center rounded-lg border-0 bg-transparent p-0 text-slate-400 hover:bg-red-50 hover:text-red-600"
                       >
-                        <svg style={{ width: '1rem', height: '1rem' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
+                        <Trash2 className="size-4" aria-hidden="true" />
                       </button>
                     </div>
                   </td>

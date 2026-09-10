@@ -1,262 +1,98 @@
 /**
- * Página de Operaciones RCE
- * Gestionar propuestas y procesos RCE
+ * Operaciones RCE: propuestas, procesos y archivos.
  * URL: /sire/rce/operaciones
  */
 
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { FileStack, Rocket, Settings2 } from 'lucide-react';
 import { useEmpresaValidation } from '../../../hooks/useEmpresaValidation';
 import { RceSunatDirecto } from '../../../components/sire/rce/RceSunatDirecto';
+import PeriodoSelector, {
+  periodoActual,
+  periodoToString,
+  type Periodo,
+} from '../../../components/common/PeriodoSelector';
+import EmptyState from '../../../components/common/EmptyState';
+import { cn } from '../../../lib/cn';
+
+type TabId = 'propuestas' | 'procesos' | 'archivos';
+
+const TABS: { id: TabId; label: string; icon: typeof Rocket }[] = [
+  { id: 'propuestas', label: 'Propuestas', icon: Rocket },
+  { id: 'procesos', label: 'Procesos', icon: Settings2 },
+  { id: 'archivos', label: 'Archivos', icon: FileStack },
+];
 
 const RceOperacionesPage: React.FC = () => {
-  const navigate = useNavigate();
   const { empresaActual } = useEmpresaValidation();
-  const [activeTab, setActiveTab] = useState<'propuestas' | 'procesos' | 'archivos'>('propuestas');
+  const [activeTab, setActiveTab] = useState<TabId>('propuestas');
+  const [periodo, setPeriodo] = useState<Periodo>(periodoActual);
 
-  if (!empresaActual) {
-    return (
-      <div style={{
-        minHeight: '100vh',
-        background: 'linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)',
-        padding: '20px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center'
-      }}>
-        <div style={{ background: 'white', padding: '2rem', borderRadius: '12px', textAlign: 'center' }}>
-          <h2>🏢 Empresa no encontrada</h2>
-          <button onClick={() => navigate('/empresas')}>
-            Seleccionar Empresa
-          </button>
-        </div>
-      </div>
-    );
-  }
+  // RequireEmpresa garantiza que hay empresa: esta guarda solo estrecha el tipo.
+  if (!empresaActual) return null;
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: 'linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)',
-      padding: '20px'
-    }}>
-      {/* Header de navegación */}
-      <div style={{
-        background: 'white',
-        padding: '1rem 2rem',
-        borderRadius: '12px',
-        marginBottom: '2rem',
-        boxShadow: '0 2px 10px rgba(0, 0, 0, 0.1)'
-      }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
-            {/* Breadcrumbs */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+    <div className="space-y-6">
+      {/* El periodo estaba cableado a "202507" en la llamada a SUNAT: siempre
+          se consultaba julio de 2025 sin importar la fecha. Ahora lo elige el
+          usuario. */}
+      <PeriodoSelector value={periodo} onChange={setPeriodo} />
+
+      <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div role="tablist" className="flex border-b border-slate-200">
+          {TABS.map(({ id, label, icon: Icon }) => {
+            const isActive = activeTab === id;
+            return (
               <button
-                onClick={() => navigate('/sire')}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: '#3b82f6',
-                  cursor: 'pointer',
-                  fontSize: '0.9rem'
-                }}
+                key={id}
+                type="button"
+                role="tab"
+                aria-selected={isActive}
+                onClick={() => setActiveTab(id)}
+                className={cn(
+                  'flex flex-1 items-center justify-center gap-2 border-0 border-b-2 bg-transparent px-4 py-3.5 text-sm font-semibold transition-colors',
+                  isActive
+                    ? 'border-violet-600 bg-violet-50/60 text-violet-700'
+                    : 'border-transparent text-slate-500 hover:bg-slate-50 hover:text-slate-800'
+                )}
               >
-                SIRE
+                <Icon className="size-4" aria-hidden="true" />
+                {label}
               </button>
-              <span style={{ color: '#6b7280' }}>›</span>
-              <button
-                onClick={() => navigate('/sire/rce')}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: '#3b82f6',
-                  cursor: 'pointer',
-                  fontSize: '0.9rem'
-                }}
-              >
-                RCE
-              </button>
-              <span style={{ color: '#6b7280' }}>›</span>
-              <span style={{ color: '#374151', fontWeight: 'bold', fontSize: '0.9rem' }}>
-                Operaciones
-              </span>
-            </div>
-            
-            {/* Título principal */}
-            <h1 style={{ 
-              margin: 0, 
-              fontSize: '1.8rem', 
-              fontWeight: 'bold',
-              color: '#8b5cf6',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem'
-            }}>
-              ⚙️ Operaciones RCE
-            </h1>
-          </div>
-          
-          <button
-            onClick={() => navigate('/sire/rce')}
-            style={{
-              background: '#f3f4f6',
-              border: 'none',
-              padding: '0.5rem 1rem',
-              borderRadius: '8px',
-              color: '#374151',
-              cursor: 'pointer',
-              fontSize: '0.9rem'
-            }}
-          >
-            ← Volver a RCE
-          </button>
-        </div>
-      </div>
-
-      {/* Información de la Empresa */}
-      <div style={{
-        background: 'white',
-        padding: '1.5rem',
-        borderRadius: '12px',
-        marginBottom: '2rem',
-        boxShadow: '0 2px 10px rgba(0, 0, 0, 0.1)'
-      }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
-          <div>
-            <strong>RUC:</strong> {empresaActual.ruc}
-          </div>
-          <div>
-            <strong>Empresa:</strong> {empresaActual.razon_social}
-          </div>
-          <div>
-            <strong>Módulo:</strong> <span style={{ color: '#8b5cf6', fontWeight: 'bold' }}>Operaciones RCE</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Tabs de navegación */}
-      <div style={{
-        background: 'white',
-        borderRadius: '12px',
-        marginBottom: '2rem',
-        boxShadow: '0 2px 10px rgba(0, 0, 0, 0.1)',
-        overflow: 'hidden'
-      }}>
-        <div style={{ display: 'flex', borderBottom: '1px solid #e5e7eb' }}>
-          <button
-            onClick={() => setActiveTab('propuestas')}
-            style={{
-              flex: 1,
-              padding: '1rem 1.5rem',
-              border: 'none',
-              background: activeTab === 'propuestas' ? '#8b5cf6' : 'white',
-              color: activeTab === 'propuestas' ? 'white' : '#6b7280',
-              cursor: 'pointer',
-              fontSize: '1rem',
-              fontWeight: 'bold'
-            }}
-          >
-            📋 Propuestas
-          </button>
-          <button
-            onClick={() => setActiveTab('procesos')}
-            style={{
-              flex: 1,
-              padding: '1rem 1.5rem',
-              border: 'none',
-              background: activeTab === 'procesos' ? '#8b5cf6' : 'white',
-              color: activeTab === 'procesos' ? 'white' : '#6b7280',
-              cursor: 'pointer',
-              fontSize: '1rem',
-              fontWeight: 'bold'
-            }}
-          >
-            ⚙️ Procesos
-          </button>
-          <button
-            onClick={() => setActiveTab('archivos')}
-            style={{
-              flex: 1,
-              padding: '1rem 1.5rem',
-              border: 'none',
-              background: activeTab === 'archivos' ? '#8b5cf6' : 'white',
-              color: activeTab === 'archivos' ? 'white' : '#6b7280',
-              cursor: 'pointer',
-              fontSize: '1rem',
-              fontWeight: 'bold'
-            }}
-          >
-            📁 Archivos
-          </button>
+            );
+          })}
         </div>
 
-        {/* Contenido de las tabs */}
-        <div style={{ padding: '2rem' }}>
+        <div className="p-5 sm:p-6">
           {activeTab === 'propuestas' && (
-            <div>
-              <h2 style={{ margin: '0 0 1.5rem 0', color: '#374151' }}>
-                🚀 Generar Propuestas SUNAT
-              </h2>
-              <p style={{ color: '#6b7280', marginBottom: '2rem' }}>
-                Utiliza los endpoints directos para generar propuestas y consultar tickets de SUNAT.
-              </p>
-              
-              {/* Componente RceSunatDirecto que ya funciona */}
-              <RceSunatDirecto 
-                ruc={empresaActual.ruc}
-                periodo="202507"
-              />
+            <div className="space-y-4">
+              <div>
+                <h2 className="text-base font-semibold text-slate-900">
+                  Generar propuestas SUNAT
+                </h2>
+                <p className="text-sm text-slate-500">
+                  Genera propuestas y consulta el estado de los tickets directamente en SUNAT.
+                </p>
+              </div>
+              <RceSunatDirecto ruc={empresaActual.ruc} periodo={periodoToString(periodo)} />
             </div>
           )}
 
           {activeTab === 'procesos' && (
-            <div>
-              <h2 style={{ margin: '0 0 1.5rem 0', color: '#374151' }}>
-                ⚙️ Gestión de Procesos
-              </h2>
-              <p style={{ color: '#6b7280', marginBottom: '2rem' }}>
-                Administra los procesos de comprobantes y registros RCE.
-              </p>
-              
-              <div style={{
-                background: '#f3f4f6',
-                padding: '2rem',
-                borderRadius: '8px',
-                textAlign: 'center'
-              }}>
-                <h3 style={{ color: '#6b7280' }}>🚧 En Desarrollo</h3>
-                <p style={{ color: '#9ca3af' }}>
-                  Esta funcionalidad estará disponible próximamente.
-                </p>
-              </div>
-            </div>
+            <EmptyState
+              title="Gestión de procesos"
+              description="La administración de procesos de comprobantes y registros RCE estará disponible próximamente."
+            />
           )}
 
           {activeTab === 'archivos' && (
-            <div>
-              <h2 style={{ margin: '0 0 1.5rem 0', color: '#374151' }}>
-                📁 Gestión de Archivos
-              </h2>
-              <p style={{ color: '#6b7280', marginBottom: '2rem' }}>
-                Cargar, procesar y descargar archivos relacionados con RCE.
-              </p>
-              
-              <div style={{
-                background: '#f3f4f6',
-                padding: '2rem',
-                borderRadius: '8px',
-                textAlign: 'center'
-              }}>
-                <h3 style={{ color: '#6b7280' }}>🚧 En Desarrollo</h3>
-                <p style={{ color: '#9ca3af' }}>
-                  Esta funcionalidad estará disponible próximamente.
-                </p>
-              </div>
-            </div>
+            <EmptyState
+              title="Gestión de archivos"
+              description="La carga, procesamiento y descarga de archivos RCE estará disponible próximamente."
+            />
           )}
         </div>
-      </div>
+      </section>
     </div>
   );
 };

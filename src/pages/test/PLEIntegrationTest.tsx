@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { pleApiService } from '../../services/pleApi';
+import { pleApiService, type PLEGeneracionData } from '../../services/pleApi';
 
 const PLEIntegrationTest: React.FC = () => {
   const [testResults, setTestResults] = useState<any[]>([]);
@@ -17,15 +17,17 @@ const PLEIntegrationTest: React.FC = () => {
         result: 'Testing connection...'
       });
 
-      // Test de generación PLE
-      const testData = {
-        ejercicio: 2024,
-        mes: 8,
-        ruc: '20123456789',
-        razonSocial: 'Empresa Test',
-        fechaInicio: '2024-08-01',
-        fechaFin: '2024-08-31',
-        incluirCierreEjercicio: false,
+      // Test de generación PLE.
+      // Los campos ruc/razonSocial/fechaInicio/fechaFin eran de un contrato
+      // anterior de la API: PLEGeneracionData ahora pide `libro_diario_id`.
+      const hoy = new Date();
+      const testData: PLEGeneracionData = {
+        libro_diario_id: 'test-libro-diario',
+        ejercicio: hoy.getFullYear(),
+        mes: hoy.getMonth() + 1,
+        validar_antes_generar: true,
+        incluir_metadatos: true,
+        generar_zip: false,
         observaciones: 'Test de integración'
       };
 
@@ -34,7 +36,7 @@ const PLEIntegrationTest: React.FC = () => {
         results.push({
           test: 'PLE Generation API',
           status: 'success',
-          result: `Generación exitosa: ${generacionResponse.message}`
+          result: `Generación exitosa: ${generacionResponse.mensaje}`
         });
       } catch (error: any) {
         results.push({
@@ -88,75 +90,65 @@ const PLEIntegrationTest: React.FC = () => {
     setLoading(false);
   };
 
+  const TONES = {
+    success: 'border-green-200 bg-green-50',
+    error: 'border-red-200 bg-red-50',
+    running: 'border-slate-200 bg-slate-50',
+  } as const;
+
+  const INFO = [
+    ['Backend Connectivity', 'Verifica que el frontend puede conectarse al backend'],
+    ['PLE Generation API', 'Prueba la generacion de archivos PLE'],
+    ['PLE Validation API', 'Prueba la validacion de datos PLE'],
+    ['PLE File Listing API', 'Prueba el listado de archivos generados'],
+  ];
+
   return (
-    <div style={{ padding: '20px', maxWidth: '800px', margin: '0 auto' }}>
-      <h1>🧪 PLE Frontend-Backend Integration Test</h1>
-      
-      <div style={{ marginBottom: '20px' }}>
-        <button 
+    <div className="min-h-screen bg-slate-50 p-6">
+      <div className="mx-auto max-w-3xl space-y-5">
+        <h1 className="text-xl font-bold tracking-tight text-slate-900">
+          Integracion PLE frontend-backend
+        </h1>
+
+        <button
+          type="button"
           onClick={runTests}
           disabled={loading}
-          style={{
-            padding: '10px 20px',
-            background: loading ? '#gray' : '#3b82f6',
-            color: 'white',
-            border: 'none',
-            borderRadius: '6px',
-            cursor: loading ? 'not-allowed' : 'pointer'
-          }}
+          className="rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
         >
-          {loading ? 'Ejecutando Tests...' : 'Ejecutar Tests de Integración'}
+          {loading ? 'Ejecutando tests...' : 'Ejecutar tests de integracion'}
         </button>
-      </div>
 
-      {testResults.length > 0 && (
-        <div>
-          <h2>📊 Resultados de Tests</h2>
-          {testResults.map((result, index) => (
-            <div 
-              key={index}
-              style={{
-                padding: '15px',
-                margin: '10px 0',
-                border: '1px solid #e5e7eb',
-                borderRadius: '8px',
-                background: result.status === 'success' ? '#f0f9ff' : 
-                          result.status === 'error' ? '#fef2f2' : '#f9fafb'
-              }}
-            >
-              <div style={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                marginBottom: '8px' 
-              }}>
-                <span style={{ 
-                  marginRight: '10px',
-                  fontSize: '18px'
-                }}>
-                  {result.status === 'success' ? '✅' : 
-                   result.status === 'error' ? '❌' : '⏳'}
-                </span>
-                <strong>{result.test}</strong>
+        {testResults.length > 0 && (
+          <section className="space-y-2">
+            <h2 className="text-sm font-semibold text-slate-900">Resultados</h2>
+            {testResults.map((result, index) => (
+              <div
+                key={index}
+                className={`rounded-lg border px-4 py-3 ${TONES[result.status as keyof typeof TONES] ?? TONES.running}`}
+              >
+                <p className="mb-1 text-sm font-semibold text-slate-900">{result.test}</p>
+                <p
+                  className={`text-sm ${result.status === 'error' ? 'text-red-700' : 'text-slate-600'}`}
+                >
+                  {result.result}
+                </p>
               </div>
-              <div style={{ 
-                color: result.status === 'error' ? '#dc2626' : '#374151',
-                fontSize: '14px'
-              }}>
-                {result.result}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+            ))}
+          </section>
+        )}
 
-      <div style={{ marginTop: '30px', padding: '15px', background: '#f9fafb', borderRadius: '8px' }}>
-        <h3>ℹ️ Información de Tests</h3>
-        <ul style={{ fontSize: '14px', color: '#6b7280' }}>
-          <li><strong>Backend Connectivity:</strong> Verifica que el frontend puede conectarse al backend</li>
-          <li><strong>PLE Generation API:</strong> Prueba la generación de archivos PLE</li>
-          <li><strong>PLE Validation API:</strong> Prueba la validación de datos PLE</li>
-          <li><strong>PLE File Listing API:</strong> Prueba el listado de archivos generados</li>
-        </ul>
+        <section className="rounded-xl border border-slate-200 bg-white p-5">
+          <h3 className="mb-2 text-sm font-semibold text-slate-900">Que comprueba cada test</h3>
+          <dl className="space-y-1.5 text-sm">
+            {INFO.map(([nombre, desc]) => (
+              <div key={nombre} className="flex flex-col gap-0.5 sm:flex-row sm:gap-2">
+                <dt className="font-medium text-slate-700">{nombre}:</dt>
+                <dd className="text-slate-500">{desc}</dd>
+              </div>
+            ))}
+          </dl>
+        </section>
       </div>
     </div>
   );

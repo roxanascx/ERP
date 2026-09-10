@@ -189,7 +189,6 @@ export const comprasApi = {
     params.append('periodo_aaaamm', periodoAaaamm);
     
     const url = `/accounting/compras/resumen?${params.toString()}`;
-    console.log('🔍 [API] Llamando a resumen:', url);
     
     const response = await api.get(url);
     return response.data;
@@ -232,7 +231,6 @@ export const comprasApi = {
     if (filters?.limit) params.append('limit', filters.limit.toString());
     
     const url = `/accounting/compras/empresa/${empresaId}?${params.toString()}`;
-    console.log('🔍 [API] Llamando a:', url);
     
     const response = await api.get(url);
     return response.data.registros; // Extraer solo los registros

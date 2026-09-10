@@ -2,151 +2,89 @@ import React from 'react';
 import { useAuth, useUser } from '@clerk/clerk-react';
 import { LogoutButton } from '../components/auth';
 
+/** Banco de pruebas de LogoutButton. Solo se enruta en desarrollo. */
+const Card: React.FC<{ title: string; description?: string; children: React.ReactNode }> = ({
+  title,
+  description,
+  children,
+}) => (
+  <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+    <h3 className="mb-1 text-sm font-semibold text-slate-900">{title}</h3>
+    {description && <p className="mb-4 text-sm text-slate-500">{description}</p>}
+    {children}
+  </section>
+);
+
 const TestLogoutPage: React.FC = () => {
   const { isSignedIn } = useAuth();
   const { user } = useUser();
 
   if (!isSignedIn || !user) {
     return (
-      <div style={{ padding: '40px', textAlign: 'center' }}>
-        <h2>Debes estar autenticado para ver esta página</h2>
+      <div className="p-10 text-center">
+        <h2 className="text-lg font-semibold text-slate-700">
+          Debes iniciar sesión para ver esta página
+        </h2>
       </div>
     );
   }
 
   return (
-    <div style={{
-      padding: '40px',
-      maxWidth: '800px',
-      margin: '0 auto',
-      background: '#f8fafc',
-      minHeight: '100vh'
-    }}>
-      <h1 style={{
-        fontSize: '32px',
-        fontWeight: '700',
-        color: '#1f2937',
-        marginBottom: '30px',
-        textAlign: 'center'
-      }}>
-        🚪 Opciones de Cerrar Sesión
-      </h1>
+    <div className="min-h-screen bg-slate-50 p-6 sm:p-10">
+      <div className="mx-auto max-w-4xl">
+        <h1 className="mb-8 text-center text-2xl font-bold tracking-tight text-slate-900">
+          Variantes de «Cerrar sesión»
+        </h1>
 
-      <div style={{
-        display: 'grid',
-        gap: '30px',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))'
-      }}>
-        
-        {/* Variante Danger */}
-        <div style={{
-          background: 'white',
-          padding: '30px',
-          borderRadius: '12px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-        }}>
-          <h3 style={{ marginBottom: '15px', color: '#1f2937' }}>
-            Variante Danger (Rojo)
-          </h3>
-          <p style={{ marginBottom: '20px', color: '#6b7280' }}>
-            Botón de cerrar sesión estilo peligro/advertencia
-          </p>
-          <LogoutButton variant="danger" size="medium" />
-        </div>
+        <div className="grid gap-6 sm:grid-cols-2">
+          <Card title="Danger (rojo)" description="Estilo de advertencia.">
+            <LogoutButton variant="danger" size="medium" />
+          </Card>
 
-        {/* Variante Primary */}
-        <div style={{
-          background: 'white',
-          padding: '30px',
-          borderRadius: '12px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-        }}>
-          <h3 style={{ marginBottom: '15px', color: '#1f2937' }}>
-            Variante Primary (Azul)
-          </h3>
-          <p style={{ marginBottom: '20px', color: '#6b7280' }}>
-            Botón de cerrar sesión estilo principal
-          </p>
-          <LogoutButton variant="primary" size="medium" />
-        </div>
+          <Card title="Primary (azul)" description="Estilo principal.">
+            <LogoutButton variant="primary" size="medium" />
+          </Card>
 
-        {/* Variante Secondary */}
-        <div style={{
-          background: 'white',
-          padding: '30px',
-          borderRadius: '12px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-        }}>
-          <h3 style={{ marginBottom: '15px', color: '#1f2937' }}>
-            Variante Secondary (Gris)
-          </h3>
-          <p style={{ marginBottom: '20px', color: '#6b7280' }}>
-            Botón de cerrar sesión estilo secundario
-          </p>
-          <LogoutButton variant="secondary" size="medium" />
-        </div>
+          <Card title="Secondary (gris)" description="Estilo secundario.">
+            <LogoutButton variant="secondary" size="medium" />
+          </Card>
 
-        {/* Tamaños */}
-        <div style={{
-          background: 'white',
-          padding: '30px',
-          borderRadius: '12px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-          gridColumn: 'span 2'
-        }}>
-          <h3 style={{ marginBottom: '15px', color: '#1f2937' }}>
-            Diferentes Tamaños
-          </h3>
-          <div style={{ display: 'flex', gap: '15px', alignItems: 'center', flexWrap: 'wrap' }}>
-            <div>
-              <p style={{ marginBottom: '10px', color: '#6b7280', fontSize: '14px' }}>Pequeño:</p>
-              <LogoutButton variant="danger" size="small" />
+          <Card title="Sin icono" description="Solo texto.">
+            <LogoutButton variant="danger" size="medium" showIcon={false} />
+          </Card>
+
+          <Card title="Tamaños" description="Pequeño, mediano y grande.">
+            <div className="flex flex-wrap items-end gap-4">
+              <div>
+                <p className="mb-2 text-xs text-slate-500">Pequeño</p>
+                <LogoutButton variant="danger" size="small" />
+              </div>
+              <div>
+                <p className="mb-2 text-xs text-slate-500">Mediano</p>
+                <LogoutButton variant="danger" size="medium" />
+              </div>
+              <div>
+                <p className="mb-2 text-xs text-slate-500">Grande</p>
+                <LogoutButton variant="danger" size="large" />
+              </div>
             </div>
-            <div>
-              <p style={{ marginBottom: '10px', color: '#6b7280', fontSize: '14px' }}>Mediano:</p>
-              <LogoutButton variant="danger" size="medium" />
-            </div>
-            <div>
-              <p style={{ marginBottom: '10px', color: '#6b7280', fontSize: '14px' }}>Grande:</p>
-              <LogoutButton variant="danger" size="large" />
-            </div>
-          </div>
-        </div>
+          </Card>
 
-        {/* Sin Icono */}
-        <div style={{
-          background: 'white',
-          padding: '30px',
-          borderRadius: '12px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-        }}>
-          <h3 style={{ marginBottom: '15px', color: '#1f2937' }}>
-            Sin Icono
-          </h3>
-          <p style={{ marginBottom: '20px', color: '#6b7280' }}>
-            Botón sin el emoji de puerta
-          </p>
-          <LogoutButton variant="danger" size="medium" showIcon={false} />
+          <Card title="Sesión actual">
+            <dl className="space-y-1 text-sm">
+              <div className="flex gap-2">
+                <dt className="text-slate-500">Usuario:</dt>
+                <dd className="font-medium text-slate-800">{user.fullName ?? '—'}</dd>
+              </div>
+              <div className="flex gap-2">
+                <dt className="text-slate-500">Email:</dt>
+                <dd className="font-medium text-slate-800">
+                  {user.primaryEmailAddress?.emailAddress ?? '—'}
+                </dd>
+              </div>
+            </dl>
+          </Card>
         </div>
-      </div>
-
-      <div style={{
-        marginTop: '40px',
-        padding: '20px',
-        background: 'white',
-        borderRadius: '12px',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-      }}>
-        <h3 style={{ marginBottom: '15px', color: '#1f2937' }}>
-          ℹ️ Información del Usuario
-        </h3>
-        <p style={{ color: '#6b7280' }}>
-          <strong>Nombre:</strong> {user.firstName} {user.lastName}
-          <br />
-          <strong>Email:</strong> {user.primaryEmailAddress?.emailAddress}
-          <br />
-          <strong>ID:</strong> {user.id}
-        </p>
       </div>
     </div>
   );

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
+import { AlertCircle, ArrowLeft, Loader2 } from 'lucide-react';
 import type { LibroDiario, FiltrosLibroDiario, ResumenLibroDiario, AsientoContable } from '../../types/libroDiario';
 import LibroDiarioApiService from '../../services/libroDiarioApi';
 import ExportacionService from '../../services/exportacionService';
@@ -11,6 +12,8 @@ import LibroDiarioTable from '../../components/contabilidad/libroDiario/LibroDia
 import LibroDiarioResumen from '../../components/contabilidad/libroDiario/LibroDiarioResumen';
 import CrearLibroModal from '../../components/contabilidad/libroDiario/CrearLibroModal';
 import AsientosManager from '../../components/contabilidad/libroDiario/AsientosManager';
+import Toast from '../../components/common/Toast';
+import EmptyState from '../../components/common/EmptyState';
 
 const LibroDiarioPage: React.FC = () => {
   const { empresaId } = useParams<{ empresaId: string }>();
@@ -149,11 +152,9 @@ const LibroDiarioPage: React.FC = () => {
 
     try {
       setLoading(true);
-      console.log('🔄 Cargando libro completo con asientos:', libro.id);
       
       // Cargar libro completo con asientos desde el backend
       const libroCompleto = await LibroDiarioApiService.obtenerLibroDiario(libro.id);
-      console.log('✅ Libro cargado:', libroCompleto);
       
       setLibroSeleccionado(libroCompleto);
       setVistaActual('asientos');
@@ -296,161 +297,104 @@ const LibroDiarioPage: React.FC = () => {
     setLibroSeleccionado(null);
   };
 
-  // Loading de empresa
+  // ---------------------------------------------------------------------------
+  // Render
+  // ---------------------------------------------------------------------------
+
   if (empresaLoading) {
     return (
-      <div style={{
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        height: '400px',
-        fontSize: '18px',
-        color: '#6b7280'
-      }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '48px', marginBottom: '16px' }}>⏳</div>
-          Cargando información de la empresa...
-        </div>
+      <div className="flex items-center justify-center py-20" role="status">
+        <Loader2 className="size-6 animate-spin text-blue-600" aria-hidden="true" />
+        <span className="ml-3 text-sm text-slate-500">Cargando información de la empresa…</span>
       </div>
     );
   }
 
-  // Error si no hay empresa
   if (!empresa || !empresaIdFinal) {
     return (
-      <div style={{
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        height: '400px',
-        fontSize: '18px',
-        color: '#dc2626'
-      }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '48px', marginBottom: '16px' }}>⚠️</div>
-          <h3 style={{ margin: '0 0 8px 0' }}>Error: Empresa no encontrada</h3>
-          <p style={{ margin: 0, color: '#6b7280' }}>
-            No se pudo cargar la información de la empresa.
-          </p>
-        </div>
-      </div>
+      <EmptyState
+        icon={AlertCircle}
+        title="No se encontró la empresa"
+        description="No se pudo cargar la información de la empresa activa."
+      />
     );
   }
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-      padding: '20px'
-    }}>
-      <div style={{
-        maxWidth: '1400px',
-        margin: '0 auto'
-      }}>
-        {/* Toast de notificaciones */}
-        {toast && (
-          <div style={{
-            position: 'fixed',
-            top: '20px',
-            right: '20px',
-            zIndex: 1000,
-            padding: '12px 20px',
-            borderRadius: '8px',
-            color: 'white',
-            background: toast.type === 'success' ? '#10b981' :
-                       toast.type === 'error' ? '#ef4444' : '#3b82f6',
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)'
-          }}>
-            {toast.message}
-          </div>
-        )}
+    <div className="space-y-5">
+      {toast && (
+        <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />
+      )}
 
-        {/* Vista Lista de Libros */}
-        {vistaActual === 'lista' && (
-          <>
-            <LibroDiarioHeader
-              filtros={filtros}
-              onFiltrosChange={handleFiltrosChange}
-              onCrearLibro={() => setMostrandoModal(true)}
-              onExportar={handleExportar}
-              loading={loading}
+      {/* Lista de libros */}
+      {vistaActual === 'lista' && (
+        <>
+          <LibroDiarioHeader
+            filtros={filtros}
+            onFiltrosChange={handleFiltrosChange}
+            onCrearLibro={() => setMostrandoModal(true)}
+            onExportar={handleExportar}
+            loading={loading}
+          />
+
+          <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_300px]">
+            <LibroDiarioTable
+              libros={libros}
+              onVerAsientos={handleVerAsientos}
+              onEliminar={handleEliminarLibro}
             />
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: '20px', marginTop: '20px' }}>
-              <LibroDiarioTable
-                libros={libros}
-                onVerAsientos={handleVerAsientos}
-                onEliminar={handleEliminarLibro}
-              />
-
-              <LibroDiarioResumen
-                resumen={resumen || {
+            <LibroDiarioResumen
+              resumen={
+                resumen || {
                   totalLibros: 0,
                   totalAsientos: 0,
                   totalDebe: 0,
                   totalHaber: 0,
-                  asientosPorEstado: {
-                    borrador: 0,
-                    finalizado: 0,
-                    enviado: 0
-                  },
+                  asientosPorEstado: { borrador: 0, finalizado: 0, enviado: 0 },
                   diferencia: 0,
                   balanceado: true,
                   periodos: [],
-                  ultimaModificacion: new Date().toISOString()
-                }}
-                onRefresh={cargarLibrosDiario}
-              />
-            </div>
-          </>
-        )}
-
-        {/* Vista Gestión de Asientos */}
-        {vistaActual === 'asientos' && libroSeleccionado && (
-          <div>
-            <div style={{ marginBottom: '20px' }}>
-              <button
-                onClick={volverALista}
-                style={{
-                  background: 'rgba(255, 255, 255, 0.2)',
-                  border: '1px solid rgba(255, 255, 255, 0.3)',
-                  borderRadius: '8px',
-                  color: 'white',
-                  padding: '10px 16px',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px'
-                }}
-              >
-                ← Volver a la lista
-              </button>
-            </div>
-
-            <AsientosManager
-              libroId={libroSeleccionado.id!}
-              libro={libroSeleccionado} 
-              asientos={libroSeleccionado.asientos || []}
-              onCrearAsiento={handleCrearAsiento}
-              onEditarAsiento={handleEditarAsiento}
-              onEliminarAsiento={handleEliminarAsiento}
-              onExportarExcel={handleExportarAsientosExcel}
-              onExportarPDF={handleExportarAsientosPDF}
-              isLoading={loading}
+                  ultimaModificacion: new Date().toISOString(),
+                }
+              }
+              onRefresh={cargarLibrosDiario}
             />
           </div>
-        )}
+        </>
+      )}
 
-        {/* Modal Crear Libro */}
-        {mostrandoModal && (
-          <CrearLibroModal
-            onGuardar={handleCrearLibro}
-            onCerrar={() => setMostrandoModal(false)}
+      {/* Asientos de un libro */}
+      {vistaActual === 'asientos' && libroSeleccionado && (
+        <>
+          <button
+            type="button"
+            onClick={volverALista}
+            className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          >
+            <ArrowLeft className="size-4" aria-hidden="true" />
+            Volver a la lista
+          </button>
+
+          <AsientosManager
+            libroId={libroSeleccionado.id!}
+            libro={libroSeleccionado}
+            asientos={libroSeleccionado.asientos || []}
+            onCrearAsiento={handleCrearAsiento}
+            onEditarAsiento={handleEditarAsiento}
+            onEliminarAsiento={handleEliminarAsiento}
+            onExportarExcel={handleExportarAsientosExcel}
+            onExportarPDF={handleExportarAsientosPDF}
+            isLoading={loading}
           />
-        )}
-      </div>
+        </>
+      )}
+
+      {mostrandoModal && (
+        <CrearLibroModal
+          onGuardar={handleCrearLibro}
+          onCerrar={() => setMostrandoModal(false)}
+        />
+      )}
     </div>
   );
 };

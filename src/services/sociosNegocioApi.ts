@@ -134,7 +134,10 @@ export interface SocioSearchFilters extends SocioFilters {
 }
 
 class SociosNegocioApi {
-  private baseURL = '/api/v1/socios-negocio';
+  // El cliente de axios ya apunta a `${API_BASE_URL}/api/v1`, asi que aqui
+  // solo va la ruta del recurso. Antes se repetia el prefijo y todas las
+  // llamadas salian como /api/v1/api/v1/socios-negocio -> 404.
+  private baseURL = '/socios-negocio';
 
   // Crear socio
   async createSocio(empresaId: string, data: SocioNegocioCreate): Promise<SocioNegocio> {

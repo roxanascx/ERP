@@ -23,7 +23,6 @@ const RceIntegrationTest: React.FC = () => {
 
   // Simular datos de cache (como si vinieran de consulta detallada)
   const simularConsultaSunat = () => {
-    console.log('🔄 Simulando consulta SUNAT...');
     
     // Datos simulados
     const comprobantesSimulados = [
@@ -76,137 +75,121 @@ const RceIntegrationTest: React.FC = () => {
     setRucActual(rucTest);
     setPeriodoActual(periodoTest);
     
-    console.log(`✅ ${comprobantesSimulados.length} comprobantes guardados en cache`);
   };
 
   const estadoCache = obtenerEstadoCache(rucTest, periodoTest);
 
+  const PASOS = [
+    ['Simular consulta', 'Genera datos ficticios en el cache'],
+    ['Mostrar tabla', 'Abre la tabla de base de datos'],
+    ['Guardar desde cache', 'El boton Guardar detecta los datos en cache'],
+    ['Verificar optimizacion', 'No se consulta SUNAT si hay datos validos'],
+    ['Limpiar cache', 'Reinicia el estado para probar sin cache'],
+  ];
+
   return (
-    <div style={{ 
-      padding: '20px', 
-      fontFamily: 'Arial, sans-serif',
-      maxWidth: '1200px',
-      margin: '0 auto'
-    }}>
-      <h1>🧪 Prueba de Integración RCE - Sistema Optimizado</h1>
-      
-      <div style={{ 
-        background: '#f8f9fa', 
-        padding: '20px', 
-        borderRadius: '8px', 
-        marginBottom: '20px' 
-      }}>
-        <h2>📊 Estado del Cache</h2>
-        <p><strong>RUC:</strong> {rucTest}</p>
-        <p><strong>Período:</strong> {periodoTest}</p>
-        <p><strong>Hay datos:</strong> {hayDatosEnCache() ? '✅ Sí' : '❌ No'}</p>
-        <p><strong>Estado:</strong> {estadoCache.descripcion}</p>
-        {comprobantesDetallados && (
-          <p><strong>Total comprobantes:</strong> {comprobantesDetallados.length}</p>
-        )}
-        
-        <div style={{ marginTop: '15px', display: 'flex', gap: '10px' }}>
-          <button 
-            onClick={simularConsultaSunat}
-            style={{
-              padding: '10px 20px',
-              backgroundColor: '#28a745',
-              color: 'white',
-              border: 'none',
-              borderRadius: '5px',
-              cursor: 'pointer'
-            }}
-          >
-            🔄 Simular Consulta SUNAT
-          </button>
-          
-          <button 
-            onClick={limpiarCache}
-            style={{
-              padding: '10px 20px',
-              backgroundColor: '#dc3545',
-              color: 'white',
-              border: 'none',
-              borderRadius: '5px',
-              cursor: 'pointer'
-            }}
-          >
-            🗑️ Limpiar Cache
-          </button>
-          
-          <button 
-            onClick={() => setMostrarTabla(!mostrarTabla)}
-            style={{
-              padding: '10px 20px',
-              backgroundColor: '#007bff',
-              color: 'white',
-              border: 'none',
-              borderRadius: '5px',
-              cursor: 'pointer'
-            }}
-          >
-            {mostrarTabla ? '🙈 Ocultar' : '👀 Mostrar'} Tabla BD
-          </button>
-        </div>
-      </div>
+    <div className="min-h-screen bg-slate-50 p-6">
+      <div className="mx-auto max-w-4xl space-y-5">
+        <h1 className="text-xl font-bold tracking-tight text-slate-900">
+          Integracion RCE - cache de comprobantes
+        </h1>
 
-      {/* Visualización de datos en cache */}
-      {comprobantesDetallados && comprobantesDetallados.length > 0 && (
-        <div style={{ 
-          background: '#e8f5e8', 
-          padding: '15px', 
-          borderRadius: '8px', 
-          marginBottom: '20px' 
-        }}>
-          <h3>🚀 Datos en Cache (listos para guardar sin consultar SUNAT)</h3>
-          <div style={{ fontSize: '14px', fontFamily: 'monospace' }}>
-            {comprobantesDetallados.map((comp, index) => (
-              <div key={index} style={{ marginBottom: '5px' }}>
-                <strong>{comp.razon_social_proveedor}</strong> - 
-                {comp.tipo_documento}-{comp.serie}-{comp.numero} - 
-                S/ {comp.total.toFixed(2)}
+        {/* Estado del cache */}
+        <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <h2 className="mb-3 text-sm font-semibold text-slate-900">Estado del cache</h2>
+
+          <dl className="mb-4 grid gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
+            <div className="flex gap-2">
+              <dt className="text-slate-500">RUC:</dt>
+              <dd className="font-mono font-medium text-slate-800">{rucTest}</dd>
+            </div>
+            <div className="flex gap-2">
+              <dt className="text-slate-500">Periodo:</dt>
+              <dd className="font-mono font-medium text-slate-800">{periodoTest}</dd>
+            </div>
+            <div className="flex gap-2">
+              <dt className="text-slate-500">Hay datos:</dt>
+              <dd className="font-medium text-slate-800">{hayDatosEnCache() ? 'Si' : 'No'}</dd>
+            </div>
+            <div className="flex gap-2">
+              <dt className="text-slate-500">Estado:</dt>
+              <dd className="font-medium text-slate-800">{estadoCache.descripcion}</dd>
+            </div>
+            {comprobantesDetallados && (
+              <div className="flex gap-2">
+                <dt className="text-slate-500">Comprobantes:</dt>
+                <dd className="font-medium text-slate-800 tabular-nums">
+                  {comprobantesDetallados.length}
+                </dd>
               </div>
-            ))}
+            )}
+          </dl>
+
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={simularConsultaSunat}
+              className="rounded-lg bg-blue-600 px-3.5 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+            >
+              Simular consulta SUNAT
+            </button>
+            <button
+              type="button"
+              onClick={limpiarCache}
+              className="rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            >
+              Limpiar cache
+            </button>
+            <button
+              type="button"
+              onClick={() => setMostrarTabla(!mostrarTabla)}
+              className="rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            >
+              {mostrarTabla ? 'Ocultar' : 'Mostrar'} tabla BD
+            </button>
           </div>
-        </div>
-      )}
+        </section>
 
-      {/* Tabla de base de datos */}
-      {mostrarTabla && (
-        <div style={{ 
-          background: 'white', 
-          padding: '20px', 
-          borderRadius: '8px', 
-          border: '1px solid #ddd' 
-        }}>
-          <h3>📋 Tabla de Comprobantes BD</h3>
-          <p style={{ color: '#666', fontSize: '14px' }}>
-            El botón "Guardar" usará los datos del cache si están disponibles, 
-            evitando consultas innecesarias a SUNAT.
-          </p>
-          <RceComprobantesTable 
-            ruc={rucTest} 
-            periodo={periodoTest}
-            onDataChange={() => console.log('📊 Datos de BD actualizados')}
-          />
-        </div>
-      )}
+        {/* Datos en cache */}
+        {comprobantesDetallados && comprobantesDetallados.length > 0 && (
+          <section className="rounded-xl border border-green-200 bg-green-50 p-5">
+            <h3 className="mb-2 text-sm font-semibold text-green-900">
+              Datos en cache (listos para guardar sin consultar SUNAT)
+            </h3>
+            <ul className="space-y-1 font-mono text-sm text-green-800">
+              {comprobantesDetallados.map((comp, index) => (
+                <li key={index}>
+                  <strong>{comp.razon_social_proveedor}</strong> · {comp.tipo_documento}-
+                  {comp.serie}-{comp.numero} · S/ {comp.total.toFixed(2)}
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
 
-      <div style={{ 
-        background: '#fff3cd', 
-        padding: '15px', 
-        borderRadius: '8px', 
-        marginTop: '20px',
-        border: '1px solid #ffeaa7'
-      }}>
-        <h4>📋 Instrucciones de Prueba</h4>
-        <ol>
-          <li><strong>Simular Consulta:</strong> Genera datos ficticios en el cache</li>
-          <li><strong>Mostrar Tabla:</strong> Abre la tabla de base de datos</li>
-          <li><strong>Guardar desde Cache:</strong> El botón "Guardar" detectará los datos en cache</li>
-          <li><strong>Verificar Optimización:</strong> No se consultará SUNAT si hay datos válidos</li>
-          <li><strong>Limpiar Cache:</strong> Reinicia el estado para probar sin cache</li>
-        </ol>
+        {/* Tabla BD */}
+        {mostrarTabla && (
+          <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+            <h3 className="mb-1 text-sm font-semibold text-slate-900">Comprobantes en BD</h3>
+            <p className="mb-3 text-sm text-slate-500">
+              El boton Guardar usa los datos del cache si estan disponibles, evitando consultas
+              innecesarias a SUNAT.
+            </p>
+            <RceComprobantesTable ruc={rucTest} periodo={periodoTest} onDataChange={() => {}} />
+          </section>
+        )}
+
+        {/* Instrucciones */}
+        <section className="rounded-xl border border-slate-200 bg-white p-5">
+          <h4 className="mb-2 text-sm font-semibold text-slate-900">Como probarlo</h4>
+          <ol className="list-decimal space-y-1 pl-5 text-sm text-slate-600">
+            {PASOS.map(([titulo, desc]) => (
+              <li key={titulo}>
+                <strong className="text-slate-800">{titulo}:</strong> {desc}
+              </li>
+            ))}
+          </ol>
+        </section>
       </div>
     </div>
   );

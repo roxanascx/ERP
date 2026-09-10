@@ -180,7 +180,6 @@ export function useRvie(options: UseRvieOptions) {
             incluir_detalle: request.incluir_detalle !== false
           });
 
-
           // Crear ticket local para mostrar en la UI
           const ticket: RvieTicketResponse = {
             ticket_id: response.ticket_id || `sync_${Date.now()}`,
@@ -218,8 +217,7 @@ export function useRvie(options: UseRvieOptions) {
       };
 
       const ticket = await sireService.tickets.generarTicket(ticketRequest);
-      
-      
+
       // Agregar ticket al estado inmediatamente
       setTickets(prev => [ticket, ...prev]);
       
@@ -391,8 +389,7 @@ export function useRvie(options: UseRvieOptions) {
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
-      
-      
+
       return {
         filename,
         file_size: blob.size,
@@ -483,7 +480,6 @@ export function useRvie(options: UseRvieOptions) {
         }
         
       } catch (error) {
-        console.log('Error inicializando RVIE:', error);
       }
     };
 

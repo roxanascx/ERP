@@ -1,13 +1,23 @@
 /**
- * Página de Tickets RCE
- * Consultar y descargar archivos procesados
+ * Tickets RCE: consultar y descargar archivos procesados.
  * URL: /sire/rce/tickets
  */
 
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useCallback, useEffect, useState } from 'react';
+import { AlertCircle, FileText, Loader2, RefreshCw, Ticket as TicketIcon } from 'lucide-react';
 import { useEmpresaValidation } from '../../../hooks/useEmpresaValidation';
 import api from '../../../services/api';
+import PeriodoSelector, {
+  periodoActual,
+  periodoToString,
+  type Periodo,
+} from '../../../components/common/PeriodoSelector';
+import EmptyState from '../../../components/common/EmptyState';
+import { cn } from '../../../lib/cn';
+
+interface ArchivoReporte {
+  nomArchivoReporte?: string;
+}
 
 interface Ticket {
   numTicket: string;
@@ -16,317 +26,181 @@ interface Ticket {
   desProceso: string;
   fecInicProceso: string;
   fecFinProceso?: string;
-  archivoReporte?: any[];
+  archivoReporte?: ArchivoReporte[];
 }
 
 const RceTicketsPage: React.FC = () => {
-  const navigate = useNavigate();
   const { empresaActual } = useEmpresaValidation();
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [selectedPeriod, setSelectedPeriod] = useState('202507');
 
-  const consultarTickets = async () => {
-    if (!empresaActual) return;
+  // Antes el desplegable ofrecia solo cuatro meses fijos de 2025
+  // (abril a julio), asi que era imposible consultar el periodo en curso.
+  const [periodo, setPeriodo] = useState<Periodo>(periodoActual);
 
+  const ruc = empresaActual?.ruc;
+
+  const consultarTickets = useCallback(async () => {
+    if (!ruc) return;
+
+    const periodoSunat = periodoToString(periodo);
     setLoading(true);
     setError(null);
 
     try {
-      console.log('🎫 Consultando tickets para período:', selectedPeriod);
-      
       const response = await api.get('/api/v1/sire/rce/sunat/tickets', {
         params: {
-          ruc: empresaActual.ruc,
-          periodo_ini: selectedPeriod,
-          periodo_fin: selectedPeriod,
+          ruc,
+          periodo_ini: periodoSunat,
+          periodo_fin: periodoSunat,
           page: 1,
-          per_page: 50
-        }
+          per_page: 50,
+        },
       });
 
-      console.log('✅ Respuesta de tickets:', response.data);
-      
       if (response.data.exitoso && response.data.datos?.registros) {
         setTickets(response.data.datos.registros);
       } else {
         setError('No se encontraron tickets para el período seleccionado');
         setTickets([]);
       }
-    } catch (err: any) {
-      console.error('❌ Error consultando tickets:', err);
-      setError(err.response?.data?.detail || 'Error consultando tickets');
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { detail?: string } } };
+      setError(e?.response?.data?.detail || 'Error consultando tickets');
       setTickets([]);
     } finally {
       setLoading(false);
     }
-  };
+  }, [ruc, periodo]);
 
   useEffect(() => {
-    consultarTickets();
-  }, [selectedPeriod, empresaActual]);
+    void consultarTickets();
+  }, [consultarTickets]);
 
-  if (!empresaActual) {
-    return (
-      <div style={{
-        minHeight: '100vh',
-        background: 'linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)',
-        padding: '20px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center'
-      }}>
-        <div style={{ background: 'white', padding: '2rem', borderRadius: '12px', textAlign: 'center' }}>
-          <h2>🏢 Empresa no encontrada</h2>
-          <button onClick={() => navigate('/empresas')}>
-            Seleccionar Empresa
-          </button>
-        </div>
-      </div>
-    );
-  }
+  // RequireEmpresa garantiza que hay empresa: esta guarda solo estrecha el tipo.
+  if (!empresaActual) return null;
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: 'linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)',
-      padding: '20px'
-    }}>
-      {/* Header de navegación */}
-      <div style={{
-        background: 'white',
-        padding: '1rem 2rem',
-        borderRadius: '12px',
-        marginBottom: '2rem',
-        boxShadow: '0 2px 10px rgba(0, 0, 0, 0.1)'
-      }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
-            {/* Breadcrumbs */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-              <button
-                onClick={() => navigate('/sire')}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: '#3b82f6',
-                  cursor: 'pointer',
-                  fontSize: '0.9rem'
-                }}
+    <div className="space-y-6">
+      <PeriodoSelector value={periodo} onChange={setPeriodo} disabled={loading}>
+        <span className="text-sm text-slate-500 tabular-nums">
+          {tickets.length} {tickets.length === 1 ? 'ticket' : 'tickets'}
+        </span>
+        <button
+          type="button"
+          onClick={consultarTickets}
+          disabled={loading}
+          className="inline-flex items-center gap-2 rounded-lg bg-amber-500 px-3.5 py-2 text-sm font-semibold text-white hover:bg-amber-600 disabled:opacity-60"
+        >
+          {loading ? (
+            <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+          ) : (
+            <RefreshCw className="size-4" aria-hidden="true" />
+          )}
+          {loading ? 'Consultando…' : 'Consultar'}
+        </button>
+      </PeriodoSelector>
+
+      {error && (
+        <div
+          role="alert"
+          className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3"
+        >
+          <AlertCircle className="mt-0.5 size-5 shrink-0 text-red-600" aria-hidden="true" />
+          <p className="text-sm font-medium text-red-800">{error}</p>
+        </div>
+      )}
+
+      {loading && tickets.length === 0 && (
+        <div className="space-y-3" aria-busy="true">
+          {[0, 1, 2].map((i) => (
+            <div
+              key={i}
+              className="h-28 animate-pulse rounded-xl border border-slate-200 bg-white"
+            />
+          ))}
+        </div>
+      )}
+
+      {!loading && tickets.length === 0 && !error && (
+        <EmptyState
+          icon={TicketIcon}
+          title="No hay tickets en este período"
+          description={`No se encontraron tickets para ${periodoToString(periodo)}. Prueba con otro período.`}
+        />
+      )}
+
+      {tickets.length > 0 && (
+        <ul className="grid gap-3">
+          {tickets.map((ticket, index) => {
+            const terminado = ticket.desEstadoProceso === 'Terminado';
+            return (
+              <li
+                key={ticket.numTicket || index}
+                className={cn(
+                  'rounded-xl border bg-white p-5 shadow-sm',
+                  terminado ? 'border-green-200' : 'border-amber-200'
+                )}
               >
-                SIRE
-              </button>
-              <span style={{ color: '#6b7280' }}>›</span>
-              <button
-                onClick={() => navigate('/sire/rce')}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: '#3b82f6',
-                  cursor: 'pointer',
-                  fontSize: '0.9rem'
-                }}
-              >
-                RCE
-              </button>
-              <span style={{ color: '#6b7280' }}>›</span>
-              <span style={{ color: '#374151', fontWeight: 'bold', fontSize: '0.9rem' }}>
-                Tickets
-              </span>
-            </div>
-            
-            {/* Título principal */}
-            <h1 style={{ 
-              margin: 0, 
-              fontSize: '1.8rem', 
-              fontWeight: 'bold',
-              color: '#f59e0b',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem'
-            }}>
-              📋 Gestión de Tickets RCE
-            </h1>
-          </div>
-          
-          <button
-            onClick={() => navigate('/sire/rce')}
-            style={{
-              background: '#f3f4f6',
-              border: 'none',
-              padding: '0.5rem 1rem',
-              borderRadius: '8px',
-              color: '#374151',
-              cursor: 'pointer',
-              fontSize: '0.9rem'
-            }}
-          >
-            ← Volver a RCE
-          </button>
-        </div>
-      </div>
-
-      {/* Información de la Empresa y Controles */}
-      <div style={{
-        background: 'white',
-        padding: '1.5rem',
-        borderRadius: '12px',
-        marginBottom: '2rem',
-        boxShadow: '0 2px 10px rgba(0, 0, 0, 0.1)'
-      }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
-          <div>
-            <strong>RUC:</strong> {empresaActual.ruc}
-          </div>
-          <div>
-            <strong>Empresa:</strong> {empresaActual.razon_social}
-          </div>
-          <div>
-            <strong>Total Tickets:</strong> <span style={{ color: '#f59e0b', fontWeight: 'bold' }}>{tickets.length}</span>
-          </div>
-        </div>
-
-        {/* Controles de período */}
-        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-          <label style={{ fontWeight: 'bold' }}>Período:</label>
-          <select
-            value={selectedPeriod}
-            onChange={(e) => setSelectedPeriod(e.target.value)}
-            style={{
-              padding: '0.5rem',
-              borderRadius: '6px',
-              border: '1px solid #d1d5db',
-              fontSize: '0.9rem'
-            }}
-          >
-            <option value="202507">Julio 2025</option>
-            <option value="202506">Junio 2025</option>
-            <option value="202505">Mayo 2025</option>
-            <option value="202504">Abril 2025</option>
-          </select>
-          
-          <button
-            onClick={consultarTickets}
-            disabled={loading}
-            style={{
-              background: '#f59e0b',
-              color: 'white',
-              border: 'none',
-              padding: '0.5rem 1rem',
-              borderRadius: '6px',
-              cursor: loading ? 'not-allowed' : 'pointer',
-              opacity: loading ? 0.6 : 1
-            }}
-          >
-            {loading ? '⏳ Consultando...' : '🔄 Consultar'}
-          </button>
-        </div>
-      </div>
-
-      {/* Contenido principal */}
-      <div style={{
-        background: 'white',
-        borderRadius: '12px',
-        padding: '2rem',
-        boxShadow: '0 2px 10px rgba(0, 0, 0, 0.1)'
-      }}>
-        {error && (
-          <div style={{
-            background: '#fef2f2',
-            border: '1px solid #fecaca',
-            padding: '1rem',
-            borderRadius: '8px',
-            marginBottom: '1.5rem',
-            color: '#dc2626'
-          }}>
-            <strong>❌ Error:</strong> {error}
-          </div>
-        )}
-
-        {loading && (
-          <div style={{ textAlign: 'center', padding: '3rem' }}>
-            <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>⏳</div>
-            <p>Consultando tickets...</p>
-          </div>
-        )}
-
-        {!loading && tickets.length === 0 && !error && (
-          <div style={{ textAlign: 'center', padding: '3rem', color: '#6b7280' }}>
-            <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📋</div>
-            <h3>No hay tickets disponibles</h3>
-            <p>No se encontraron tickets para el período {selectedPeriod}</p>
-          </div>
-        )}
-
-        {!loading && tickets.length > 0 && (
-          <div>
-            <h2 style={{ margin: '0 0 1.5rem 0', color: '#374151' }}>
-              📋 Tickets Encontrados ({tickets.length})
-            </h2>
-            
-            <div style={{ display: 'grid', gap: '1rem' }}>
-              {tickets.map((ticket, index) => (
-                <div
-                  key={ticket.numTicket || index}
-                  style={{
-                    border: '1px solid #e5e7eb',
-                    borderRadius: '8px',
-                    padding: '1.5rem',
-                    background: ticket.desEstadoProceso === 'Terminado' ? '#f0fdf4' : '#fefce8'
-                  }}
-                >
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
-                    <div>
-                      <strong>Ticket:</strong> {ticket.numTicket}
-                    </div>
-                    <div>
-                      <strong>Período:</strong> {ticket.perTributario}
-                    </div>
-                    <div>
-                      <strong>Estado:</strong> 
-                      <span style={{ 
-                        marginLeft: '0.5rem',
-                        padding: '0.25rem 0.5rem',
-                        borderRadius: '4px',
-                        fontSize: '0.8rem',
-                        background: ticket.desEstadoProceso === 'Terminado' ? '#dcfce7' : '#fef3c7',
-                        color: ticket.desEstadoProceso === 'Terminado' ? '#166534' : '#92400e'
-                      }}>
-                        {ticket.desEstadoProceso}
-                      </span>
-                    </div>
-                    <div>
-                      <strong>Proceso:</strong> {ticket.desProceso}
-                    </div>
-                    <div>
-                      <strong>Inicio:</strong> {ticket.fecInicProceso}
-                    </div>
-                    {ticket.fecFinProceso && (
-                      <div>
-                        <strong>Fin:</strong> {ticket.fecFinProceso}
-                      </div>
+                <div className="mb-3 flex flex-wrap items-center gap-3">
+                  <span className="font-mono text-sm font-bold text-slate-900">
+                    {ticket.numTicket}
+                  </span>
+                  <span
+                    className={cn(
+                      'rounded-full px-2 py-0.5 text-xs font-semibold',
+                      terminado ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800'
                     )}
+                  >
+                    {ticket.desEstadoProceso}
+                  </span>
+                  <span className="text-sm text-slate-500 tabular-nums">
+                    Período {ticket.perTributario}
+                  </span>
+                </div>
+
+                <dl className="grid gap-x-6 gap-y-1 text-sm sm:grid-cols-2 xl:grid-cols-3">
+                  <div className="flex gap-2">
+                    <dt className="text-slate-500">Proceso:</dt>
+                    <dd className="min-w-0 font-medium text-slate-800">{ticket.desProceso}</dd>
                   </div>
-                  
-                  {ticket.archivoReporte && ticket.archivoReporte.length > 0 && (
-                    <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid #e5e7eb' }}>
-                      <strong>Archivos:</strong>
-                      <ul style={{ margin: '0.5rem 0 0 1rem' }}>
-                        {ticket.archivoReporte.map((archivo: any, i: number) => (
-                          <li key={i} style={{ color: '#3b82f6' }}>
-                            📄 {archivo.nomArchivoReporte || 'Archivo disponible'}
-                          </li>
-                        ))}
-                      </ul>
+                  <div className="flex gap-2">
+                    <dt className="text-slate-500">Inicio:</dt>
+                    <dd className="font-medium text-slate-800 tabular-nums">
+                      {ticket.fecInicProceso}
+                    </dd>
+                  </div>
+                  {ticket.fecFinProceso && (
+                    <div className="flex gap-2">
+                      <dt className="text-slate-500">Fin:</dt>
+                      <dd className="font-medium text-slate-800 tabular-nums">
+                        {ticket.fecFinProceso}
+                      </dd>
                     </div>
                   )}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
+                </dl>
+
+                {ticket.archivoReporte && ticket.archivoReporte.length > 0 && (
+                  <div className="mt-3 border-t border-slate-100 pt-3">
+                    <p className="mb-1.5 text-xs font-medium tracking-wide text-slate-500 uppercase">
+                      Archivos
+                    </p>
+                    <ul className="space-y-1">
+                      {ticket.archivoReporte.map((archivo, i) => (
+                        <li key={i} className="flex items-center gap-2 text-sm text-slate-700">
+                          <FileText className="size-4 shrink-0 text-slate-400" aria-hidden="true" />
+                          {archivo.nomArchivoReporte || 'Archivo disponible'}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
     </div>
   );
 };
