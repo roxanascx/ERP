@@ -82,6 +82,12 @@ export interface RegistroVentaResponse extends RegistroVentaRequest {
   periodo: string;
   fecha_creacion: string;
   fecha_actualizacion?: string;
+
+  // Trazabilidad: de donde salio el comprobante y si ya llego al libro diario.
+  origen?: string;
+  subdiario?: string;
+  asiento_numero?: string;
+  car_sunat?: string;
 }
 
 // Filtros para consultas

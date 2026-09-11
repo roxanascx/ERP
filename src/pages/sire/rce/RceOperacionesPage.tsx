@@ -7,25 +7,26 @@ import React, { useState } from 'react';
 import { FileStack, Rocket, Settings2 } from 'lucide-react';
 import { useEmpresaValidation } from '../../../hooks/useEmpresaValidation';
 import { RceSunatDirecto } from '../../../components/sire/rce/RceSunatDirecto';
+import RceCicloPanel from '../../../components/sire/rce/RceCicloPanel';
+import RceCargaArchivos from '../../../components/sire/rce/RceCargaArchivos';
 import PeriodoSelector, {
   periodoActual,
   periodoToString,
   type Periodo,
 } from '../../../components/common/PeriodoSelector';
-import EmptyState from '../../../components/common/EmptyState';
 import { cn } from '../../../lib/cn';
 
-type TabId = 'propuestas' | 'procesos' | 'archivos';
+type TabId = 'ciclo' | 'propuestas' | 'archivos';
 
 const TABS: { id: TabId; label: string; icon: typeof Rocket }[] = [
-  { id: 'propuestas', label: 'Propuestas', icon: Rocket },
-  { id: 'procesos', label: 'Procesos', icon: Settings2 },
+  { id: 'ciclo', label: 'Ciclo del periodo', icon: Settings2 },
+  { id: 'propuestas', label: 'Consultas SUNAT', icon: Rocket },
   { id: 'archivos', label: 'Archivos', icon: FileStack },
 ];
 
 const RceOperacionesPage: React.FC = () => {
   const { empresaActual } = useEmpresaValidation();
-  const [activeTab, setActiveTab] = useState<TabId>('propuestas');
+  const [activeTab, setActiveTab] = useState<TabId>('ciclo');
   const [periodo, setPeriodo] = useState<Periodo>(periodoActual);
 
   // RequireEmpresa garantiza que hay empresa: esta guarda solo estrecha el tipo.
@@ -64,6 +65,21 @@ const RceOperacionesPage: React.FC = () => {
         </div>
 
         <div className="p-5 sm:p-6">
+          {activeTab === 'ciclo' && (
+            <div className="space-y-4">
+              <div>
+                <h2 className="text-base font-semibold text-slate-900">
+                  Ciclo del periodo
+                </h2>
+                <p className="text-sm text-slate-500">
+                  Acepta la propuesta de SUNAT y registra el preliminar. Las dos
+                  operaciones escriben en SUNAT.
+                </p>
+              </div>
+              <RceCicloPanel ruc={empresaActual.ruc} periodo={periodoToString(periodo)} />
+            </div>
+          )}
+
           {activeTab === 'propuestas' && (
             <div className="space-y-4">
               <div>
@@ -78,18 +94,19 @@ const RceOperacionesPage: React.FC = () => {
             </div>
           )}
 
-          {activeTab === 'procesos' && (
-            <EmptyState
-              title="Gestión de procesos"
-              description="La administración de procesos de comprobantes y registros RCE estará disponible próximamente."
-            />
-          )}
-
           {activeTab === 'archivos' && (
-            <EmptyState
-              title="Gestión de archivos"
-              description="La carga, procesamiento y descarga de archivos RCE estará disponible próximamente."
-            />
+            <div className="space-y-4">
+              <div>
+                <h2 className="text-base font-semibold text-slate-900">
+                  Carga de archivos
+                </h2>
+                <p className="text-sm text-slate-500">
+                  Sube un .txt a SUNAT. Solo se ofrecen las cargas que admite el
+                  estado actual del periodo.
+                </p>
+              </div>
+              <RceCargaArchivos ruc={empresaActual.ruc} periodo={periodoToString(periodo)} />
+            </div>
           )}
         </div>
       </section>

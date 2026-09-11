@@ -75,24 +75,6 @@ class RceDataService {
     }
   }
 
-  /**
-   * ✅ Validar datos RCE (mantenido para compatibilidad)
-   */
-  async validarDatos(request: any): Promise<any> {
-    try {
-      const response = await api.post('/sire/rce/data-management/validate', request);
-      return response.data;
-    } catch (error: any) {
-      throw new Error(error.response?.data?.detail || 'Error en validación');
-    }
-  }
-
-  /**
-   * 🗑️ Invalidar cache (sin efecto, mantenido para compatibilidad)
-   */
-  async invalidarCache(): Promise<void> {
-    // No hace nada, pero mantiene compatibilidad
-  }
 }
 
 // Exportar instancia única

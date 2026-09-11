@@ -201,7 +201,6 @@ const SociosNegocioPage: React.FC = () => {
               <option value="RUC">RUC</option>
               <option value="DNI">DNI</option>
               <option value="CE">Carnet de extranjería</option>
-              <option value="PASAPORTE">Pasaporte</option>
             </select>
           </div>
 

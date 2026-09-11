@@ -4,6 +4,7 @@ import {
   Building,
   Building2,
   Coins,
+  Download,
   FileBarChart,
   Handshake,
   Landmark,
@@ -124,7 +125,7 @@ export const MAIN_NAV: NavItem[] = [
   },
   {
     id: 'configuracion', label: 'Configuración', icon: Settings, path: '/configuracion',
-    enabled: false, descripcion: 'Panel de administración',
+    enabled: true, descripcion: 'Subdiarios y parámetros del sistema',
   },
 ];
 
@@ -189,6 +190,20 @@ export const CONTABILIDAD_MODULES: ModuloContable[] = [
       text: 'text-green-600',
       solid: 'bg-green-600 hover:bg-green-700',
       ring: 'hover:border-green-300',
+    },
+  },
+  {
+    id: 'ventas-sire',
+    label: 'Ventas desde SIRE',
+    icon: Download,
+    path: '/contabilidad/ventas-sire',
+    enabled: true,
+    descripcion: 'Importa las ventas de SUNAT y generalas en el libro diario',
+    accent: {
+      soft: 'bg-violet-50',
+      text: 'text-violet-600',
+      solid: 'bg-violet-600 hover:bg-violet-700',
+      ring: 'hover:border-violet-300',
     },
   },
   {
@@ -406,6 +421,10 @@ export const DEFAULT_PAGE_META: PageMeta = {
 };
 
 const PAGE_META: Record<string, PageMeta> = {
+  '/configuracion': {
+    title: 'Configuración',
+    subtitle: 'Subdiarios contables y parámetros del sistema',
+  },
   '/dashboard': {
     title: 'Dashboard',
     subtitle: 'Resumen general de la operación',
@@ -465,6 +484,10 @@ const PAGE_META: Record<string, PageMeta> = {
   '/contabilidad/registro-compras': {
     title: 'Registro de Compras',
     subtitle: 'Registro de facturas y documentos de compras según PLE 080000',
+  },
+  '/contabilidad/ventas-sire': {
+    title: 'Ventas desde SIRE',
+    subtitle: 'Importa los comprobantes de SUNAT y generalos en el libro diario',
   },
   '/contabilidad/registro-ventas': {
     title: 'Registro de Ventas',

@@ -1,26 +1,17 @@
 /**
- * Índice centralizado de hooks
- * Exportaciones unificadas para fácil importación
+ * Barrel de hooks.
+ *
+ * Solo se exporta lo que alguien importa desde aqui. Reexportar "por si acaso"
+ * mantiene vivo codigo muerto: seis hooks de SIRE (2.835 lineas) sobrevivieron
+ * asi hasta que se construyo el grafo de imports, porque el barrel los hacia
+ * parecer alcanzables aunque ninguna pagina los usara.
+ *
+ * Los hooks que se importan por su ruta directa no necesitan estar aqui.
  */
 
-// Hooks base existentes
 export { useBackendStatus } from './useApi';
 export { useEmpresa } from './useEmpresa';
 export { useEmpresaValidation } from './useEmpresaValidation';
-export { useTickets } from './useTickets';
-
-// Hooks RVIE existentes
 export { useRvie } from './useRvie';
-export { useRvieTickets } from './useRvieTickets';
-export { useSireAutoAuth } from './useSireAutoAuth';
-
-// Hooks RCE nuevos
-export { useRce } from './useRce';
-export { useRceComprobantes } from './useRceComprobantes';
-export { useRceProcesos } from './useRceProcesos';
-
-// Hooks de contabilidad
 export { default as usePlantillasAsiento } from './usePlantillasAsiento';
-
-// Hooks Socios de Negocio
 export { useSociosNegocio } from './useSociosNegocio';

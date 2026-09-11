@@ -9,7 +9,8 @@ import type {
   SocioStatsResponse,
   SocioFilters,
   SocioSearchFilters,
-  ConsultaRucResponse
+  ConsultaRucResponse,
+  ConsultaDniResponse
 } from '../services/sociosNegocioApi';
 
 interface UseSociosNegocioState {
@@ -41,8 +42,9 @@ interface UseSociosNegocioActions {
   // Stats
   loadStats: () => Promise<void>;
   
-  // RUC operations
+  // RUC / DNI operations
   consultarRuc: (ruc: string) => Promise<ConsultaRucResponse>;
+  consultarDni: (dni: string) => Promise<ConsultaDniResponse>;
   createSocioFromRuc: (ruc: string, tipoSocio: 'proveedor' | 'cliente' | 'ambos') => Promise<SocioNegocio>;
   syncSocioWithSunat: (id: string) => Promise<SocioNegocio>;
   
@@ -254,13 +256,24 @@ export function useSociosNegocio(): UseSociosNegocioState & UseSociosNegocioActi
     }
   }, [empresaActual?.ruc, updateState, handleError]);
 
-  // RUC Operations
+  // RUC / DNI Operations
+  // No usan el `loading` global: esa bandera controla el spinner de toda la
+  // tabla de socios y estas consultas se disparan desde el modal, que ya
+  // maneja su propio estado de carga local para el botón de consulta.
   const consultarRuc = useCallback(async (ruc: string): Promise<ConsultaRucResponse> => {
     try {
-      updateState({ loading: true, error: null });
-      const response = await sociosNegocioApi.consultarRuc(ruc);
-      updateState({ loading: false });
-      return response;
+      updateState({ error: null });
+      return await sociosNegocioApi.consultarRuc(ruc);
+    } catch (error) {
+      handleError(error);
+      throw error;
+    }
+  }, [updateState, handleError]);
+
+  const consultarDni = useCallback(async (dni: string): Promise<ConsultaDniResponse> => {
+    try {
+      updateState({ error: null });
+      return await sociosNegocioApi.consultarDni(dni);
     } catch (error) {
       handleError(error);
       throw error;
@@ -353,6 +366,7 @@ export function useSociosNegocio(): UseSociosNegocioState & UseSociosNegocioActi
     loadMoreSocios,
     loadStats,
     consultarRuc,
+    consultarDni,
     createSocioFromRuc,
     syncSocioWithSunat,
     clearError,

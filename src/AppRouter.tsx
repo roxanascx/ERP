@@ -20,6 +20,7 @@ import NotFoundPage from './pages/NotFoundPage';
 // ---------------------------------------------------------------------------
 const DashboardPage = lazy(() => import('./pages/DashboardPage'));
 const EmpresaPage = lazy(() => import('./pages/EmpresaPage'));
+const ConfiguracionPage = lazy(() => import('./pages/ConfiguracionPage'));
 
 const SireHomePage = lazy(() => import('./pages/sire/SireHomePage'));
 const RvieHomePage = lazy(() => import('./pages/sire/rvie/RvieHomePage'));
@@ -37,6 +38,10 @@ const PlanContablePage = lazy(() => import('./pages/contabilidad/PlanContablePag
 const LibroDiarioPage = lazy(() => import('./pages/contabilidad/LibroDiarioPage'));
 const RegistroComprasPage = lazy(() => import('./pages/contabilidad/compras/RegistroComprasPage'));
 const RegistroVentasPage = lazy(() => import('./pages/contabilidad/ventas/RegistroVentasPage'));
+const ImportarSirePage = lazy(() => import('./pages/contabilidad/ventas/ImportarSirePage'));
+const ImportarSireComprasPage = lazy(
+  () => import('./pages/contabilidad/compras/ImportarSireComprasPage')
+);
 const LibroMayorPage = lazy(() => import('./pages/contabilidad/mayor/LibroMayorPage'));
 const PLEPage = lazy(() => import('./pages/contabilidad/PLEPage'));
 
@@ -88,6 +93,7 @@ const AppRouter: React.FC = () => (
         {/* ---------------------------------------------------------------- */}
         <Route element={<RequireAuth />}>
           <Route path="/empresas" element={<EmpresaPage />} />
+          <Route path="/configuracion" element={<ConfiguracionPage />} />
 
           {/* -------------------------------------------------------------- */}
           {/* Requiere ademas empresa seleccionada                            */}
@@ -124,6 +130,8 @@ const AppRouter: React.FC = () => (
                 <Route path="libro-diario/:empresaId" element={<LibroDiarioPage />} />
                 <Route path="registro-compras" element={<RegistroComprasPage />} />
                 <Route path="registro-ventas" element={<RegistroVentasPage />} />
+                <Route path="ventas-sire" element={<ImportarSirePage />} />
+                <Route path="compras-sire" element={<ImportarSireComprasPage />} />
                 <Route path="libro-mayor" element={<LibroMayorPage />} />
                 <Route path="ple" element={<PLEPage />} />
               </Route>

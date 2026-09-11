@@ -51,9 +51,11 @@ export class LibroDiarioApiService {
   
   // Transformar asientos del formato backend (individuales) al frontend (agrupados)
   private static transformarAsientosDeBackend(asientosBackend: any[]): AsientoContable[] {
-    // Agrupar asientos por numeroDocumento (que representa nuestro número de asiento)
+    // Agrupar por numeroAsiento (id real de la operación padre). Se mantiene
+    // el fallback a numeroDocumento/numeroCorrelativo para asientos creados
+    // antes de que existiera el campo numeroAsiento.
     const asientosAgrupados = asientosBackend.reduce((acc, asientoBackend) => {
-      const numeroAsiento = asientoBackend.numeroDocumento || asientoBackend.numeroCorrelativo;
+      const numeroAsiento = asientoBackend.numeroAsiento || asientoBackend.numeroDocumento || asientoBackend.numeroCorrelativo;
       
       if (!acc[numeroAsiento]) {
         acc[numeroAsiento] = {
@@ -121,8 +123,10 @@ export class LibroDiarioApiService {
   static async obtenerResumen(empresaId: string, periodo?: string): Promise<ResumenLibroDiario> {
     const params = new URLSearchParams();
     params.append('empresa_id', empresaId);
-    if (periodo) params.append('periodo', periodo);
-    
+    // El backend exige este query param como `periodo_aaaamm` (obligatorio);
+    // enviarlo como `periodo` producía un 422 Unprocessable Entity.
+    if (periodo) params.append('periodo_aaaamm', periodo);
+
     const response = await libroDiarioApi.get(`/resumen?${params.toString()}`);
     return response.data;
   }
@@ -131,9 +135,13 @@ export class LibroDiarioApiService {
   
   // Función helper para transformar formato frontend -> backend
   private static transformarAsientoParaBackend(asiento: Omit<AsientoContable, 'id'>): any[] {
-    // El backend espera un array de objetos, uno por cada detalle del asiento
+    // El backend espera un array de objetos, uno por cada detalle del asiento.
+    // Todas las líneas comparten `numeroAsiento` para que, al exportar a PLE,
+    // se agrupen bajo una misma operación (mismo CUO) con un correlativo
+    // propio por línea - ver ple_formatter_sunat_v3.formatear_lote_asientos.
     return asiento.detalles.map((detalle, index) => ({
       numeroCorrelativo: `${asiento.numero}-${index + 1}`, // Número único por detalle
+      numeroAsiento: asiento.numero, // Id de la operación padre (agrupación)
       fecha: asiento.fecha,
       glosa: asiento.descripcion,
       codigoLibro: "5.1", // Libro Diario

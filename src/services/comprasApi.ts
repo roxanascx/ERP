@@ -138,20 +138,23 @@ export const comprasApi = {
   async getAll(filters?: ComprasFilters): Promise<RegistroCompraResponse[]> {
     const params = new URLSearchParams();
     
+    // Los nombres tienen que ser los del backend. La version anterior mandaba
+    // `periodo`, `fecha_inicio`, `tipo_comprobante` y `numero_documento_proveedor`,
+    // que el endpoint no conoce: FastAPI los ignoraba sin avisar y la pantalla
+    // acababa mostrando todos los periodos aunque hubiera un filtro puesto.
     if (filters?.empresa_id) params.append('empresa_id', filters.empresa_id);
-    if (filters?.periodo) params.append('periodo', filters.periodo);
-    if (filters?.fecha_inicio) params.append('fecha_inicio', filters.fecha_inicio);
-    if (filters?.fecha_fin) params.append('fecha_fin', filters.fecha_fin);
-    if (filters?.tipo_comprobante) params.append('tipo_comprobante', filters.tipo_comprobante);
-    if (filters?.numero_documento_proveedor) params.append('numero_documento_proveedor', filters.numero_documento_proveedor);
-    if (filters?.razon_social_proveedor) params.append('razon_social_proveedor', filters.razon_social_proveedor);
-    if (filters?.importe_min) params.append('importe_min', filters.importe_min.toString());
-    if (filters?.importe_max) params.append('importe_max', filters.importe_max.toString());
-    if (filters?.estado_operacion) params.append('estado_operacion', filters.estado_operacion);
+    if (filters?.periodo) {
+      params.append('periodo_inicio', filters.periodo);
+      params.append('periodo_fin', filters.periodo);
+    }
+
+    if (filters?.tipo_comprobante) params.append('tipo_documento', filters.tipo_comprobante);
+    if (filters?.numero_documento_proveedor)
+      params.append('proveedor_ruc', filters.numero_documento_proveedor);
     if (filters?.skip) params.append('skip', filters.skip.toString());
-    if (filters?.limit) params.append('limit', filters.limit.toString());
+    params.append('limit', String(filters?.limit ?? 1000));
     
-    const response = await api.get(`/accounting/compras?${params.toString()}`);
+    const response = await api.get(`/accounting/compras/?${params.toString()}`);
     return response.data; // Backend retorna lista directa
   },
 
@@ -162,20 +165,23 @@ export const comprasApi = {
   async getAllPaginated(filters?: ComprasFilters): Promise<ComprasPaginatedResponse> {
     const params = new URLSearchParams();
     
+    // Los nombres tienen que ser los del backend. La version anterior mandaba
+    // `periodo`, `fecha_inicio`, `tipo_comprobante` y `numero_documento_proveedor`,
+    // que el endpoint no conoce: FastAPI los ignoraba sin avisar y la pantalla
+    // acababa mostrando todos los periodos aunque hubiera un filtro puesto.
     if (filters?.empresa_id) params.append('empresa_id', filters.empresa_id);
-    if (filters?.periodo) params.append('periodo', filters.periodo);
-    if (filters?.fecha_inicio) params.append('fecha_inicio', filters.fecha_inicio);
-    if (filters?.fecha_fin) params.append('fecha_fin', filters.fecha_fin);
-    if (filters?.tipo_comprobante) params.append('tipo_comprobante', filters.tipo_comprobante);
-    if (filters?.numero_documento_proveedor) params.append('numero_documento_proveedor', filters.numero_documento_proveedor);
-    if (filters?.razon_social_proveedor) params.append('razon_social_proveedor', filters.razon_social_proveedor);
-    if (filters?.importe_min) params.append('importe_min', filters.importe_min.toString());
-    if (filters?.importe_max) params.append('importe_max', filters.importe_max.toString());
-    if (filters?.estado_operacion) params.append('estado_operacion', filters.estado_operacion);
+    if (filters?.periodo) {
+      params.append('periodo_inicio', filters.periodo);
+      params.append('periodo_fin', filters.periodo);
+    }
+
+    if (filters?.tipo_comprobante) params.append('tipo_documento', filters.tipo_comprobante);
+    if (filters?.numero_documento_proveedor)
+      params.append('proveedor_ruc', filters.numero_documento_proveedor);
     if (filters?.skip) params.append('skip', filters.skip.toString());
-    if (filters?.limit) params.append('limit', filters.limit.toString());
+    params.append('limit', String(filters?.limit ?? 1000));
     
-    const response = await api.get(`/accounting/compras?${params.toString()}`);
+    const response = await api.get(`/accounting/compras/?${params.toString()}`);
     return response.data;
   },
 

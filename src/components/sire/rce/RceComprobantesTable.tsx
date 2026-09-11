@@ -3,7 +3,8 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { AlertCircle, Cloud, Database, Loader2, TriangleAlert } from 'lucide-react';
+import { AlertCircle, BookPlus, Cloud, Database, Loader2, TriangleAlert } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import {
   rceComprobantesService,
   type RceComprobanteBD,
@@ -46,6 +47,7 @@ const th = 'px-3 py-2.5 text-left text-xs font-semibold whitespace-nowrap text-w
 const td = 'px-3 py-2.5 text-sm whitespace-nowrap text-slate-700';
 
 function RceComprobantesTable({ ruc, periodo, onConsultarSunat }: Props) {
+  const navigate = useNavigate();
   const [comprobantes, setComprobantes] = useState<RceComprobanteBD[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -108,6 +110,20 @@ function RceComprobantesTable({ ruc, periodo, onConsultarSunat }: Props) {
           </p>
         </div>
 
+        <div className="flex flex-wrap items-center gap-4">
+          {/* Llevar estas compras a contabilidad. Se pasa el periodo elegido
+              para no obligar a seleccionarlo otra vez. */}
+          {periodo && (
+            <button
+              type="button"
+              onClick={() => navigate(`/contabilidad/compras-sire?periodo=${periodo}`)}
+              className="inline-flex items-center gap-2 rounded-lg bg-violet-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-violet-700"
+            >
+              <BookPlus className="size-4" aria-hidden="true" />
+              Registrar en contabilidad
+            </button>
+          )}
+
         {stats && (
           <dl className="flex gap-6">
             <div className="text-center">
@@ -124,6 +140,7 @@ function RceComprobantesTable({ ruc, periodo, onConsultarSunat }: Props) {
             </div>
           </dl>
         )}
+        </div>
       </div>
 
       {/* Avisos */}
