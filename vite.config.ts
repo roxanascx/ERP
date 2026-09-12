@@ -40,6 +40,7 @@ export default defineConfig({
           // con 'node_modules/react-router', por eso el chunk 'router' nunca
           // llegaba a formarse.
           if (id.includes('node_modules/react-router')) return 'router';
+<<<<<<< HEAD
           if (id.includes('node_modules/react-dom')) return 'react';
           if (id.includes('node_modules/react')) return 'react';
           // scheduler es una dependencia interna de react-dom, pero es un
@@ -48,6 +49,22 @@ export default defineConfig({
           // un ciclo react<->vendor que rompe el orden de carga en produccion
           // ("Cannot read properties of undefined (reading 'forwardRef')").
           if (id.includes('node_modules/scheduler')) return 'react';
+=======
+
+          // El runtime de React va entero en un chunk, scheduler incluido.
+          // Si scheduler cae en 'vendor' se forma un ciclo entre chunks:
+          // react-dom (react) importa scheduler (vendor) y lucide-react
+          // (vendor) importa react. Con esa circularidad uno de los dos se
+          // evalua antes de que el otro publique sus exports y React llega
+          // undefined, que es el "Cannot read properties of undefined
+          // (reading 'forwardRef')" que rompia la app en produccion.
+          // Las barras finales evitan que un futuro react-* entre aqui por
+          // coincidencia de prefijo y reintroduzca el ciclo.
+          if (id.includes('node_modules/react-dom/')) return 'react';
+          if (id.includes('node_modules/react/')) return 'react';
+          if (id.includes('node_modules/scheduler/')) return 'react';
+
+>>>>>>> 536dae7314284a3ff475ed21536837d8e8affd10
           if (id.includes('node_modules/@clerk')) return 'auth';
           if (id.includes('node_modules/axios')) return 'utils';
 
