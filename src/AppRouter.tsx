@@ -44,6 +44,7 @@ const ImportarSireComprasPage = lazy(
 );
 const LibroMayorPage = lazy(() => import('./pages/contabilidad/mayor/LibroMayorPage'));
 const PLEPage = lazy(() => import('./pages/contabilidad/PLEPage'));
+const CajaBancosPage = lazy(() => import('./pages/contabilidad/CajaBancosPage'));
 
 const TestLogoutPage = lazy(() => import('./pages/TestLogoutPage'));
 const PLETestPage = lazy(() => import('./pages/PLETestPage'));
@@ -134,6 +135,7 @@ const AppRouter: React.FC = () => (
                 <Route path="compras-sire" element={<ImportarSireComprasPage />} />
                 <Route path="libro-mayor" element={<LibroMayorPage />} />
                 <Route path="ple" element={<PLEPage />} />
+                <Route path="caja-bancos" element={<CajaBancosPage />} />
               </Route>
             </Route>
           </Route>

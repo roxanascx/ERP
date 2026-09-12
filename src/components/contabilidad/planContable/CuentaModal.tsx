@@ -26,6 +26,9 @@ const VACIO = {
   naturaleza: 'DEUDORA' as 'DEUDORA' | 'ACREEDORA',
   moneda: 'MN' as 'MN' | 'ME',
   activa: true,
+  requiere_centro_costo: false,
+  es_cuenta_caja: false,
+  es_cuenta_bancaria: false,
 };
 
 /** En el plan contable peruano la LONGITUD del codigo determina el nivel. */
@@ -65,6 +68,9 @@ const CuentaModal: React.FC<CuentaModalProps> = ({ isOpen, onClose, onSubmit, cu
         naturaleza: cuenta.naturaleza,
         moneda: cuenta.moneda,
         activa: cuenta.activa,
+        requiere_centro_costo: cuenta.requiere_centro_costo,
+        es_cuenta_caja: cuenta.es_cuenta_caja,
+        es_cuenta_bancaria: cuenta.es_cuenta_bancaria,
       });
     } else {
       setFormData(VACIO);
@@ -93,14 +99,21 @@ const CuentaModal: React.FC<CuentaModalProps> = ({ isOpen, onClose, onSubmit, cu
 
     const nivel = codigo.length;
     const esCuentaDeMovimiento = nivel >= 4;
+    const clase_contable = parseInt(codigo.charAt(0), 10) || 1;
 
     setFormData((prev) => ({
       ...prev,
       nivel: Math.min(nivel, 9),
-      clase_contable: parseInt(codigo.charAt(0), 10) || 1,
+      clase_contable,
       es_hoja: esCuentaDeMovimiento,
       acepta_movimiento: esCuentaDeMovimiento,
       activa: true,
+      // Estos flags solo tienen sentido en una cuenta hoja de la clase 1;
+      // si el codigo ya no cumple eso, se apagan para no dejar un estado
+      // que el backend va a rechazar (ver _validar_flags_cuenta).
+      requiere_centro_costo: prev.requiere_centro_costo && esCuentaDeMovimiento,
+      es_cuenta_caja: prev.es_cuenta_caja && esCuentaDeMovimiento && clase_contable === 1,
+      es_cuenta_bancaria: prev.es_cuenta_bancaria && esCuentaDeMovimiento && clase_contable === 1,
     }));
     setErrors((prev) => ({ ...prev, configuracion: '' }));
   };
@@ -116,6 +129,12 @@ const CuentaModal: React.FC<CuentaModalProps> = ({ isOpen, onClose, onSubmit, cu
     }
     if (!formData.es_hoja && formData.acepta_movimiento) {
       newErrors.configuracion = 'Las cuentas padre normalmente no deben aceptar movimientos.';
+    }
+    if (!formData.acepta_movimiento && (formData.requiere_centro_costo || formData.es_cuenta_caja || formData.es_cuenta_bancaria)) {
+      newErrors.configuracion = 'Solo una cuenta que acepta movimiento puede requerir centro de costo o ser cuenta de caja/banco.';
+    }
+    if ((formData.es_cuenta_caja || formData.es_cuenta_bancaria) && formData.clase_contable !== 1) {
+      newErrors.configuracion = 'Solo las cuentas de la clase 1 (Activo) pueden ser cuenta de caja o bancaria.';
     }
 
     setErrors(newErrors);
@@ -294,6 +313,33 @@ const CuentaModal: React.FC<CuentaModalProps> = ({ isOpen, onClose, onSubmit, cu
               onChange={handleInputChange}
               disabled={loading}
               hint="La cuenta está habilitada"
+            />
+          </div>
+
+          <div className="mt-4 grid gap-4 border-t border-slate-200 pt-4 sm:grid-cols-3">
+            <CheckboxField
+              label="Requiere centro de costo"
+              name="requiere_centro_costo"
+              checked={formData.requiere_centro_costo}
+              onChange={handleInputChange}
+              disabled={loading || !formData.acepta_movimiento}
+              hint="Se exigirá al registrar un asiento"
+            />
+            <CheckboxField
+              label="Es cuenta de caja"
+              name="es_cuenta_caja"
+              checked={formData.es_cuenta_caja}
+              onChange={handleInputChange}
+              disabled={loading || !formData.acepta_movimiento || formData.clase_contable !== 1}
+              hint="Aparecerá en Caja/Bancos"
+            />
+            <CheckboxField
+              label="Es cuenta bancaria"
+              name="es_cuenta_bancaria"
+              checked={formData.es_cuenta_bancaria}
+              onChange={handleInputChange}
+              disabled={loading || !formData.acepta_movimiento || formData.clase_contable !== 1}
+              hint="Aparecerá en Caja/Bancos"
             />
           </div>
 

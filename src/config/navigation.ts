@@ -11,6 +11,7 @@ import {
   LayoutDashboard,
   LineChart,
   Package,
+  PiggyBank,
   Scale,
   Settings,
   ShoppingCart,
@@ -236,6 +237,20 @@ export const CONTABILIDAD_MODULES: ModuloContable[] = [
     },
   },
   {
+    id: 'caja-bancos',
+    label: 'Caja/Bancos',
+    icon: PiggyBank,
+    path: '/contabilidad/caja-bancos',
+    enabled: true,
+    descripcion: 'Cuentas de caja y bancos, pagos y cobros',
+    accent: {
+      soft: 'bg-lime-50',
+      text: 'text-lime-600',
+      solid: 'bg-lime-600 hover:bg-lime-700',
+      ring: 'hover:border-lime-300',
+    },
+  },
+  {
     id: 'balance-comprobacion',
     label: 'Balance de Comprobación',
     icon: Scale,
@@ -423,7 +438,7 @@ export const DEFAULT_PAGE_META: PageMeta = {
 const PAGE_META: Record<string, PageMeta> = {
   '/configuracion': {
     title: 'Configuración',
-    subtitle: 'Subdiarios contables y parámetros del sistema',
+    subtitle: 'Subdiarios, centros de costo y parámetros del sistema',
   },
   '/dashboard': {
     title: 'Dashboard',
@@ -500,6 +515,10 @@ const PAGE_META: Record<string, PageMeta> = {
   '/contabilidad/ple': {
     title: 'PLE - Programa de Libros Electrónicos',
     subtitle: 'Generación de archivos PLE para SUNAT V3',
+  },
+  '/contabilidad/caja-bancos': {
+    title: 'Caja/Bancos',
+    subtitle: 'Cuentas de caja y bancos, pagos y cobros',
   },
 };
 

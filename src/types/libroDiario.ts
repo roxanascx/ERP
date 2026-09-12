@@ -6,6 +6,9 @@ export interface DetalleAsiento {
   denominacionCuenta: string;
   debe?: number;
   haber?: number;
+  /** Solo cuando la cuenta tiene `requiere_centro_costo` en el Plan Contable. */
+  codigoCentroCosto?: string;
+  nombreCentroCosto?: string;
 }
 
 export interface AsientoContable {

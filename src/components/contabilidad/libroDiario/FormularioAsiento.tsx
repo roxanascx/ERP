@@ -12,6 +12,7 @@ import {
 import type { AsientoContable, DetalleAsiento } from '../../../types/libroDiario';
 import type { CuentaContable } from '../../../types/contabilidad';
 import { ContabilidadApiService } from '../../../services/contabilidadApi';
+import { centrosCostoApi, type CentroCosto } from '../../../services/centrosCostoApi';
 import CuentaCodigoDetalle from './CuentaCodigoDetalle';
 import SelectorPlantillas from './SelectorPlantillas';
 import useEmpresaActual from '../../../hooks/useEmpresaActual';
@@ -56,6 +57,7 @@ const FormularioAsiento: React.FC<FormularioAsientoProps> = ({
   const [mostrarPlantillas, setMostrarPlantillas] = useState(false);
   // ❌ ELIMINADO: mostrarEjemplos ya no es necesario
   const [cuentasDisponibles, setCuentasDisponibles] = useState<CuentaContable[]>([]);
+  const [centrosCosto, setCentrosCosto] = useState<CentroCosto[]>([]);
 
   // Función para calcular el siguiente número correlativo
   const calcularSiguienteNumero = (): string => {
@@ -169,6 +171,19 @@ const FormularioAsiento: React.FC<FormularioAsientoProps> = ({
     if (empresaId) cargarCuentas();
   }, [empresaId]);
 
+  // Centros de costo: solo se usan cuando la cuenta elegida los exige.
+  useEffect(() => {
+    if (!empresaId) return;
+    centrosCostoApi
+      .listar(empresaId, true)
+      .then(setCentrosCosto)
+      .catch(() => setCentrosCosto([]));
+  }, [empresaId]);
+
+  /** La cuenta elegida en esa linea, para saber si exige centro de costo. */
+  const cuentaDelDetalle = (detalle: DetalleAsiento): CuentaContable | undefined =>
+    cuentasDisponibles.find((c) => c.codigo === detalle.codigoCuenta);
+
   const agregarDetalle = () => {
     setFormData(prev => ({
       ...prev,
@@ -205,6 +220,20 @@ const FormularioAsiento: React.FC<FormularioAsientoProps> = ({
           ...detalle, 
           codigoCuenta: cuenta.codigo,
           denominacionCuenta: cuenta.descripcion 
+        } : detalle
+      )
+    }));
+  };
+
+  const actualizarCentroCosto = (index: number, codigo: string) => {
+    const centro = centrosCosto.find((c) => c.codigo === codigo);
+    setFormData(prev => ({
+      ...prev,
+      detalles: prev.detalles.map((detalle, i) =>
+        i === index ? {
+          ...detalle,
+          codigoCentroCosto: codigo || undefined,
+          nombreCentroCosto: centro?.nombre,
         } : detalle
       )
     }));
@@ -284,6 +313,11 @@ const FormularioAsiento: React.FC<FormularioAsientoProps> = ({
       
       if (debe < 0 || haber < 0) {
         errores.push(`Detalle ${index + 1}: Los valores no pueden ser negativos`);
+      }
+
+      const cuenta = cuentaDelDetalle(detalle);
+      if (cuenta?.requiere_centro_costo && !detalle.codigoCentroCosto) {
+        errores.push(`Detalle ${index + 1}: La cuenta ${cuenta.codigo} exige centro de costo`);
       }
     });
 
@@ -484,6 +518,25 @@ const FormularioAsiento: React.FC<FormularioAsientoProps> = ({
                     cuentasDisponibles={cuentasDisponibles}
                     lineaId={`L${index + 1}`}
                   />
+                  {cuentaDelDetalle(detalle)?.requiere_centro_costo && (
+                    <select
+                      value={detalle.codigoCentroCosto || ''}
+                      onChange={(e) => actualizarCentroCosto(index, e.target.value)}
+                      className={cn(
+                        fieldControl(false),
+                        'mt-1.5 text-sm',
+                        !detalle.codigoCentroCosto && 'border-amber-400'
+                      )}
+                      aria-label={`Centro de costo linea ${index + 1}`}
+                    >
+                      <option value="">Centro de costo (obligatorio)…</option>
+                      {centrosCosto.map((c) => (
+                        <option key={c.codigo} value={c.codigo}>
+                          {c.codigo} · {c.nombre}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
 
                 <div>

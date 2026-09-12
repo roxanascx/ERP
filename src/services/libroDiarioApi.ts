@@ -80,6 +80,8 @@ export class LibroDiarioApiService {
         denominacionCuenta: asientoBackend.cuentaContable?.denominacion || '',
         debe: asientoBackend.debe || 0,
         haber: asientoBackend.haber || 0,
+        codigoCentroCosto: asientoBackend.centroCosto?.codigo || undefined,
+        nombreCentroCosto: asientoBackend.centroCosto?.nombre || undefined,
         // ✅ AGREGADO: ID real del backend para este detalle
         _backendId: asientoBackend.id
       });
@@ -152,6 +154,9 @@ export class LibroDiarioApiService {
       },
       debe: detalle.debe || 0,
       haber: detalle.haber || 0,
+      centroCosto: detalle.codigoCentroCosto
+        ? { codigo: detalle.codigoCentroCosto, nombre: detalle.nombreCentroCosto || '' }
+        : undefined,
       empresaId: asiento.empresaId || 'empresa_demo'
     }));
   }

@@ -16,6 +16,9 @@ export interface CuentaContable {
   tipo_plan?: 'estandar' | 'personalizado';
   empresa_id?: string;
   archivo_origen?: string;
+  requiere_centro_costo: boolean;
+  es_cuenta_caja: boolean;
+  es_cuenta_bancaria: boolean;
   tiene_hijos?: boolean;
   fecha_creacion: string;
   fecha_modificacion?: string;
@@ -37,6 +40,9 @@ export interface CuentaContableCreate {
   tipo_plan?: 'estandar' | 'personalizado';
   empresa_id?: string;
   archivo_origen?: string;
+  requiere_centro_costo?: boolean;
+  es_cuenta_caja?: boolean;
+  es_cuenta_bancaria?: boolean;
 }
 
 export interface ClaseContable {
