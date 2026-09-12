@@ -37,13 +37,14 @@ const SocioFormModal: React.FC<SocioFormModalProps> = ({
   onSubmit,
   socio = null,
 }) => {
-  const { consultarRuc } = useSociosNegocio();
+  const { consultarRuc, consultarDni } = useSociosNegocio();
+  const esEdicion = Boolean(socio);
 
   const [formData, setFormData] = useState(VACIO);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [isLoadingRuc, setIsLoadingRuc] = useState(false);
-  const [rucMensaje, setRucMensaje] = useState<{
+  const [isConsultando, setIsConsultando] = useState(false);
+  const [consultaMensaje, setConsultaMensaje] = useState<{
     type: 'success' | 'error' | null;
     message: string;
   }>({ type: null, message: '' });
@@ -70,7 +71,7 @@ const SocioFormModal: React.FC<SocioFormModalProps> = ({
       setFormData(VACIO);
     }
     setErrors({});
-    setRucMensaje({ type: null, message: '' });
+    setConsultaMensaje({ type: null, message: '' });
     setIsSubmitting(false);
   }, [socio, isOpen]);
 
@@ -98,6 +99,12 @@ const SocioFormModal: React.FC<SocioFormModalProps> = ({
       } else if (!/^\d{8}$/.test(doc)) {
         newErrors.numero_documento = 'El DNI debe contener solo números';
       }
+    } else if (formData.tipo_documento === 'CE') {
+      if (doc.length < 8 || doc.length > 12) {
+        newErrors.numero_documento = 'El carnet de extranjería debe tener entre 8 y 12 caracteres';
+      } else if (!/^[A-Za-z0-9]+$/.test(doc)) {
+        newErrors.numero_documento = 'El carnet de extranjería solo admite letras y números';
+      }
     }
 
     if (!formData.razon_social.trim()) {
@@ -112,7 +119,7 @@ const SocioFormModal: React.FC<SocioFormModalProps> = ({
   };
 
   // ---------------------------------------------------------------------------
-  // Consulta a SUNAT
+  // Consulta a SUNAT (RUC) / RENIEC (DNI)
   // ---------------------------------------------------------------------------
 
   const consultarRucSunat = async () => {
@@ -121,9 +128,9 @@ const SocioFormModal: React.FC<SocioFormModalProps> = ({
       return;
     }
 
-    setIsLoadingRuc(true);
+    setIsConsultando(true);
     setErrors((prev) => ({ ...prev, numero_documento: '' }));
-    setRucMensaje({ type: null, message: '' });
+    setConsultaMensaje({ type: null, message: '' });
 
     try {
       const response = await consultarRuc(formData.numero_documento);
@@ -141,24 +148,73 @@ const SocioFormModal: React.FC<SocioFormModalProps> = ({
           tipo_contribuyente: response.data?.tipo_contribuyente || '',
         }));
 
-        setRucMensaje({
+        setConsultaMensaje({
           type: 'success',
           message: `Datos actualizados desde SUNAT: ${response.data.razon_social}`,
         });
-        setTimeout(() => setRucMensaje({ type: null, message: '' }), 4000);
+        setTimeout(() => setConsultaMensaje({ type: null, message: '' }), 4000);
       } else {
-        setRucMensaje({
+        setConsultaMensaje({
           type: 'error',
           message: response.error || 'No se pudieron obtener datos de SUNAT',
         });
       }
     } catch {
-      setRucMensaje({
+      setConsultaMensaje({
         type: 'error',
         message: 'Error de conexión al consultar SUNAT. Revisa tu conexión e inténtalo de nuevo.',
       });
     } finally {
-      setIsLoadingRuc(false);
+      setIsConsultando(false);
+    }
+  };
+
+  const consultarDniReniec = async () => {
+    if (!formData.numero_documento || formData.numero_documento.length !== 8) {
+      setErrors((prev) => ({ ...prev, numero_documento: 'El DNI debe tener 8 dígitos' }));
+      return;
+    }
+
+    setIsConsultando(true);
+    setErrors((prev) => ({ ...prev, numero_documento: '' }));
+    setConsultaMensaje({ type: null, message: '' });
+
+    try {
+      const response = await consultarDni(formData.numero_documento);
+
+      if (response.success && response.data) {
+        const nombreCompleto = [
+          response.data.nombres,
+          response.data.apellido_paterno,
+          response.data.apellido_materno,
+        ]
+          .filter(Boolean)
+          .join(' ');
+
+        setFormData((prev) => ({
+          ...prev,
+          razon_social: nombreCompleto || prev.razon_social,
+          direccion: response.data?.direccion || prev.direccion,
+        }));
+
+        setConsultaMensaje({
+          type: 'success',
+          message: `Datos actualizados desde RENIEC: ${nombreCompleto}`,
+        });
+        setTimeout(() => setConsultaMensaje({ type: null, message: '' }), 4000);
+      } else {
+        setConsultaMensaje({
+          type: 'error',
+          message: response.error || 'No se pudieron obtener datos de RENIEC',
+        });
+      }
+    } catch {
+      setConsultaMensaje({
+        type: 'error',
+        message: 'Error de conexión al consultar RENIEC. Revisa tu conexión e inténtalo de nuevo.',
+      });
+    } finally {
+      setIsConsultando(false);
     }
   };
 
@@ -184,7 +240,7 @@ const SocioFormModal: React.FC<SocioFormModalProps> = ({
 
       // El backend distingue estos casos; se muestran donde corresponde.
       if (errorMessage.includes('No hay empresa seleccionada')) {
-        setRucMensaje({
+        setConsultaMensaje({
           type: 'error',
           message: 'No hay empresa seleccionada. Elige una empresa antes de crear el socio.',
         });
@@ -193,7 +249,7 @@ const SocioFormModal: React.FC<SocioFormModalProps> = ({
       } else if (errorMessage.includes('ya existe')) {
         setErrors((prev) => ({ ...prev, numero_documento: 'Este documento ya está registrado' }));
       } else {
-        setRucMensaje({ type: 'error', message: errorMessage });
+        setConsultaMensaje({ type: 'error', message: errorMessage });
       }
     } finally {
       setIsSubmitting(false);
@@ -262,6 +318,7 @@ const SocioFormModal: React.FC<SocioFormModalProps> = ({
             required
             value={formData.tipo_documento}
             onChange={handleInputChange}
+            disabled={esEdicion}
           >
             <option value="RUC">RUC</option>
             <option value="DNI">DNI</option>
@@ -279,42 +336,59 @@ const SocioFormModal: React.FC<SocioFormModalProps> = ({
               placeholder={formData.tipo_documento === 'RUC' ? '20123456789' : '12345678'}
               inputMode="numeric"
               className="font-mono"
+              disabled={esEdicion}
             />
 
-            {formData.tipo_documento === 'RUC' && (
+            {!esEdicion && formData.tipo_documento === 'RUC' && (
               <button
                 type="button"
                 onClick={consultarRucSunat}
-                disabled={isLoadingRuc}
+                disabled={isConsultando}
                 className="mt-2 inline-flex items-center gap-2 rounded-lg border border-blue-300 bg-blue-50 px-3 py-1.5 text-sm font-medium text-blue-700 hover:bg-blue-100 disabled:opacity-50"
               >
-                {isLoadingRuc ? (
+                {isConsultando ? (
                   <Loader2 className="size-4 animate-spin" aria-hidden="true" />
                 ) : (
                   <Search className="size-4" aria-hidden="true" />
                 )}
-                {isLoadingRuc ? 'Consultando SUNAT…' : 'Consultar SUNAT'}
+                {isConsultando ? 'Consultando SUNAT…' : 'Consultar SUNAT'}
+              </button>
+            )}
+
+            {!esEdicion && formData.tipo_documento === 'DNI' && (
+              <button
+                type="button"
+                onClick={consultarDniReniec}
+                disabled={isConsultando}
+                className="mt-2 inline-flex items-center gap-2 rounded-lg border border-blue-300 bg-blue-50 px-3 py-1.5 text-sm font-medium text-blue-700 hover:bg-blue-100 disabled:opacity-50"
+              >
+                {isConsultando ? (
+                  <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                ) : (
+                  <Search className="size-4" aria-hidden="true" />
+                )}
+                {isConsultando ? 'Consultando RENIEC…' : 'Consultar RENIEC'}
               </button>
             )}
           </div>
         </div>
 
-        {rucMensaje.type && (
+        {consultaMensaje.type && (
           <p
             role="status"
             className={cn(
               'flex items-start gap-2 rounded-lg border px-4 py-2.5 text-sm font-medium',
-              rucMensaje.type === 'success'
+              consultaMensaje.type === 'success'
                 ? 'border-green-200 bg-green-50 text-green-800'
                 : 'border-red-200 bg-red-50 text-red-800'
             )}
           >
-            {rucMensaje.type === 'success' ? (
+            {consultaMensaje.type === 'success' ? (
               <CheckCircle2 className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
             ) : (
               <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
             )}
-            {rucMensaje.message}
+            {consultaMensaje.message}
           </p>
         )}
 

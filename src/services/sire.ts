@@ -27,7 +27,9 @@ import { rvieComprobantesService } from './rvieComprobantesService';
 // CONFIGURACIÓN BASE
 // ========================================
 
-const SIRE_BASE_URL = '/api/v1/sire';  // Actualizado para usar /api/v1
+// `api` ya trae baseURL = <host>/api/v1, asi que estas rutas NO deben
+// repetir el prefijo: hacerlo produce /api/v1/api/v1/... y 404 en todo.
+const SIRE_BASE_URL = '/sire';
 const RVIE_BASE_URL = `${SIRE_BASE_URL}/rvie`;
 const RCE_BASE_URL = `${SIRE_BASE_URL}/rce`;
 
@@ -111,7 +113,7 @@ export const sireAuthService = {
     
     // Test de conectividad básica primero
     try {
-      await api.get('/api/v1/companies/');  // ✅ ARREGLADO: agregado /api/v1
+      await api.get('/companies/');
     } catch (error) {
       // Error de conectividad ignorado para el test básico
     }
@@ -139,7 +141,7 @@ export const sireAuthService = {
   async authenticate(ruc: string): Promise<SireAuthStatus> {
     try {
       // Primero obtener las credenciales de la empresa
-      const empresaResponse = await api.get(`/api/v1/companies/${ruc}`);  // ✅ CORREGIDO: agregado /api/v1
+      const empresaResponse = await api.get(`/companies/${ruc}`);
       const empresa = empresaResponse.data;
       
       if (!empresa.sire_client_id || !empresa.sire_client_secret || !empresa.sunat_usuario || !empresa.sunat_clave) {
@@ -190,47 +192,8 @@ export const rvieService = {
     return response.data;
   },
 
-  /**
-   * Aceptar propuesta RVIE
-   */
-  async aceptarPropuesta(
-    ruc: string,
-    request: RvieAceptarPropuestaRequest
-  ): Promise<RvieProcesoResponse> {
-    const response = await api.post(
-      `${RVIE_BASE_URL}/aceptar-propuesta`,
-      { ...request, ruc }
-    );
-    return response.data;
-  },
 
-  /**
-   * Reemplazar propuesta con archivo personalizado
-   */
-  async reemplazarPropuesta(
-    ruc: string,
-    request: RvieReemplazarPropuestaRequest
-  ): Promise<RvieProcesoResponse> {
-    const response = await api.post(
-      `${RVIE_BASE_URL}/${ruc}/reemplazar-propuesta`,
-      request
-    );
-    return response.data;
-  },
 
-  /**
-   * Registrar información preliminar
-   */
-  async registrarPreliminar(
-    ruc: string,
-    request: RvieRegistrarPreliminarRequest
-  ): Promise<RvieProcesoResponse> {
-    const response = await api.post(
-      `${RVIE_BASE_URL}/${ruc}/registrar-preliminar`,
-      request
-    );
-    return response.data;
-  },
 
   /**
    * Consultar inconsistencias RVIE

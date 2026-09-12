@@ -5,6 +5,7 @@
  */
 
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   AlertCircle,
   BarChart3,
@@ -24,6 +25,7 @@ import { rvieVentasService } from '../../../../services/sire';
 import { rvieComprobantesService } from '../../../../services/rvieComprobantesService';
 import { StatCard, StatGrid } from '../../../common/StatCard';
 import EmptyState from '../../../common/EmptyState';
+import { BookPlus } from 'lucide-react';
 import { cn } from '../../../../lib/cn';
 
 interface RvieVentasProps {
@@ -71,6 +73,8 @@ const RvieVentas = ({
   authStatus,
   loading
 }: RvieVentasProps) => {
+
+  const navigate = useNavigate();
 
   const [comprobantes, setComprobantes] = useState<ComprobanteVenta[]>([]);
   const [stats, setStats] = useState<VentasStats | null>(null);
@@ -716,6 +720,20 @@ const RvieVentas = ({
               </span>
             </h4>
             <div className="flex flex-wrap gap-2">
+              {/* Accion principal: llevar estos comprobantes a contabilidad. Se
+                  pasa el periodo para no obligar a elegirlo otra vez. */}
+              <button
+                type="button"
+                onClick={() =>
+                  navigate(
+                    `/contabilidad/ventas-sire?periodo=${periodo.año}${periodo.mes.padStart(2, '0')}`
+                  )
+                }
+                className="inline-flex items-center gap-2 rounded-lg bg-violet-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-violet-700"
+              >
+                <BookPlus className="size-4" aria-hidden="true" />
+                Registrar en contabilidad
+              </button>
               <button
                 type="button"
                 onClick={exportarCSV}

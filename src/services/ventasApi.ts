@@ -14,11 +14,29 @@ import type {
   VentasStats
 } from '../types/ventas';
 
+/** Saca el motivo que manda el backend; axios solo trae el codigo HTTP. */
+function mensajeDeError(error: unknown): string {
+  const detail = (error as { response?: { data?: { detail?: unknown } } })?.response?.data
+    ?.detail;
+  if (typeof detail === "string") return detail;
+  if (detail && typeof detail === "object" && "mensaje" in detail) {
+    return String((detail as { mensaje: unknown }).mensaje);
+  }
+  return error instanceof Error ? error.message : "Error al guardar el comprobante";
+}
+
 export const ventasApi = {
   // CRUD Básico
   async getAll(empresaId: string, filters?: VentasFilters): Promise<RegistroVentaResponse[]> {
     const params = new URLSearchParams();
     params.append('empresa_id', empresaId);
+    // El backend acota por rango de periodos (periodo_inicio/periodo_fin), no
+    // por un parametro `periodo`: mandarlo con ese nombre lo ignoraba en
+    // silencio y la pantalla mostraba todos los meses a la vez.
+    if (filters?.periodo) {
+      params.append('periodo_inicio', filters.periodo);
+      params.append('periodo_fin', filters.periodo);
+    }
     if (filters?.fecha_inicio) params.append('fecha_desde', filters.fecha_inicio);
     if (filters?.fecha_fin) params.append('fecha_hasta', filters.fecha_fin);
     if (filters?.cliente_documento) params.append('numero_documento_cliente', filters.cliente_documento);
@@ -34,8 +52,17 @@ export const ventasApi = {
   },
 
   async create(empresaId: string, periodo: string, registro: RegistroVentaRequest): Promise<RegistroVentaResponse> {
-    const response = await api.post(`/accounting/ventas/?empresa_id=${empresaId}&periodo=${periodo}`, registro);
-    return response.data;
+    try {
+      const response = await api.post(
+        `/accounting/ventas/?empresa_id=${empresaId}&periodo=${periodo}`,
+        registro
+      );
+      return response.data;
+    } catch (error) {
+      // Sin esto el formulario mostraba "Request failed with status code 422"
+      // en vez del motivo real (comprobante duplicado, montos que no cuadran).
+      throw new Error(mensajeDeError(error));
+    }
   },
 
   async update(empresaId: string, id: string, registro: RegistroVentaRequest): Promise<RegistroVentaResponse> {
@@ -56,6 +83,10 @@ export const ventasApi = {
   async exportExcel(empresaId: string, filters?: VentasFilters): Promise<Blob> {
     const params = new URLSearchParams();
     params.append('empresa_id', empresaId);
+    if (filters?.periodo) {
+      params.append('periodo_inicio', filters.periodo);
+      params.append('periodo_fin', filters.periodo);
+    }
     if (filters?.fecha_inicio) params.append('fecha_desde', filters.fecha_inicio);
     if (filters?.fecha_fin) params.append('fecha_hasta', filters.fecha_fin);
 

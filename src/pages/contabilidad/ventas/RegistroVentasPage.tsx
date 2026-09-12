@@ -1,12 +1,23 @@
 import React, { useEffect, useState } from 'react';
-import { FileSpreadsheet, Receipt, SlidersHorizontal, TrendingUp, Users, Wallet } from 'lucide-react';
+import { FileSpreadsheet, Plus, Receipt, SlidersHorizontal, TrendingUp, Users, Wallet } from 'lucide-react';
 import useEmpresaActual from '../../../hooks/useEmpresaActual';
 import ComprobantesTable, {
   type ComprobanteRow,
 } from '../../../components/contabilidad/ComprobantesTable';
 import { StatCard, StatGrid } from '../../../components/common/StatCard';
 import { ventasApi } from '../../../services/ventasApi';
-import type { RegistroVentaResponse, VentasFilters, VentasStats } from '../../../types/ventas';
+import PeriodoSelector, {
+  periodoActual,
+  periodoToString,
+  type Periodo,
+} from '../../../components/common/PeriodoSelector';
+import VentaManualModal from '../../../components/contabilidad/ventas/VentaManualModal';
+import type {
+  RegistroVentaRequest,
+  RegistroVentaResponse,
+  VentasFilters,
+  VentasStats,
+} from '../../../types/ventas';
 import { cn } from '../../../lib/cn';
 
 const control = cn(
@@ -22,22 +33,27 @@ const RegistroVentasPage: React.FC = () => {
   const { empresa } = useEmpresaActual();
 
   const [ventas, setVentas] = useState<RegistroVentaResponse[]>([]);
+  const [periodo, setPeriodo] = useState<Periodo>(periodoActual);
   const [filters, setFilters] = useState<VentasFilters>({});
   const [stats, setStats] = useState<VentasStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
+  const [nuevaVenta, setNuevaVenta] = useState(false);
+  const [aviso, setAviso] = useState<string | null>(null);
 
   // ---------------------------------------------------------------------------
   // Datos
   // ---------------------------------------------------------------------------
 
+  const periodoTexto = periodoToString(periodo);
+
   const loadVentas = async () => {
-    if (!empresa?.id) return;
+    if (!empresa?.ruc) return;
 
     setLoading(true);
     try {
-      setVentas(await ventasApi.getAll(empresa.id, filters));
+      setVentas(await ventasApi.getAll(empresa.ruc, { ...filters, periodo: periodoTexto }));
       setError(null);
     } catch (err) {
       setError('Error al cargar las ventas');
@@ -48,23 +64,24 @@ const RegistroVentasPage: React.FC = () => {
   };
 
   const loadStats = async () => {
-    if (!empresa?.id) return;
+    if (!empresa?.ruc) return;
 
     try {
-      // Periodo AAAAMM del mes en curso, que es como lo espera el backend.
-      const periodo = new Date().toISOString().substring(0, 7).replace('-', '');
-      setStats(await ventasApi.getStats(empresa.id, periodo));
+      // Las estadisticas tienen que ser del periodo que se esta viendo. Antes
+      // estaba cableado al mes en curso, asi que al consultar cualquier otro
+      // periodo salian siempre en cero.
+      setStats(await ventasApi.getStats(empresa.ruc, periodoTexto));
     } catch (err) {
       console.error('Error al cargar estadísticas de ventas:', err);
     }
   };
 
   useEffect(() => {
-    if (!empresa?.id) return;
+    if (!empresa?.ruc) return;
     void loadVentas();
     void loadStats();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters, empresa?.id]);
+  }, [filters, periodoTexto, empresa?.ruc]);
 
   // ---------------------------------------------------------------------------
   // Acciones
@@ -73,11 +90,25 @@ const RegistroVentasPage: React.FC = () => {
   const handleFilterChange = (newFilters: VentasFilters) =>
     setFilters({ ...filters, ...newFilters });
 
+  const handleCrearVenta = async (venta: RegistroVentaRequest) => {
+    if (!empresa?.ruc) return;
+
+    // El comprobante se guarda en el periodo que se esta viendo, no en el
+    // mes de su fecha de emision: es el periodo tributario al que se declara.
+    await ventasApi.create(empresa.ruc, periodoTexto, venta);
+
+    setNuevaVenta(false);
+    setAviso(
+      `Comprobante ${venta.serie_comprobante ?? ''}-${venta.numero_comprobante} registrado`
+    );
+    await Promise.all([loadVentas(), loadStats()]);
+  };
+
   const handleExportExcel = async () => {
-    if (!empresa?.id) return;
+    if (!empresa?.ruc) return;
 
     try {
-      const blob = await ventasApi.exportExcel(empresa.id, filters);
+      const blob = await ventasApi.exportExcel(empresa.ruc, { ...filters, periodo: periodoTexto });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -112,6 +143,8 @@ const RegistroVentasPage: React.FC = () => {
 
   return (
     <div className="space-y-5">
+      <PeriodoSelector value={periodo} onChange={setPeriodo} />
+
       {stats && (
         <StatGrid>
           <StatCard
@@ -161,7 +194,24 @@ const RegistroVentasPage: React.FC = () => {
           <FileSpreadsheet className="size-4 text-emerald-600" aria-hidden="true" />
           Exportar Excel
         </button>
+
+        {/* A la derecha, separado de los filtros: es la unica accion que
+            escribe en el registro. */}
+        <button
+          type="button"
+          onClick={() => setNuevaVenta(true)}
+          className="ml-auto inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+        >
+          <Plus className="size-4" aria-hidden="true" />
+          Nuevo comprobante
+        </button>
       </div>
+
+      {aviso && (
+        <p className="rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+          {aviso}
+        </p>
+      )}
 
       {/* Filtros */}
       {showFilters && (
@@ -237,6 +287,14 @@ const RegistroVentasPage: React.FC = () => {
         contraparteLabel="Cliente"
         emptyMessage="No se encontraron registros de ventas con los filtros aplicados."
       />
+
+      {nuevaVenta && (
+        <VentaManualModal
+          periodo={periodoTexto}
+          onCancelar={() => setNuevaVenta(false)}
+          onGuardar={handleCrearVenta}
+        />
+      )}
     </div>
   );
 };

@@ -50,6 +50,11 @@ export interface SocioNegocioCreate {
   moneda_preferida?: string;
   condicion_pago?: string;
   limite_credito?: number;
+  // Datos de una consulta previa a SUNAT (solo aplica a RUC)
+  estado_contribuyente?: string;
+  condicion_contribuyente?: string;
+  tipo_contribuyente?: string;
+  actividad_economica?: string;
   observaciones?: string;
 }
 
@@ -112,6 +117,31 @@ export interface ConsultaRucResponse {
   data?: DatosSunat;
   error?: string;
   timestamp: string;
+}
+
+export interface ConsultaDniRequest {
+  dni: string;
+}
+
+export interface DatosDni {
+  dni: string;
+  nombres: string;
+  apellido_paterno: string;
+  apellido_materno: string;
+  apellidos: string;
+  fecha_nacimiento?: string;
+  estado_civil?: string;
+  direccion?: string;
+  ubigeo?: string;
+}
+
+export interface ConsultaDniResponse {
+  success: boolean;
+  dni: string;
+  data?: DatosDni;
+  error?: string;
+  timestamp: string;
+  metodo?: string;
 }
 
 export interface SocioCreateFromRucRequest {
@@ -195,6 +225,12 @@ class SociosNegocioApi {
   // Consultar RUC en SUNAT
   async consultarRuc(ruc: string): Promise<ConsultaRucResponse> {
     const response = await api.post(`${this.baseURL}/consulta-ruc`, { ruc });
+    return response.data;
+  }
+
+  // Consultar DNI en RENIEC
+  async consultarDni(dni: string): Promise<ConsultaDniResponse> {
+    const response = await api.post(`${this.baseURL}/consulta-dni`, { dni });
     return response.data;
   }
 

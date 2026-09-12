@@ -104,7 +104,7 @@ const LibroDiarioTable: React.FC<LibroDiarioTableProps> = ({
                     ) : (
                       <TriangleAlert className="size-3.5 text-amber-600" aria-hidden="true" />
                     )}
-                    {libro.asientos?.length || 0}
+                    {libro.totalAsientos ?? libro.asientos?.length ?? 0}
                   </dd>
                   <dt className="text-xs text-slate-500">Asientos</dt>
                 </div>

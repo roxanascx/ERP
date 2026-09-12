@@ -1,5 +1,20 @@
 import React, { useEffect, useState } from 'react';
-import { FileSpreadsheet, FileText, Plus, Receipt, SlidersHorizontal, TrendingUp, Wallet } from 'lucide-react';
+import {
+  CloudDownload,
+  FileSpreadsheet,
+  FileText,
+  Plus,
+  Receipt,
+  SlidersHorizontal,
+  TrendingUp,
+  Wallet,
+} from 'lucide-react';
+import { Link } from 'react-router-dom';
+import PeriodoSelector, {
+  periodoActual as periodoActualObj,
+  periodoToString,
+  type Periodo,
+} from '../../../components/common/PeriodoSelector';
 import useEmpresaActual from '../../../hooks/useEmpresaActual';
 import ComprasFormModal from '../../../components/contabilidad/compras/ComprasFormModal';
 import ComprobantesTable, {
@@ -24,7 +39,6 @@ const soles = (n: number): string =>
   `S/ ${(n ?? 0).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 /** Periodo AAAAMM del mes en curso, que es como lo espera el backend. */
-const periodoActual = () => new Date().toISOString().substring(0, 7).replace('-', '');
 
 const RegistroComprasPage: React.FC = () => {
   const { empresa } = useEmpresaActual();
@@ -36,6 +50,16 @@ const RegistroComprasPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   const [showFilters, setShowFilters] = useState(false);
+  const [periodo, setPeriodo] = useState<Periodo>(periodoActualObj);
+  // Ver el ejercicio entero en vez de un mes. El registro de compras se
+  // revisa muchas veces de corrido, no solo mes a mes.
+  const [todosLosPeriodos, setTodosLosPeriodos] = useState(false);
+
+  const periodoTexto = periodoToString(periodo);
+
+  // El listado del backend no filtra por razon social, asi que esta busqueda
+  // se aplica sobre lo ya cargado. Es instantanea y no gasta una consulta.
+  const [buscarProveedor, setBuscarProveedor] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editingCompra, setEditingCompra] = useState<RegistroCompraResponse | null>(null);
 
@@ -44,7 +68,7 @@ const RegistroComprasPage: React.FC = () => {
   // ---------------------------------------------------------------------------
 
   const loadCompras = async (customFilters?: ComprasFilters) => {
-    if (!empresa?.id) {
+    if (!empresa?.ruc) {
       setError('No se ha seleccionado una empresa');
       setLoading(false);
       return;
@@ -52,7 +76,16 @@ const RegistroComprasPage: React.FC = () => {
 
     setLoading(true);
     try {
-      setCompras(await comprasApi.getByEmpresa(empresa.id, customFilters || filters));
+      // `getByEmpresa` pega contra /compras/empresa/{id}, que solo acepta skip y
+      // limit: mandarle un periodo no hacia nada y salian todos los meses.
+      // `getAll` usa el listado con filtros de verdad.
+      setCompras(
+        await comprasApi.getAll({
+          ...(customFilters || filters),
+          empresa_id: empresa.ruc,
+          periodo: todosLosPeriodos ? undefined : periodoTexto,
+        })
+      );
       setError(null);
     } catch {
       setError('Error al cargar las compras');
@@ -61,38 +94,38 @@ const RegistroComprasPage: React.FC = () => {
     }
   };
 
-  const loadStats = async (customFilters?: ComprasFilters) => {
-    if (!empresa?.id) return;
+  const loadStats = async () => {
+    if (!empresa?.ruc) return;
+
+    // Con «todos los periodos» no hay resumen que pedir: el endpoint exige un
+    // mes. Se calcula de las filas cargadas, que ademas garantiza que las
+    // tarjetas digan lo mismo que la tabla.
+    if (todosLosPeriodos) {
+      setStats(null);
+      return;
+    }
 
     try {
-      const activeFilters = customFilters || filters;
+      // El periodo que se esta viendo, no el mes en curso: cableado al mes
+      // actual, las tarjetas salian en cero al consultar cualquier otro.
       setStats(
         await comprasApi.getResumenLegacy({
-          empresa_id: empresa.id,
-          periodo: activeFilters.periodo || periodoActual(),
+          empresa_id: empresa.ruc,
+          periodo: periodoTexto,
         })
       );
     } catch (err) {
       console.error('Error al cargar estadísticas de compras:', err);
+      setStats(null);
     }
   };
 
   useEffect(() => {
-    if (!empresa?.id) return;
-
-    const empresaFilters = { ...filters, empresa_id: empresa.id };
-    setFilters(empresaFilters);
-    void loadCompras(empresaFilters);
-    void loadStats(empresaFilters);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [empresa]);
-
-  useEffect(() => {
-    if (!empresa?.id || Object.keys(filters).length === 0) return;
+    if (!empresa?.ruc) return;
     void loadCompras();
     void loadStats();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters]);
+  }, [empresa?.ruc, filters, periodoTexto, todosLosPeriodos]);
 
   // ---------------------------------------------------------------------------
   // Acciones
@@ -102,15 +135,15 @@ const RegistroComprasPage: React.FC = () => {
     setFilters({ ...filters, ...newFilters });
 
   const handleExportExcel = async () => {
-    if (!empresa?.id) {
+    if (!empresa?.ruc) {
       setError('No se ha seleccionado una empresa');
       return;
     }
 
     try {
       const blob = await comprasApi.exportExcel({
-        empresa_id: empresa.id,
-        periodo: filters.periodo || periodoActual(),
+        empresa_id: empresa.ruc,
+        periodo: periodoTexto,
         formato: 'excel',
       });
 
@@ -146,7 +179,35 @@ const RegistroComprasPage: React.FC = () => {
   // Render
   // ---------------------------------------------------------------------------
 
-  const rows: ComprobanteRow[] = compras.map((c) => ({
+  /**
+   * Lo que se enseña en las tarjetas.
+   *
+   * Con un mes concreto viene del resumen del backend. Con «todos los
+   * periodos» no hay resumen —el endpoint exige un mes— asi que se suma lo
+   * cargado: es preferible a dejar las tarjetas en blanco, y ademas siempre
+   * coincide con lo que se ve en la tabla.
+   */
+  const visibles = buscarProveedor.trim()
+    ? compras.filter((c) =>
+        (c.razon_social_proveedor || '')
+          .toLowerCase()
+          .includes(buscarProveedor.trim().toLowerCase())
+      )
+    : compras;
+  const sumado: ComprasStats = {
+    total_registros: visibles.length,
+    suma_base_imponible: visibles.reduce((t, c) => t + (c.base_imponible_gravada || 0), 0),
+    suma_igv: visibles.reduce((t, c) => t + (c.igv || 0), 0),
+    suma_importe_total: visibles.reduce((t, c) => t + (c.importe_total || 0), 0),
+  };
+
+  // El resumen del backend solo vale mientras se vea todo el periodo. En cuanto
+  // hay una busqueda por proveedor, las tarjetas tienen que contar lo que esta
+  // en la tabla o dirian una cosa distinta de la que se ve.
+  const resumen: ComprasStats = stats && !buscarProveedor.trim() ? stats : sumado;
+
+
+  const rows: ComprobanteRow[] = visibles.map((c) => ({
     id: c.id,
     fecha: c.fecha_comprobante,
     tipo_comprobante: c.tipo_comprobante,
@@ -162,29 +223,48 @@ const RegistroComprasPage: React.FC = () => {
 
   return (
     <div className="space-y-5">
-      {stats && (
-        <StatGrid>
-          <StatCard
-            label="Total registros"
-            value={stats.total_registros.toLocaleString('es-PE')}
-            icon={Receipt}
-            tone="blue"
+      {/* --- Periodo --- */}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className={cn('min-w-0 flex-1', todosLosPeriodos && 'opacity-40')}>
+          <PeriodoSelector value={periodo} onChange={setPeriodo} />
+        </div>
+        <label className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700">
+          <input
+            type="checkbox"
+            checked={todosLosPeriodos}
+            onChange={(e) => setTodosLosPeriodos(e.target.checked)}
+            className="size-4 rounded border-slate-300"
           />
-          <StatCard
-            label="Base imponible"
-            value={soles(stats.suma_base_imponible)}
-            icon={FileText}
-            tone="slate"
-          />
-          <StatCard label="IGV total" value={soles(stats.suma_igv)} icon={TrendingUp} tone="amber" />
-          <StatCard
-            label="Total compras"
-            value={soles(stats.suma_importe_total)}
-            icon={Wallet}
-            tone="green"
-          />
-        </StatGrid>
-      )}
+          Ver todos los periodos
+        </label>
+      </div>
+
+      <StatGrid>
+        <StatCard
+          label="Total registros"
+          value={resumen.total_registros.toLocaleString('es-PE')}
+          icon={Receipt}
+          tone="blue"
+        />
+        <StatCard
+          label="Base imponible"
+          value={soles(resumen.suma_base_imponible)}
+          icon={FileText}
+          tone="slate"
+        />
+        <StatCard
+          label="IGV credito fiscal"
+          value={soles(resumen.suma_igv)}
+          icon={TrendingUp}
+          tone="amber"
+        />
+        <StatCard
+          label="Total compras"
+          value={soles(resumen.suma_importe_total)}
+          icon={Wallet}
+          tone="green"
+        />
+      </StatGrid>
 
       {/* Barra de herramientas */}
       <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -212,13 +292,23 @@ const RegistroComprasPage: React.FC = () => {
           Exportar Excel
         </button>
 
+        {/* La accion tiene que estar donde el usuario mira sus compras, no
+            escondida en otro menu. Lleva el periodo que ya tiene elegido. */}
+        <Link
+          to={`/contabilidad/compras-sire?periodo=${periodoTexto}`}
+          className="ml-auto inline-flex items-center gap-2 rounded-lg border border-violet-300 bg-violet-50 px-3 py-2 text-sm font-medium text-violet-700 hover:bg-violet-100"
+        >
+          <CloudDownload className="size-4" aria-hidden="true" />
+          Importar del SIRE
+        </Link>
+
         <button
           type="button"
           onClick={() => {
             setEditingCompra(null);
             setShowModal(true);
           }}
-          className="ml-auto inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3.5 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+          className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3.5 py-2 text-sm font-semibold text-white hover:bg-blue-700"
         >
           <Plus className="size-4" aria-hidden="true" />
           Nueva compra
@@ -228,31 +318,6 @@ const RegistroComprasPage: React.FC = () => {
       {/* Filtros */}
       {showFilters && (
         <div className="grid gap-4 rounded-xl border border-slate-200 bg-slate-50 p-4 sm:grid-cols-2 xl:grid-cols-3">
-          <div>
-            <label htmlFor="rc-desde" className={labelClass}>
-              Fecha inicio
-            </label>
-            <input
-              id="rc-desde"
-              type="date"
-              value={filters.fecha_inicio || ''}
-              onChange={(e) => handleFilterChange({ fecha_inicio: e.target.value })}
-              className={control}
-            />
-          </div>
-
-          <div>
-            <label htmlFor="rc-hasta" className={labelClass}>
-              Fecha fin
-            </label>
-            <input
-              id="rc-hasta"
-              type="date"
-              value={filters.fecha_fin || ''}
-              onChange={(e) => handleFilterChange({ fecha_fin: e.target.value })}
-              className={control}
-            />
-          </div>
 
           <div>
             <label htmlFor="rc-ruc" className={labelClass}>
@@ -270,14 +335,14 @@ const RegistroComprasPage: React.FC = () => {
 
           <div>
             <label htmlFor="rc-razon" className={labelClass}>
-              Razón social proveedor
+              Buscar proveedor
             </label>
             <input
               id="rc-razon"
               type="text"
-              placeholder="Nombre del proveedor"
-              value={filters.razon_social_proveedor || ''}
-              onChange={(e) => handleFilterChange({ razon_social_proveedor: e.target.value })}
+              placeholder="Nombre del proveedor…"
+              value={buscarProveedor}
+              onChange={(e) => setBuscarProveedor(e.target.value)}
               className={control}
             />
           </div>
@@ -325,7 +390,7 @@ const RegistroComprasPage: React.FC = () => {
             void loadStats();
           }}
           editingCompra={editingCompra}
-          empresaId={empresa.id ?? empresa.ruc}
+          empresaId={empresa.ruc}
         />
       )}
     </div>

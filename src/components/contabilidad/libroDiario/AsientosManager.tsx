@@ -7,6 +7,7 @@ import {
   FileSpreadsheet,
   Landmark,
   Pencil,
+  Plus,
   RotateCcw,
   Search,
   Trash2,
@@ -167,6 +168,16 @@ const AsientosManager: React.FC<AsientosManagerProps> = (props) => {
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
+            onClick={logic.handleCrearAsiento}
+            disabled={isLoading}
+            className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3.5 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+          >
+            <Plus className="size-4" aria-hidden="true" />
+            Nuevo asiento
+          </button>
+
+          <button
+            type="button"
             onClick={logic.limpiarFiltros}
             className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
           >
@@ -280,8 +291,23 @@ const AsientosManager: React.FC<AsientosManagerProps> = (props) => {
       {logic.asientosPaginados.length === 0 ? (
         <EmptyState
           title="No hay asientos"
-          description="No se encontraron asientos con los filtros aplicados."
-        />
+          description={
+            props.asientos.length === 0
+              ? 'Este libro todavía no tiene asientos contables.'
+              : 'No se encontraron asientos con los filtros aplicados.'
+          }
+        >
+          {props.asientos.length === 0 && (
+            <button
+              type="button"
+              onClick={logic.handleCrearAsiento}
+              className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3.5 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+            >
+              <Plus className="size-4" aria-hidden="true" />
+              Crear el primer asiento
+            </button>
+          )}
+        </EmptyState>
       ) : (
         <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
           <div className="overflow-x-auto">

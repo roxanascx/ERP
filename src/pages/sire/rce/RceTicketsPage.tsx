@@ -49,7 +49,7 @@ const RceTicketsPage: React.FC = () => {
     setError(null);
 
     try {
-      const response = await api.get('/api/v1/sire/rce/sunat/tickets', {
+      const response = await api.get('/sire/rce/propuestas/sunat/tickets', {
         params: {
           ruc,
           periodo_ini: periodoSunat,

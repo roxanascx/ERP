@@ -238,83 +238,6 @@ export function useRvie(options: UseRvieOptions) {
     }
   }, [ruc, handleError, clearError]);
 
-  const aceptarPropuesta = useCallback(async (request: RvieAceptarPropuestaRequest): Promise<RvieTicketResponse> => {
-    setLoading(true);
-    setOperacionActiva('aceptar_propuesta');
-    
-    try {
-      // Usar el nuevo sistema de tickets
-      const ticket = await sireService.tickets.generarTicket({
-        ruc,
-        periodo: request.periodo,
-        operacion: 'aceptar-propuesta'
-      });
-      
-      // Agregar ticket al estado
-      setTickets(prev => [...prev, ticket]);
-      
-      // Iniciar monitoreo automático
-      startTicketPolling(ticket.ticket_id);
-      
-      clearError();
-      return ticket;
-    } catch (error) {
-      handleError(error, 'aceptación de propuesta');
-      throw error;
-    } finally {
-      setLoading(false);
-      setOperacionActiva(null);
-    }
-  }, [ruc, handleError, clearError]);
-
-  const reemplazarPropuesta = useCallback(async (request: RvieReemplazarPropuestaRequest): Promise<RvieProcesoResponse> => {
-    setLoading(true);
-    setOperacionActiva('reemplazar_propuesta');
-    
-    try {
-      const response = await sireService.rvie.reemplazarPropuesta(ruc, request);
-      clearError();
-      
-      if (response.ticket_id) {
-        startTicketPolling(response.ticket_id);
-      }
-      
-      return response;
-    } catch (error) {
-      handleError(error, 'reemplazo de propuesta');
-      throw error;
-    } finally {
-      setLoading(false);
-      setOperacionActiva(null);
-    }
-  }, [ruc, handleError, clearError]);
-
-  const registrarPreliminar = useCallback(async (request: RvieRegistrarPreliminarRequest): Promise<RvieProcesoResponse> => {
-    setLoading(true);
-    setOperacionActiva('registrar_preliminar');
-    
-    try {
-      const response = await sireService.rvie.registrarPreliminar(ruc, request);
-      clearError();
-      
-      if (response.ticket_id) {
-        startTicketPolling(response.ticket_id);
-      }
-      
-      return response;
-    } catch (error) {
-      handleError(error, 'registro preliminar');
-      throw error;
-    } finally {
-      setLoading(false);
-      setOperacionActiva(null);
-    }
-  }, [ruc, handleError, clearError]);
-
-  // ========================================
-  // GESTIÓN DE TICKETS
-  // ========================================
-
   const consultarTicket = useCallback(async (ticketId: string): Promise<RvieTicketResponse> => {
     try {
       const ticket = await sireService.tickets.consultarTicket(ruc, ticketId);
@@ -540,11 +463,10 @@ export function useRvie(options: UseRvieOptions) {
     checkAuth,
     authenticate,
     
-    // Operaciones RVIE
+    // Operaciones RVIE. Escribir (aceptar propuesta, reemplazar,
+    // registrar preliminar) vive ahora en `rvieCicloApi`, contra los
+    // servicios verificados del manual de Ventas v30.
     descargarPropuesta,
-    aceptarPropuesta,
-    reemplazarPropuesta,
-    registrarPreliminar,
     
     // Gestión de tickets
     consultarTicket,

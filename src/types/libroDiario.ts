@@ -32,6 +32,12 @@ export interface LibroDiario {
   ruc: string;
   razonSocial: string;
   asientos: AsientoContable[];
+  /**
+   * Cuantos asientos tiene el libro. El listado NO carga `asientos` (viene
+   * vacio a proposito), asi que para mostrar el conteo hay que leer esto y no
+   * `asientos.length`.
+   */
+  totalAsientos?: number;
   
   // Totales calculados
   totalDebe: number;

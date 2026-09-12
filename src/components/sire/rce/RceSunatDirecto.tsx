@@ -39,10 +39,10 @@ export const RceSunatDirecto: React.FC<RceSunatDirectoProps> = ({ ruc, periodo }
   };
 
   const consultarPropuestasSunat = () =>
-    consultar('/api/v1/sire/rce/propuestas', { ruc, periodo });
+    consultar('/sire/rce/propuestas/sunat/propuestas', { ruc, periodo });
 
   const consultarTicketsSunat = () =>
-    consultar('/api/v1/sire/rce/sunat/tickets', {
+    consultar('/sire/rce/propuestas/sunat/tickets', {
       ruc,
       periodo_ini: periodo,
       periodo_fin: periodo,

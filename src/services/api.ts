@@ -13,6 +13,16 @@ const apiClient = axios.create({
   },
 });
 
+// Health check, test-db, hola y la raíz viven fuera de /api/v1 (ver
+// back/app/main.py) - este cliente aparte apunta directo a la base sin
+// prefijo, para no repetir todos los demás endpoints de apiClient.
+const rootClient = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
 // Interceptor para agregar token de autenticación (si es necesario en el futuro)
 apiClient.interceptors.request.use(
   (config) => {
@@ -52,16 +62,16 @@ apiClient.interceptors.response.use(
 // Servicios de la API
 export const apiService = {
   // Health check
-  healthCheck: () => apiClient.get('/health'),
-  
+  healthCheck: () => rootClient.get('/health'),
+
   // Prueba de conexión con base de datos
-  testDatabase: () => apiClient.get('/test-db'),
-  
+  testDatabase: () => rootClient.get('/test-db'),
+
   // Hola mundo
-  hello: () => apiClient.get('/hola'),
-  
+  hello: () => rootClient.get('/hola'),
+
   // Información general del API
-  getApiInfo: () => apiClient.get('/'),
+  getApiInfo: () => rootClient.get('/'),
 
   // Servicios de usuarios
   users: {
