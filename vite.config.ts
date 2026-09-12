@@ -42,6 +42,12 @@ export default defineConfig({
           if (id.includes('node_modules/react-router')) return 'router';
           if (id.includes('node_modules/react-dom')) return 'react';
           if (id.includes('node_modules/react')) return 'react';
+          // scheduler es una dependencia interna de react-dom, pero es un
+          // paquete npm aparte: sin esta regla cae en 'vendor', y como
+          // lucide-react (tambien en 'vendor') usa React.forwardRef, se forma
+          // un ciclo react<->vendor que rompe el orden de carga en produccion
+          // ("Cannot read properties of undefined (reading 'forwardRef')").
+          if (id.includes('node_modules/scheduler')) return 'react';
           if (id.includes('node_modules/@clerk')) return 'auth';
           if (id.includes('node_modules/axios')) return 'utils';
 
